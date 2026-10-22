@@ -116,7 +116,7 @@ def git_provenance(root:Path,timeout:float=5.0)->dict[str,Any]:
     try:
         commit=subprocess.run(["git","rev-parse","HEAD"],cwd=root,capture_output=True,
                                text=True,timeout=timeout,check=True).stdout.strip()
-        porcelain=subprocess.run(["git","status","--porcelain"],cwd=root,capture_output=True,
+        porcelain=subprocess.run(["git","--no-optional-locks","status","--porcelain"],cwd=root,capture_output=True,
                                   text=True,timeout=timeout,check=True).stdout
         return {"git_commit":commit,"git_dirty":bool(porcelain.strip())}
     except Exception as error:
