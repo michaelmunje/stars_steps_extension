@@ -9,7 +9,7 @@ numbers here are copied from the files linked below. The reasoning behind each c
 | Use | Artifact | Headline (test split) |
 | --- | --- | --- |
 | STEPS forecaster, and the SEAN-JAX crowd and predictor | `experiments/stars_ma/runs/cvae_kl01_finetune/checkpoints/best.pt` | ADE / FDE 0.080 / 0.126 (constant velocity 0.276 / 0.518); realistic 20 s rollouts [48] |
-| All-dataset forecaster | `experiments/stars_ma/runs/cvae_hpo53_scratch_all/checkpoints/best.pt` | 2-3.5x better than constant velocity on all six datasets; better than or level with per-dataset models [59, 80] |
+| All-dataset forecaster | `experiments/stars_ma/runs/cvae_hpo53_scratch_all/checkpoints/best.pt` | 2-3.5x better than constant velocity on all six datasets. Seed-sensitive: this seed is the best of three, and averaged over seeds pooling beats per-dataset models only on UCY and ETH [80, 84] |
 | Navigation policy | `checkpoints/seanjax/cmaes_crowd_v4/best_policy.yaml` | In the STARS crowd: 99% success, 0.7% collisions, 100% on recorded STEPS scenes [75] |
 
 Closed questions: hyperparameter search has converged [61, 62]; closed-loop training does not
@@ -64,9 +64,10 @@ settings, agent ADE / FDE, best-of-20, against constant velocity:
 ![Per-dataset test error](stars_ma_all_test.png)
 
 - SSL pretraining plus fine-tuning is 0.002–0.010 m worse on every dataset.
-- **One model per dataset vs one for all** [80]: the all-dataset model is better than or level
-  with each dataset's own model everywhere: -1 to -3% ADE on STEPS, PTDPES, Madras and Grand
-  Central, -26% on UCY and -40% on ETH, the two smallest.
+- **One model per dataset vs one for all** [80, 84]: seed 42 of the all-dataset model (charted) is
+  better than or level with each dataset's own model everywhere. Over three seeds, though, the
+  all-dataset model averages 2-6% *worse* on STEPS, PTDPES, Madras and Grand Central, and 18-35%
+  better on UCY and ETH. A 60-epoch schedule is being tested to remove the seed sensitivity.
 
 ![One model per dataset vs one for all](stars_ma_single_vs_all.png)
 - Feeding back its own predictions every step costs little on STEPS but 14–20% elsewhere.
