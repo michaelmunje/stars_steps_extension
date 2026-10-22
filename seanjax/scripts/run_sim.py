@@ -21,7 +21,7 @@ def main() -> None:
     parser.add_argument("--backend", default="lightweight", choices=("lightweight", "isaac_lab"))
     parser.add_argument("--scenario", default="crossing", choices=KINDS)
     parser.add_argument("--policy", default="social", help="social | goal_seeking | a saved policy YAML")
-    parser.add_argument("--pedestrians", choices=("replay", "social_force", "reactive_replay", "orca"),
+    parser.add_argument("--pedestrians", choices=("replay", "social_force", "reactive_replay", "orca", "stars_crowd"),
                         help="Pedestrian model (default: from the config)")
     parser.add_argument("--config", type=Path, default=DEFAULT_CONFIG)
     parser.add_argument("--seed", type=int, default=0)

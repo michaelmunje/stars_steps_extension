@@ -240,3 +240,29 @@ def test_cmaes_runs_resumes_and_never_selects_worse_than_default(tmp_path):
     config.num_generations = 3
     resumed = CMAESTrainer(config, evaluator, tmp_path).run(resume=True)
     assert resumed["generations"] == 3
+
+
+def test_stars_crowd_model_runs_reacts_to_the_robot_and_is_deterministic(tmp_path):
+    from baselines.stars_ma_model import StarsMultiAgentForecaster
+    from seanjax.pedestrians.stars_crowd import StarsCrowdModel
+
+    torch.manual_seed(0)
+    model = StarsMultiAgentForecaster(8, 12, dt=0.4, encoder_recipe={"hidden_dim": 32, "latent_dim": 16,
+                                      "edge_transformer_layers": 1, "node_transformer_layers": 1},
+                                      decoder_recipe={"hidden_dim": 32, "latent_dim": 4})
+    path = tmp_path / "forecaster.pt"
+    torch.save({"model": "stars_ma", "phase": "forecast", "state_dict": model.state_dict(),
+                "encoder_recipe": model.encoder.recipe, "decoder_recipe": model.decoder_recipe,
+                "graph": {"knn": 16, "radius": 10.0}, "window": {"observation_steps": 8, "prediction_steps": 12, "dt": 0.4},
+                "run_config": {"data_seed": 42}}, path)
+    batch = collate(scenario_set("test", ["dense_flow", "head_on"], 1, duration=12.0))
+    env = LightweightEnv(StarsCrowdModel(path, seed=3))
+    absent_a = rollout(env, batch, robot_present=False)
+    absent_b = rollout(env, batch, robot_present=False)
+    torch.testing.assert_close(absent_a.ped_pos, absent_b.ped_pos)               # seeded intents
+    present = rollout(env, batch, policy=None)                                   # a stationary robot
+    gap = torch.linalg.norm(present.ped_pos - batch.robot_start[:, None, None, :2], dim=-1) - batch.ped_radius[..., None] - 0.3
+    assert float(gap[present.ped_active].min()) >= -1e-4                         # never inside the robot
+    model_driven = present.ped_active.clone()
+    model_driven[:, :, :40] = False                                              # after the 3.2 s warm-up
+    assert bool(model_driven.any())

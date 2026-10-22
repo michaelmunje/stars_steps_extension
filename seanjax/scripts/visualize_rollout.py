@@ -24,7 +24,7 @@ def main() -> None:
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--split", default="test", choices=("train", "val", "test"))
     parser.add_argument("--config", type=Path, default=DEFAULT_CONFIG)
-    parser.add_argument("--pedestrians", choices=("replay", "social_force", "reactive_replay", "orca"))
+    parser.add_argument("--pedestrians", choices=("replay", "social_force", "reactive_replay", "orca", "stars_crowd"))
     parser.add_argument("--run-dir", type=Path, help="CMA-ES output directory to plot convergence for")
     parser.add_argument("--device")
     parser.add_argument("--out-dir", type=Path, default=Path("runs/seanjax/visualize"))

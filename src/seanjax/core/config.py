@@ -62,6 +62,13 @@ def make_pedestrian_model(config: dict | None):
     if name == "reactive_replay":
         reactive = config.pop("reactive_replay", None) or {}
         return ReactiveReplayModel(ReactiveReplayParams(forces=forces, **reactive))
+    if name == "stars_crowd":
+        from seanjax.pedestrians.stars_crowd import StarsCrowdModel
+
+        spec = dict(config.pop("stars_crowd", None) or {})
+        path = Path(spec.pop("checkpoint"))
+        path = path if path.is_absolute() else CONFIG_DIR.parents[1] / path
+        return StarsCrowdModel(path, **spec)
     if name == "orca":
         from seanjax.pedestrians.orca import OrcaModel  # Phase 2
         return OrcaModel(**(config.pop("orca", None) or {}))
