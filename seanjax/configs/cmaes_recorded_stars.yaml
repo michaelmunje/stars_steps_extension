@@ -1,0 +1,35 @@
+# STARS-forecaster pedestrian predictions. CMA-ES on scripted scenarios plus recorded STEPS traffic (recordings split train/val/test by
+# STEPS's grouped split manifest, so test scenes come from recordings never seen in tuning).
+simulator: simulator.yaml
+pedestrians: pedestrians.yaml
+policy: policy_stars.yaml
+recorded:
+  source: steps            # steps | csv (see seanjax.datasets.trajectory_loader)
+  path: datasets/steps
+  limit_per_split: 40      # recordings loaded per split
+  max_pedestrians: 40
+  min_pedestrians: 6
+cmaes:
+  optimize: [goal_weight, pedestrian_weight, disruption_weight, preferred_speed,
+             personal_space_radius, prediction_horizon, smoothness_weight, turn_penalty]
+  population_size: 32
+  num_generations: 150
+  sigma0: 0.25
+  seed: 42
+  kinds: [crossing, head_on, overtaking, following, group_toward, narrow_passage,
+          stationary_group, dense_flow, recorded]
+  train_per_kind: 6
+  val_per_kind: 12
+  validate_every: 5
+  duration: 30.0
+  dt: 0.1
+test_per_kind: 10
+max_envs: 4096
+objective:
+  success: 1.0
+  collision: 2.0
+  disruption: 1.0
+  time: 0.3
+  comfort: 0.5
+  disruption_metric: disruption_displacement
+  comfort_metric: personal_violation_rate
