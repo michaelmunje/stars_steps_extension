@@ -21,3 +21,8 @@ each dataset's test split (44928 windows in all). CVAE scores are best-of-20, in
 Sources: `experiments/stars_ma/runs/cvae_hpo53_scratch_all/eval_test_all.json` (job 65718) and
 `experiments/stars_ma/runs/cvae_sslall_finetune_all/eval_test_{rest,gc}.json` (job 65741, rollout at
 exec 4 only). See decision 59.
+
+The full evaluation of the SSL + fine-tune model (`eval_test_all.json`, job 65718) agrees with the
+split one to within 0.002 m. Its rollout ADE at exec 1 is 0.086 (STEPS), 0.327 (PTDPES),
+0.251 (Madras), 0.281 (Grand Central), 0.253 (UCY) and 0.279 (ETH), as large as or larger than the
+scratch model's.
