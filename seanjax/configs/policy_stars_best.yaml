@@ -14,6 +14,6 @@ controller:
 parameters: {}           # overrides of the tunable defaults, e.g. {preferred_speed: 0.7}
 predictor:               # pedestrian forecasts used by the controller
   type: stars              # multi-agent STARS forecaster
-  checkpoint: experiments/stars_ma/runs/cvae_hpo0_scratch_full/checkpoints/best.pt
+  checkpoint: experiments/stars_ma/runs/cvae_kl01_finetune/checkpoints/best.pt
   mode: mean             # CVAE prior mean: one most-likely joint future
   predict_every: 2       # re-forecast every 0.2 s

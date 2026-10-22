@@ -371,3 +371,4 @@ why, and how to undo it.
     - Its 20 s simulations move at 0.115 m/s mean speed, equal to the smoothed real tracks.
     - Pretraining helps slightly once the KL weight is right: fine-tuned 0.336 < scratch 0.342
       < frozen 0.362 moving ADE.
+    The navigation predictor (`policy_stars_best.yaml`) now uses `cvae_kl01_finetune`; the warm-start CMA-ES run (job 65638, not yet started) picks it up.
