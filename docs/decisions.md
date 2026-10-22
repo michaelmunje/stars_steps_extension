@@ -806,3 +806,27 @@ why, and how to undo it.
     Teacher-forced error drops by at most 2%, and closed-loop error moves in both directions.
     The early-stopped model was nearly converged. `cvae_hpo53_scratch_all` stays the
     all-dataset reference unless the exec-4 fine-tune (65775) does better in closed loop.
+
+72. **Re-tuning in the wall-respecting crowd** (`runs/seanjax/crowd_v5`, 270 test scenes, objective
+    of 58):
+
+    | Policy | Objective | Success | Collision | Intimate-zone rate | Path eff. | Loops / episode | Recorded success |
+    | --- | --- | --- | --- | --- | --- | --- | --- |
+    | Default social | -0.178 | 83% | 7.4% | 16.4% | 0.82 | 0.02 | 77% |
+    | Crowd v2 (tuned before the wall fix) | 0.297 | 96% | 1.5% | 5.4% | 0.90 | 0.11 | 87% |
+    | v3 from crowd v1 | 0.314 | 96% | 1.1% | 2.6% | 0.89 | 0.12 | 80% |
+    | v3 seed 7 | 0.321 | 96% | 1.1% | 2.6% | 0.88 | 0.14 | 77% |
+    | v3 with no-loop controller (`crowd_v5_noloop`) | 0.322 | 95% | 0.7% | 2.9% | 0.88 | 0.13 | 73% |
+    | **v3 seed 42** (`cmaes_crowd_v3`) | **0.347** | 96% | **0.7%** | **1.3%** | 0.88 | 0.18 | 77% |
+
+    - Tuning in the corrected crowd gives +0.02 to +0.05. The gain comes from comfort: intimate-
+      zone time halves again, to 1.3%.
+    - Every tuned policy loops more than the default controller (0.11-0.18 extra full turns per
+      episode, against 0.02), and v3 seed 42 loops most. The no-loop controller option does not
+      change that even after re-tuning, so it stays off by default.
+    - **Evaluation noise.** The same policy on the same scenes scores 0.297-0.304 across
+      evaluation runs (the default controller: -0.167 to -0.201). The forecaster crowd runs in
+      bf16 on the GPU and is not bit-for-bit reproducible, and small differences grow in closed
+      loop. Differences under about 0.02 are not meaningful.
+    - `cmaes_crowd_v3` becomes the reference policy unless the loop-penalised v4 tuning (70)
+      matches it with fewer loops.
