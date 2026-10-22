@@ -2,7 +2,7 @@
 
 Robot task: ``success``, ``collision`` (``ped_collision``, ``obstacle_collision``), ``timeout``,
 ``time_to_goal`` (NaN unless successful), ``normalized_time`` (episode time / limit, 1 on
-failure), ``path_length``.
+failure), ``path_length``, ``path_efficiency`` (straight-line distance / path driven; 0 on failure).
 
 Comfort and safety (SEAN 2.0 zones, measured surface to surface): ``min_ped_clearance``,
 ``intimate_violation_rate`` / ``personal_violation_rate`` (fraction of the robot's active steps
@@ -49,6 +49,10 @@ def robot_metrics(run: Rollout, batch: ScenarioBatch, robot_radius: float) -> di
     }
     steps = torch.linalg.norm(run.robot_pose[:, 1:, :2] - run.robot_pose[:, :-1, :2], dim=-1)
     out["path_length"] = (steps * moving_steps).sum(-1)
+    straight = torch.linalg.norm(batch.robot_goal - batch.robot_start[:, :2], dim=-1)
+    # 1 = straight to the goal; detours, loops and orbits lower it. Failed episodes count as 0.
+    out["path_efficiency"] = torch.where(run.success, (straight / out["path_length"].clamp(min=1e-6)).clamp(max=1.0),
+                                         torch.zeros_like(straight))
 
     rel = run.robot_pose[:, None, :, :2] - run.ped_pos                           # [B, P, K, 2]
     gap = torch.linalg.norm(rel, dim=-1) - batch.ped_radius[..., None] - robot_radius

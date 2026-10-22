@@ -20,7 +20,7 @@ from seanjax.core.metrics import summarize
 from seanjax.core.scenarios import scenario_set
 from seanjax.visualization.plots import plot_comparison
 
-HEADLINE = ("objective", "success", "collision", "time_to_goal", "min_ped_clearance", "personal_violation_rate",
+HEADLINE = ("objective", "success", "collision", "time_to_goal", "path_efficiency", "min_ped_clearance", "personal_violation_rate",
             "disruption_displacement", "ped_delay", "peds_affected", "stops", "command_smoothness")
 
 

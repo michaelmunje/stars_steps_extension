@@ -31,5 +31,7 @@ objective:
   disruption: 1.0
   time: 0.3
   comfort: 0.5
+  detour: 1.0            # weight on 1 - path_efficiency (penalises loops and long detours)
+  smoothness: 0.1        # weight on command_smoothness (jerky commands)
   disruption_metric: disruption_displacement
   comfort_metric: personal_violation_rate

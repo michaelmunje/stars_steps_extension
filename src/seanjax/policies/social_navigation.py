@@ -29,7 +29,7 @@ from seanjax.core.state import Observation
 from seanjax.policies.base import ConstantVelocityPredictor, ParameterSpec, PedestrianPredictor, Policy
 
 PARAMETERS = (
-    ParameterSpec("goal_weight", 2.0, 0.1, 50.0, log=True, description="Weight of progress toward the goal"),
+    ParameterSpec("goal_weight", 2.0, 0.5, 50.0, log=True, description="Weight of progress toward the goal"),
     ParameterSpec("collision_weight", 5.0, 0.1, 200.0, log=True, description="Penalty for predicted collisions beyond the safety horizon"),
     ParameterSpec("pedestrian_weight", 1.0, 0.01, 200.0, log=True, description="Penalty for entering pedestrians' personal space"),
     ParameterSpec("disruption_weight", 1.0, 0.01, 200.0, log=True, description="Penalty for blocking the path ahead of moving pedestrians"),

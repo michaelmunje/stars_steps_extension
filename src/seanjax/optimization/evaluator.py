@@ -9,6 +9,7 @@ Objective per episode (weights from YAML, ``objective:``):
 
     J = w_success * success - w_collision * collision - w_disruption * <disruption_metric>
         - w_time * normalized_time - w_comfort * <comfort_metric>
+        - w_detour * (1 - path_efficiency) - w_smoothness * command_smoothness
 
 A candidate's J is the mean over its scenarios; CMA-ES minimises -J.
 """
@@ -30,6 +31,8 @@ class Objective:
     disruption: float = 1.0
     time: float = 0.3
     comfort: float = 0.5
+    detour: float = 0.0          # weight on (1 - path_efficiency)
+    smoothness: float = 0.0      # weight on command_smoothness
     disruption_metric: str = "disruption_displacement"
     comfort_metric: str = "personal_violation_rate"
 
@@ -38,7 +41,9 @@ class Objective:
         disruption = metrics.get(self.disruption_metric, zero)
         return (self.success * metrics["success"] - self.collision * metrics["collision"]
                 - self.disruption * torch.nan_to_num(disruption) - self.time * metrics["normalized_time"]
-                - self.comfort * torch.nan_to_num(metrics[self.comfort_metric]))
+                - self.comfort * torch.nan_to_num(metrics[self.comfort_metric])
+                - self.detour * (1.0 - metrics["path_efficiency"])
+                - self.smoothness * torch.nan_to_num(metrics["command_smoothness"]))
 
 
 @dataclass

@@ -372,3 +372,22 @@ why, and how to undo it.
     - Pretraining helps slightly once the KL weight is right: fine-tuned 0.336 < scratch 0.342
       < frozen 0.362 moving ADE.
     The navigation predictor (`policy_stars_best.yaml`) now uses `cvae_kl01_finetune`; the warm-start CMA-ES run (job 65638, not yet started) picks it up.
+
+45. **The warm-start policy scored best by reward hacking; objective v2.** Warm-start CMA-ES (from
+    v1, fixed controller, best STARS predictor) reached test objective 0.707 vs 0.576 for v1:
+    - disruption 0.032 m, personal-space violations 0.075, min clearance 1.24 m;
+    - but command smoothness 2.85 (4x the others), and five parameters at their bounds
+      (goal_weight at the minimum 0.1).
+
+    The rollout figure (`docs/results/navigation_compare_warm.png`) shows it circling a crossing
+    pedestrian, driving around the outside of the narrow-passage walls, and looping in dense flow.
+    The objective charged only 0.3 x time for such detours and nothing for jerky commands.
+
+    Changes:
+    - New metric `path_efficiency` (straight-line distance / path driven; 0 on failure).
+    - Objective v2 adds `detour: 1.0` x (1 - path_efficiency) and `smoothness: 0.1` x
+      command_smoothness. The defaults in code stay 0, so old configs reproduce old numbers.
+    - goal_weight's lower bound is raised 0.1 -> 0.5.
+
+    The warm start is rerun under v2 (`cmaes_stars_best_warm_v2`). The 0.707 policy is kept for
+    reference but is not the recommended policy.
