@@ -1072,3 +1072,23 @@ why, and how to undo it.
       run, for seeds 42, 1 and 2, each evaluated on test.
     - Decision 80 will be restated with seed spreads once the test results of both jobs are in.
       If the 60-epoch recipe is stable, it replaces the 200-epoch one for all-dataset training.
+    **Seed replicates on test** (original 200-epoch recipe; agent ADE, seeds 42 / 1 / 2, against
+    the single-dataset model):
+
+    | Dataset | All-dataset seeds 42 / 1 / 2 | Mean | Single-dataset (2 seeds where run) |
+    | --- | --- | --- | --- |
+    | STEPS | 0.078 / 0.087 / 0.085 | 0.083 | 0.079 |
+    | PTDPES | 0.284 / 0.313 / 0.320 | 0.306 | 0.290 / 0.292 |
+    | Madras | 0.209 / 0.219 / 0.215 | 0.215 | 0.211 |
+    | Grand Central | 0.244 / 0.271 / 0.274 | 0.263 | 0.250 / 0.252 |
+    | UCY | 0.193 / 0.227 / 0.223 | 0.214 | 0.262 |
+    | ETH | 0.234 / 0.271 / 0.263 | 0.256 | 0.393 |
+
+    **Correction to 80.** Seed 42 was the best of three by a wide margin. Averaged over seeds, the
+    original all-dataset recipe is *worse* than per-dataset models on the large datasets: STEPS
+    +5%, PTDPES +6%, Grand Central +5%, Madras +2%. It is clearly better only on the two small
+    ones (UCY -18%, ETH -35%). "Pooling never hurts" holds only for the lucky seed. The
+    recommendation in 80 is suspended until the 60-epoch recipe results are in:
+    - if it is stable and matches seed 42, pooling stands;
+    - otherwise the recommendation becomes per-dataset models for large datasets and pooled
+      models for small ones.
