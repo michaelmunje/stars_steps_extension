@@ -188,3 +188,20 @@ why, and how to undo it.
 
     The recipe defaults stay until the searches finish; the winning settings then get full-length
     runs with several seeds.
+
+31. **First forecaster test result (deterministic decoder, frozen phase-1 encoder, STEPS test,
+    12,500 windows).**
+
+    | Metric | STARS | Constant velocity |
+    | --- | --- | --- |
+    | All-agent ADE / FDE | 0.123 / 0.219 m | 0.276 / 0.518 m |
+    | Moving agents ADE / FDE | 0.604 / 1.192 m | 0.894 / 1.771 m |
+    | Stationary agents ADE | 0.046 m | 0.178 m |
+
+    - Closed-loop forecasting is stable: ADE 0.123-0.127 m at 1, 4 and 12 executed steps.
+    - 20 s simulations are too passive: mean speed 0.057 m/s (real 0.141), mean acceleration
+      0.03 m/s^2 (real 0.31). The deterministic decoder regresses toward standing still.
+
+    So the deterministic forecaster is not used as a pedestrian *simulator*. The CVAE (sampled
+    intents) is the candidate for that and is evaluated next. For the navigation policy's
+    *predictions*, the CVAE prior mean is used (`policy_stars.yaml`).
