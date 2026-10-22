@@ -39,6 +39,10 @@ PARAMETERS = (
     ParameterSpec("prediction_horizon", 2.0, 1.0, 4.0, description="Local trajectory prediction duration (s)"),
     ParameterSpec("turn_penalty", 0.1, 0.0, 2.0, description="Penalty for turning rate"),
     ParameterSpec("smoothness_weight", 0.2, 0.0, 2.0, description="Penalty for command changes"),
+    # Scales on the controller's fixed waiting-related costs (decision 69); 1 keeps the config value.
+    ParameterSpec("speed_scale", 1.0, 0.1, 5.0, log=True, description="Multiplier on speed_cost"),
+    ParameterSpec("retreat_scale", 1.0, 0.1, 10.0, log=True, description="Multiplier on retreat_cost"),
+    ParameterSpec("alignment_weight", 0.1, 0.0, 1.0, description="Reward for facing the goal at the plan's end"),
 )
 
 
@@ -129,16 +133,17 @@ class SocialNavigationPolicy(Policy):
         bearing = torch.atan2(obs.goal[:, None, 1] - final_xy[..., 1], obs.goal[:, None, 0] - final_xy[..., 0])
         alignment = torch.cos(wrap_angle(bearing - final_theta))
         # Arriving: no reward for overshooting; progress saturates at the goal.
-        cost = -self._p(params, "goal_weight")[:, None] * (progress + 0.1 * alignment)
+        cost = -self._p(params, "goal_weight")[:, None] * (progress + self._p(params, "alignment_weight")[:, None] * alignment)
         # Retreating from the goal is only worth it to avoid danger: penalise it outright, so the
         # controller waits rather than circling when pedestrians block the way.
+        retreat_cost = c.retreat_cost * self._p(params, "retreat_scale")[:, None]
         if c.retreat_along_path:
             # A loop that comes back to the same distance by the horizon is still a retreat.
             worst = torch.where(in_horizon[:, None] > 0, distance, torch.zeros_like(distance)).amax(-1)
             retreat = (worst - distance0[:, None]) / (c.max_speed * horizon[:, None])
-            cost = cost + c.retreat_cost * torch.relu(torch.maximum(retreat, -progress))
+            cost = cost + retreat_cost * torch.relu(torch.maximum(retreat, -progress))
         else:
-            cost = cost + c.retreat_cost * torch.relu(-progress)
+            cost = cost + retreat_cost * torch.relu(-progress)
         crowding = torch.zeros(B, device=device)
         valid = torch.ones(B, M, dtype=torch.bool, device=device)
 
@@ -180,7 +185,7 @@ class SocialNavigationPolicy(Policy):
 
         v, w = commands[None, :, 0], commands[None, :, 1]
         # Speed tracking fades out when a pedestrian is close: slowing down / waiting is then fine.
-        cost = cost + c.speed_cost * (1.0 - crowding)[:, None] * ((v - self._p(params, "preferred_speed")[:, None]) / c.max_speed) ** 2
+        cost = cost + c.speed_cost * self._p(params, "speed_scale")[:, None] * (1.0 - crowding)[:, None] * ((v - self._p(params, "preferred_speed")[:, None]) / c.max_speed) ** 2
         cost = cost + self._p(params, "turn_penalty")[:, None] * w.abs() / c.max_angular_speed
         change = ((v - obs.last_command[:, None, 0]).abs() / c.max_speed
                   + (w - obs.last_command[:, None, 1]).abs() / c.max_angular_speed)

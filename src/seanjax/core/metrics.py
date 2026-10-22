@@ -7,7 +7,7 @@ failure), ``path_length``, ``path_efficiency`` (straight-line distance / path dr
 Comfort and safety (SEAN 2.0 zones, measured surface to surface): ``min_ped_clearance``,
 ``intimate_violation_rate`` / ``personal_violation_rate`` (fraction of the robot's active steps
 with a pedestrian closer than 0.45 m / 1.2 m), ``stops`` (moving -> stopped transitions),
-``emergency_stops``, ``command_smoothness`` (mean |dv|/dt + |dw|/dt) and ``jerk`` (mean |d^2 v|/dt^2).
+``heading_change`` (rad) and ``loops`` (full turns beyond half a turn), ``emergency_stops``, ``command_smoothness`` (mean |dv|/dt + |dw|/dt) and ``jerk`` (mean |d^2 v|/dt^2).
 
 Pedestrian disruption, against the robot-absent counterfactual with identical initial conditions
 and pedestrian model (only meaningful for reactive pedestrians; zero for replay):
@@ -22,8 +22,11 @@ separately from comfort and task metrics.
 """
 from __future__ import annotations
 
+import math
+
 import torch
 
+from seanjax.core.geometry import wrap_angle
 from seanjax.core.rollout import Rollout
 from seanjax.core.state import ScenarioBatch
 
@@ -54,6 +57,11 @@ def robot_metrics(run: Rollout, batch: ScenarioBatch, robot_radius: float) -> di
     # 1 = straight to the goal; detours, loops and orbits lower it. Failed episodes count as 0.
     out["path_efficiency"] = torch.where(run.success, (straight / out["path_length"].clamp(min=1e-6)).clamp(max=1.0),
                                          torch.zeros_like(straight))
+
+    # Loops: total heading change beyond half a turn, in full turns (a straight run with swerves ~0).
+    turn = wrap_angle(run.robot_pose[:, 1:, 2] - run.robot_pose[:, :-1, 2]).abs()
+    out["heading_change"] = (turn * moving_steps).sum(-1)
+    out["loops"] = torch.relu(out["heading_change"] - math.pi) / (2 * math.pi)
 
     rel = run.robot_pose[:, None, :, :2] - run.ped_pos                           # [B, P, K, 2]
     gap = torch.linalg.norm(rel, dim=-1) - batch.ped_radius[..., None] - robot_radius

@@ -119,7 +119,7 @@ def test_replay_reproduces_the_reference_and_ignores_the_robot():
 def test_reactive_pedestrians_avoid_a_stationary_robot_smoothly(model):
     batch = _single("head_on", 1)
     env = LightweightEnv(model)
-    run = rollout(env, batch, GoalSeekingPolicy(), torch.tensor([[0.0] * 10]))  # parameters irrelevant: stays still
+    run = rollout(env, batch, GoalSeekingPolicy(), torch.zeros(1, len(GoalSeekingPolicy().parameter_names)))  # parameters irrelevant: stays still
     stay = rollout(env, batch, policy=None, robot_present=True)                  # robot never moves
     gap = torch.linalg.norm(stay.ped_pos[0, 0] - batch.robot_start[0, :2], dim=-1)[stay.ped_active[0, 0]]
     assert float(gap.min()) > 0.25 + 0.3 - 0.1  # walks around the robot instead of through it

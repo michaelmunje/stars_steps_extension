@@ -33,6 +33,7 @@ class Objective:
     comfort: float = 0.5
     detour: float = 0.0          # weight on (1 - path_efficiency)
     smoothness: float = 0.0      # weight on command_smoothness
+    circling: float = 0.0        # weight on loops (full turns beyond half a turn per episode)
     disruption_metric: str = "disruption_displacement"
     comfort_metric: str = "personal_violation_rate"
 
@@ -43,7 +44,8 @@ class Objective:
                 - self.disruption * torch.nan_to_num(disruption) - self.time * metrics["normalized_time"]
                 - self.comfort * torch.nan_to_num(metrics[self.comfort_metric])
                 - self.detour * (1.0 - metrics["path_efficiency"])
-                - self.smoothness * torch.nan_to_num(metrics["command_smoothness"]))
+                - self.smoothness * torch.nan_to_num(metrics["command_smoothness"])
+                - self.circling * metrics.get("loops", zero))
 
 
 @dataclass

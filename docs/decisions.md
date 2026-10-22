@@ -776,3 +776,17 @@ why, and how to undo it.
     add a circling penalty to the objective so that the evaluation charges for loops directly
     (net heading change per metre travelled). Both are queued behind the current no-loop
     re-tune result.
+
+70. **Crowd v4: tune the waiting costs, charge for loops.** Following 69:
+    - **New policy parameters,** all defaulting to the old fixed behaviour, so existing policies
+      are unchanged:
+      - `speed_scale` multiplies `speed_cost` (0.1-5, log scale);
+      - `retreat_scale` multiplies `retreat_cost` (0.1-10, log scale);
+      - `alignment_weight` replaces the fixed 0.1 on goal alignment (0-1).
+    - **New metrics:** `heading_change`, the total absolute heading change in rad, and `loops`,
+      the full turns beyond half a turn per episode.
+    - **New objective term:** `circling`, weight 0.2 per loop in `cmaes_crowd_v4.yaml`.
+    - **Job `cma_crowd4`:** three seeds (42, 7, 3), warm-started from `cmaes_crowd_v2`. The test
+      evaluation and figures under the v4 objective are queued behind it
+      (`runs/seanjax/crowd_v6`, `docs/results/navigation_compare_crowd_v6.png`). The v4
+      objective differs from v3's, so all policies are re-scored under it there.
