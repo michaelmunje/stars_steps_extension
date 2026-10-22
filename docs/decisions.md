@@ -160,3 +160,12 @@ why, and how to undo it.
     upper bounds of the five weights (goal 50, collision/pedestrian/disruption/obstacle 200) and
     doubles the training scenarios per generation (12 per kind). Default parameters are
     unchanged.
+
+28. **Batch size matters more than expected (to confirm).** The CVAE trained with the closed-loop
+    loss runs at 4,096 pedestrians per batch (358 steps/epoch). It reached 0.080 m validation
+    agent ADE by epoch 3. The plain fine-tuned CVAE runs at 16,384 (~90 steps/epoch) and was at
+    0.095 m after 49 epochs. Either the closed-loop loss helps, or large batches with sqrt LR
+    scaling under-train on STEPS's ~1.5M training pedestrians. The Optuna searches include
+    max_nodes 4,096/8,192/16,384 and should separate the two. If smaller batches win, the
+    default per-GPU batch drops and scale comes from more GPUs/seeds rather than larger
+    batches.
