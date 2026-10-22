@@ -738,3 +738,21 @@ why, and how to undo it.
     `robot_influence` is about 0.9 m there. A single pedestrian crossing the robot's path must
     change course whatever the robot does. It is the same for all policies, so it does not affect
     the ranking.
+
+68. **Why tuned policies circle: they choose to, standing still is allowed.**
+    `seanjax/scripts/diagnose_waiting.py` (`runs/seanjax/diagnose_waiting/`, 20 test scenes per
+    kind) logs whether the stop command `(v=0, w=0)` passed the hard safety check at each step.
+    - Stopping is allowed 91-99% of the time for every policy, so the circling is not forced
+      evasion. (A first run reported 100% "ruled out": the turn-rate grid's middle value is
+      -6e-8, not 0, so the stop candidate was not found. Fixed.)
+    - In `dense_flow`, the tuned policies turn on 22-24% of the steps where stopping is allowed,
+      against 6% for the default controller. Net heading change per episode is 2.6-2.7 rad,
+      against 0.9.
+    - **Likely cause: the fixed speed cost.** `speed_cost` (0.5, not tuned) charges
+      `((v - preferred_speed) / v_max)^2`, and it fades only when a pedestrian is within twice the
+      personal radius. With preferred speed about 1.0 m/s, stopping costs about 0.5 whenever the
+      blocking pedestrian is more than about 1 m away, while an arc with no net progress costs
+      little.
+    - Job 65801 tests the same policy, without re-tuning, at `speed_cost` 0.2 and 0.0, with the
+      waiting diagnostic and a figure (`runs/seanjax/crowd_v4_speed*`). The goal term already
+      rewards progress, so a lower speed cost should not slow free-space driving much.
