@@ -1013,3 +1013,9 @@ why, and how to undo it.
     v7 tuning runs already in flight are allowed to finish but are not expected to help.
     A pass-side memory is the corrected design. It needs the controller to identify the blocking
     pedestrian, which is a larger change, so it is recorded here and not started without review.
+    **Tuning closes it out** (`runs/seanjax/crowd_v9`, 270 test scenes). CMA-ES drove
+    `side_commit_weight` to 0 (seed 42) and 0.02 (seed 7). The tuned policies score 0.320 and
+    0.327 against v4's 0.375 in the same run. They loop a little less (0.05-0.07) but collide
+    2-2.5x more (2.2-2.6% against 1.1%), the same trade-off as v5 seed 7 in 77. v4 stays the
+    reference. This ends the cost-term and turn-memory line of work (68-81); only the pass-side
+    memory design (above) remains, pending review.
