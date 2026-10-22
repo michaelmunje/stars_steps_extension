@@ -830,3 +830,17 @@ why, and how to undo it.
       loop. Differences under about 0.02 are not meaningful.
     - `cmaes_crowd_v3` becomes the reference policy unless the loop-penalised v4 tuning (70)
       matches it with fewer loops.
+
+73. **Closed-loop fine-tuning closed out; a non-finite-loss guard.**
+    - **The exec-4 fine-tune went NaN at epoch 5**, the first epoch after the resume in 65, and
+      ran 15 more epochs on NaN weights. Its best checkpoint (epoch 3, validation 0.2176) is
+      level with annealing alone (0.2181, decision 71). Combined with 47 and 65 (exec 1
+      diverges), closed-loop training gives no gain for this model on any dataset mix tried. It
+      stays available as a flag but is dropped from the plan. Compounding error outside STEPS
+      (7-24% at exec 1) is accepted. The simulator uses the STEPS model on STEPS scenes, where
+      it is 4%.
+    - **Guard.** `train_stars_ma` now skips any update whose (post-all-reduce) gradient norm is
+      non-finite, counts skipped steps per epoch (`train_skipped_steps`), and stops after
+      `MAX_NONFINITE_STREAK` (100) in a row. The norm is identical on every DDP rank, so all
+      ranks skip together.
+    - `cvae_hpo53_scratch_all` stays the all-dataset reference model.

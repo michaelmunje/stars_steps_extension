@@ -471,6 +471,9 @@ def _scheduler(optimizer, args, steps_per_epoch: int):
     return torch.optim.lr_scheduler.LambdaLR(optimizer, factor)
 
 
+MAX_NONFINITE_STREAK = 100   # consecutive non-finite gradient steps before a run is stopped
+
+
 def _build_model(args, payload):
     if args.phase == "ssl":
         model = StarsMotionVAE(args.obs, args.encoder_recipe)
@@ -628,7 +631,7 @@ def train(args) -> None:
             if args.benchmark:
                 batches = (batches * math.ceil(args.benchmark / max(1, len(batches))))[: args.benchmark]
             sums = {}
-            nodes = edges = 0
+            nodes = edges = skipped = bad_streak = 0
             if device.type == "cuda":
                 torch.cuda.synchronize(device)
                 torch.cuda.reset_peak_memory_stats(device)
@@ -643,7 +646,16 @@ def train(args) -> None:
                     losses = step_module(batch, weight)
                 optimizer.zero_grad(set_to_none=True)
                 losses["loss"].backward()
-                torch.nn.utils.clip_grad_norm_(trainable, args.recipe["grad_clip"])
+                norm = torch.nn.utils.clip_grad_norm_(trainable, args.recipe["grad_clip"])
+                # The norm is taken after DDP's all-reduce, so every rank skips the same steps.
+                if not torch.isfinite(norm):
+                    optimizer.zero_grad(set_to_none=True)
+                    skipped += 1
+                    bad_streak += 1
+                    if bad_streak >= MAX_NONFINITE_STREAK:
+                        raise FloatingPointError(f"{bad_streak} consecutive non-finite gradients (epoch {epoch})")
+                    continue
+                bad_streak = 0
                 optimizer.step()
                 if args.schedule != "plateau":
                     scheduler.step()
@@ -656,6 +668,7 @@ def train(args) -> None:
                 torch.cuda.synchronize(device)
             elapsed = time.perf_counter() - started
             train_metrics = {f"train_{k}": float(_all_mean(v / max(1, len(batches)), args)) for k, v in sums.items()}
+            train_metrics["train_skipped_steps"] = skipped
             throughput = {"epoch_seconds": elapsed, "nodes_per_second": nodes * args.world_size / elapsed,
                           "edges_per_second": edges * args.world_size / elapsed,
                           "steps_per_second": len(batches) / elapsed,
