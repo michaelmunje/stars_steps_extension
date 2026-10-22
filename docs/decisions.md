@@ -226,3 +226,14 @@ why, and how to undo it.
     `checkpoints/seanjax/cmaes_recorded_v2/best_policy.yaml`.
     - `evaluate.py` labelled policy files by file name only, so same-named files overwrote each
       other in comparisons. Now labelled `<folder>/<name>`.
+
+34. **It is the KL weight, not the batch size (revises 28).** Every small-batch CVAE run peaks in
+    the first epochs and then stalls: 1k pedestrians/batch 0.085 m at epoch 2, 4k 0.092 at
+    epoch 3, 4k + closed-loop loss 0.080 at epoch 3. Those epochs are inside the KL warm-up
+    (weight 0.1 -> 1.0 over 10 epochs). The runs are best while the weight is ~0.2-0.3 and get
+    worse as it reaches 1.0 and the latent collapses. The deterministic 4k-batch run, which has
+    no KL term, improves steadily (0.101 at epoch 12, close to the 16k run's 0.099). Fixed
+    low-KL runs (0.1, job 65571) test this directly. If confirmed, the forecast recipe's
+    kl_weight default becomes ~0.1.
+    `docs/results/stars_ma_steps_test.md` (written by `baselines.report_stars_ma`) has the test
+    table so far.
