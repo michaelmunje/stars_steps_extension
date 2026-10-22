@@ -790,3 +790,19 @@ why, and how to undo it.
       evaluation and figures under the v4 objective are queued behind it
       (`runs/seanjax/crowd_v6`, `docs/results/navigation_compare_crowd_v6.png`). The v4
       objective differs from v3's, so all policies are re-scored under it there.
+
+71. **Annealing alone barely helps** (`cvae_hpo53_all_anneal`, test split, against
+    `cvae_hpo53_scratch_all`):
+
+    | Dataset | Agent ADE | Moving ADE | Closed-loop exec 1 ADE |
+    | --- | --- | --- | --- |
+    | STEPS | 0.078 -> 0.078 | 0.332 -> 0.327 | 0.081 -> 0.083 |
+    | PTDPES | 0.284 -> 0.282 | 0.405 -> 0.400 | 0.325 -> 0.317 |
+    | Madras | 0.209 -> 0.207 | 0.231 -> 0.229 | 0.245 -> 0.235 |
+    | Grand Central | 0.244 -> 0.241 | — | 0.261 -> 0.259 |
+    | UCY | 0.193 -> 0.194 | 0.304 -> 0.308 | 0.239 -> 0.250 |
+    | ETH | 0.234 -> 0.229 | 0.239 -> 0.234 | 0.280 -> 0.294 |
+
+    Teacher-forced error drops by at most 2%, and closed-loop error moves in both directions.
+    The early-stopped model was nearly converged. `cvae_hpo53_scratch_all` stays the
+    all-dataset reference unless the exec-4 fine-tune (65775) does better in closed loop.
