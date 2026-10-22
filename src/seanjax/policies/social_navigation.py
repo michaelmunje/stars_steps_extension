@@ -70,6 +70,10 @@ class SocialNavigationPolicy(Policy):
         self.predictor = predictor or ConstantVelocityPredictor()
         self.last_info: dict[str, torch.Tensor] = {}
 
+    def reset(self, batch_size: int) -> None:
+        if hasattr(self.predictor, "reset"):
+            self.predictor.reset()
+
     def _p(self, params: torch.Tensor, name: str) -> torch.Tensor:
         return params[:, self.parameter_names.index(name)]
 

@@ -62,7 +62,9 @@ def build(config_path=None, *, policy: str | None = None, pedestrian_model: str 
         values.update(loaded)
     elif policy:
         name = policy
-    controller = make_controller(policy_config, name, env.robot)
+    from seanjax.core.config import make_predictor
+
+    controller = make_controller(policy_config, name, env.robot, make_predictor(policy_config.get("predictor"), device))
     config["policy_parameters"] = {**controller.default_parameters(), **values}
     objective = Objective(**(config.get("objective") or {}))
     evaluator = Evaluator(env, controller, objective, device=device, max_envs=config.get("max_envs", 4096))

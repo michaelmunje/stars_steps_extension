@@ -11,3 +11,8 @@ controller:
   speed_cost: 0.5
   disruption_lookahead: 1.5
 parameters: {}           # overrides of the tunable defaults, e.g. {preferred_speed: 0.7}
+predictor:               # pedestrian forecasts used by the controller
+  type: constant_velocity  # or: stars (multi-agent STARS forecaster)
+  # checkpoint: experiments/stars_ma/runs/<run>/checkpoints/best.pt
+  # mode: mean           # mean = CVAE prior mean; average = mean over `samples` draws
+  # predict_every: 2     # control steps between forecasts

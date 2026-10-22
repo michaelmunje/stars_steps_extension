@@ -77,6 +77,21 @@ def make_env(simulator: dict | None, pedestrians: dict | None) -> LightweightEnv
                           _dataclass(SimConfig, simulator.get("sim")))
 
 
+def make_predictor(spec: dict | None, device="cpu"):
+    """``{type: constant_velocity}`` (default) or ``{type: stars, checkpoint, mode, samples, predict_every}``."""
+    spec = dict(spec or {})
+    kind = spec.pop("type", "constant_velocity")
+    if kind == "constant_velocity":
+        return None
+    if kind == "stars":
+        from seanjax.predictors.stars import StarsForecastPredictor
+
+        path = Path(spec.pop("checkpoint"))
+        path = path if path.is_absolute() else CONFIG_DIR.parents[1] / path
+        return StarsForecastPredictor(path, device=device, **spec)
+    raise ValueError(f"Unknown predictor {kind!r}")
+
+
 def make_controller(policy: dict | None, name: str | None = None, robot: RobotConfig | None = None, predictor=None):
     policy = policy or {}
     controller = dict(policy.get("controller") or {})

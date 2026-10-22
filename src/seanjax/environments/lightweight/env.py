@@ -56,7 +56,7 @@ class EnvState:
     ped_collision: torch.Tensor
     obstacle_collision: torch.Tensor
     end_step: torch.Tensor           # [B] step at which the episode ended (K - 1 if still running)
-    history: list                    # past pedestrian positions [B, P, 2], newest last
+    history: list                    # past (positions [B, P, 2], active [B, P]), newest last
 
 
 class LightweightEnv:
@@ -73,7 +73,7 @@ class LightweightEnv:
         present = torch.full((B,), bool(robot_present), dtype=torch.bool, device=device)
         state = EnvState(0, robot, peds, torch.zeros(B, 2, device=device), present, false.clone(), false.clone(),
                          false.clone(), false.clone(), torch.full((B,), batch.steps - 1, device=device),
-                         [peds.pos.clone()])
+                         [(peds.pos.clone(), peds.active.clone())])
         if robot_present:
             self._check(state, batch)
         return state
@@ -96,7 +96,8 @@ class LightweightEnv:
         k = state.k + 1
         # Pedestrians react to the robot's state at the start of the step (no look-ahead).
         peds = self.pedestrians.step(state.peds, batch, k, robot, r.radius, visible)
-        history = (state.history + [peds.pos.clone()])[-(self.sim.history_steps - 1) * self.sim.history_stride - 1:]
+        keep = max(1, (self.sim.history_steps - 1) * self.sim.history_stride + 1)
+        history = (state.history + [(peds.pos.clone(), peds.active.clone())])[-keep:]
         new = EnvState(k, new_robot, peds, torch.stack([v_cmd, w_cmd], -1), state.robot_present, state.done.clone(),
                        state.success.clone(), state.ped_collision.clone(), state.obstacle_collision.clone(),
                        state.end_step.clone(), history)
@@ -131,11 +132,11 @@ class LightweightEnv:
         history = valid = None
         if self.sim.history_steps:
             stride, n = self.sim.history_stride, self.sim.history_steps
-            frames = [state.history[max(0, len(state.history) - 1 - stride * (n - 1 - i))] for i in range(n)]
-            history = torch.stack(frames, dim=2)
-            valid = torch.ones(history.shape[:3], dtype=torch.bool, device=history.device)
-            available = len(state.history) - 1 - stride * (n - 1 - torch.arange(n, device=history.device)) >= 0
-            valid &= available & visible[..., None]
+            index = [len(state.history) - 1 - stride * (n - 1 - i) for i in range(n)]
+            frames = [state.history[max(0, j)] for j in index]
+            history = torch.stack([f[0] for f in frames], dim=2)                     # [B, P, n, 2]
+            valid = torch.stack([f[1] & (j >= 0) for f, j in zip(frames, index)], dim=2)
+            valid &= visible[..., None]
         return Observation(robot.pose, robot.v, robot.w, batch.robot_goal, peds.pos, peds.vel, visible,
                            batch.ped_radius, batch.circles, batch.circle_mask, batch.segments, batch.segment_mask,
                            state.command, time=state.k * batch.dt, ped_history=history, history_valid=valid)
