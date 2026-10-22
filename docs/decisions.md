@@ -613,3 +613,20 @@ why, and how to undo it.
       fine-tuning, which did not help on STEPS (47) but may on these datasets.
     - Job 65718 finished just inside its limit, so the backup from 57 was not needed. Its
       exec-4 numbers agree with 65718's to within 0.003 m.
+
+60. **Annealing and closed-loop fine-tuning for the all-dataset model.** `cvae_hpo53_scratch_all`
+    early-stopped at epoch 53 (best 33). Its cosine schedule was set for 200 epochs, so the LR
+    was still 0.83e-3 of a 0.96e-3 peak when it stopped: the model was never annealed.
+    Separately, closed-loop error at exec 1 is 14-20% above teacher-forced outside STEPS (59).
+    - **New option.** `--init-checkpoint` starts a forecast run from a forecast checkpoint (all
+      weights and recipes; KL warmup off, since the latent is already trained).
+    - **Job 65758** runs four 20-epoch cosine fine-tunes on all six datasets:
+      - LR 3e-4, teacher-forced only (does annealing alone help?);
+      - LR 3e-4 plus the closed-loop loss at exec 1 (the simulator's setting);
+      - LR 3e-4 plus the closed-loop loss at exec 4;
+      - LR 1e-4 plus the closed-loop loss at exec 1.
+
+      Run directories are `experiments/stars_ma/runs/cvae_hpo53_all_anneal*`.
+    - **How it will be judged:** per-dataset test ADE, teacher-forced and at exec 1, against the
+      table in `stars_ma_all_test.md`. Closed-loop training did not help on STEPS (47), where
+      compounding error was already small, so it gets a fair test only on these datasets.

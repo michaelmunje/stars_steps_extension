@@ -155,6 +155,9 @@ def _parser() -> argparse.ArgumentParser:
     forecast = parser.add_argument_group("forecast")
     forecast.add_argument("--encoder-checkpoint", type=Path, help="A --phase ssl checkpoint (frozen/finetune)")
     forecast.add_argument("--encoder-mode", choices=("frozen", "finetune", "scratch"), default="frozen")
+    forecast.add_argument("--init-checkpoint", type=Path,
+                          help="A --phase forecast checkpoint: start from all its weights and recipes (with "
+                               "--encoder-mode scratch, i.e. everything trainable at one LR)")
     forecast.add_argument("--decoder", choices=("deterministic", "cvae"), default="deterministic")
     forecast.add_argument("--cvae-latent-dim", type=int, default=32)
     forecast.add_argument("--no-social-layer", action="store_true", help="Decoder without its social message-passing round")
@@ -191,7 +194,7 @@ def parse_args(argv=None) -> argparse.Namespace:
     args.train_entries = dataset_entries(args.datasets if args.datasets is not None else config.get("datasets"))
     val = args.val_datasets if args.val_datasets is not None else config.get("val_datasets")
     args.val_entries = dataset_entries(val) if val is not None else [dict(entry) for entry in args.train_entries]
-    for key in ("run_dir", "encoder_checkpoint", "cache_dir"):
+    for key in ("run_dir", "encoder_checkpoint", "init_checkpoint", "cache_dir"):
         if isinstance(getattr(args, key), str):
             setattr(args, key, Path(getattr(args, key)))
     if not args.phase or not args.run_dir:
@@ -205,10 +208,12 @@ def parse_args(argv=None) -> argparse.Namespace:
             parser.error(f"--encoder-mode {args.encoder_mode} needs --encoder-checkpoint")
         if args.encoder_mode == "scratch" and args.encoder_checkpoint:
             parser.error("--encoder-mode scratch does not take --encoder-checkpoint")
+        if args.init_checkpoint and (args.encoder_checkpoint or args.encoder_mode != "scratch"):
+            parser.error("--init-checkpoint takes --encoder-mode scratch and no --encoder-checkpoint")
         if args.rollout_exec_steps < 0:
             parser.error("--rollout-exec-steps must be >= 0")
-    elif args.encoder_checkpoint or args.rollout_exec_steps:
-        parser.error("--encoder-checkpoint/--rollout-exec-steps apply to --phase forecast")
+    elif args.encoder_checkpoint or args.init_checkpoint or args.rollout_exec_steps:
+        parser.error("--encoder-checkpoint/--init-checkpoint/--rollout-exec-steps apply to --phase forecast")
     return args
 
 
@@ -523,6 +528,14 @@ def train(args) -> None:
         **({"hidden_dim": args.decoder_hidden_dim} if args.decoder_hidden_dim else {}),
         **({"dropout": args.decoder_dropout} if args.decoder_dropout is not None else {}),
     }
+    init = None
+    if args.init_checkpoint:
+        init = torch.load(args.init_checkpoint, map_location="cpu", weights_only=False)
+        if init.get("model") != "stars_ma" or init.get("phase") != "forecast":
+            raise ValueError(f"{args.init_checkpoint} is not a multi-agent STARS forecaster checkpoint")
+        if init["graph"] != {"knn": args.knn, "radius": args.radius}:
+            raise ValueError(f"Graph topology differs from the init checkpoint ({init['graph']})")
+        args.encoder_recipe, args.decoder_recipe = dict(init["encoder_recipe"]), dict(init["decoder_recipe"])
     base_recipe = SSL_RECIPE if args.phase == "ssl" else FORECAST_RECIPE
     args.recipe = {**base_recipe, **({"max_epochs": args.epochs} if args.epochs else {}),
                    **({"patience": args.patience} if args.patience is not None else {})}
@@ -531,6 +544,8 @@ def train(args) -> None:
         args.recipe["weight_decay"] = args.weight_decay
     if args.phase == "forecast":
         args.recipe["kl_weight"] = args.kl_weight
+        if init is not None:
+            args.recipe["kl_warmup_epochs"] = 0     # the latent is already trained: no KL annealing
 
     torch.manual_seed(args.seed)
     np.random.seed(args.seed)
@@ -564,6 +579,9 @@ def train(args) -> None:
                    val_datasets=val_store.names)
 
         model, groups = _build_model(args, payload)
+        if init is not None:
+            model.load_state_dict(init["state_dict"])
+            run.log("forecaster weights loaded", checkpoint=str(args.init_checkpoint))
         model = model.to(device)
         model.encoder.checkpoint_temporal = args.activation_checkpointing
         import baselines.stars_ma_model as model_module
