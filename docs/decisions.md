@@ -727,3 +727,14 @@ why, and how to undo it.
     - re-tunes from it with the option on (`cmaes_crowd_v3_noloop.yaml`).
 
     The option becomes the default if it removes the loops without lowering the objective.
+
+67. **No-loop option, first result.** `cmaes_crowd_v2` with `retreat_along_path` on and no
+    re-tuning: objective 0.305 against 0.303, and dense-flow path efficiency unchanged at 0.89.
+    The end-of-horizon retreat check is therefore not what produces the loops; they come from
+    re-planning (each 0.1 s plan is acceptable, but successive plans curve the same way). The
+    re-tune with the option on (`cmaes_crowd_v3_noloop`) is still running. If it does not help
+    either, the next candidate is a hysteresis or commitment term on the turn direction.
+    **Side note.** Crossing scenes score negative for every policy (v2: -0.30) only because
+    `robot_influence` is about 0.9 m there. A single pedestrian crossing the robot's path must
+    change course whatever the robot does. It is the same for all policies, so it does not affect
+    the ranking.
