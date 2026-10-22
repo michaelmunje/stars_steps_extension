@@ -49,7 +49,8 @@ def main() -> None:
                                                              device=args.device)
         scenarios = scenario_set(args.split, cm.get("kinds"), per_kind, dt=cm.get("dt", 0.1),
                                  duration=cm.get("duration", 30.0), pool=pool)
-        label = Path(entry).stem if entry.endswith((".yaml", ".yml")) else f"{entry} (default)"
+        label = (f"{Path(entry).parent.name}/{Path(entry).stem}" if entry.endswith((".yaml", ".yml"))
+                 else f"{entry} (default)")
         metrics, *_ = evaluator.evaluate_detailed(config["policy_parameters"], scenarios)
         kinds = [s.kind for s in scenarios]
         per = {kind: summarize(metrics, torch.tensor([k == kind for k in kinds])) for kind in sorted(set(kinds))}

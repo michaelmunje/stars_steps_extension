@@ -205,3 +205,24 @@ why, and how to undo it.
     So the deterministic forecaster is not used as a pedestrian *simulator*. The CVAE (sampled
     intents) is the candidate for that and is evaluated next. For the navigation policy's
     *predictions*, the CVAE prior mean is used (`policy_stars.yaml`).
+
+32. **The CVAE's latent collapses at KL weight 1.0.** On the test split:
+
+    | CVAE | Agent ADE (best of 20) | Moving ADE | Final-position spread |
+    | --- | --- | --- | --- |
+    | Frozen encoder | 0.113 m | 0.545 m | 0.021 m |
+    | From scratch | 0.126 m | 0.625 m | 0.014 m |
+
+    The samples are nearly identical, so best-of-K is barely better than one sample, and the
+    20 s simulations are as passive as the deterministic ones. This matches the Optuna searches'
+    preference for KL weight 0.09-0.18. Next: retrain the CVAE with the searched low KL weight
+    and check sample diversity and simulation speed.
+
+33. **CMA-ES v2 (wider bounds, 2x scenarios) is not better than v1 on scripted scenarios.** Test
+    objective: scripted 0.547 vs v1 0.612; recorded 0.538 vs v1 0.521. v2 found a faster, more
+    direct trade-off: time to goal 11.1 vs 14.5 s, disruption 0.185 vs 0.065 m. With the current
+    objective weights the two are close. The best scripted policy stays
+    `checkpoints/seanjax/cmaes/best_policy.yaml` (v1); the best recorded-traffic policy is
+    `checkpoints/seanjax/cmaes_recorded_v2/best_policy.yaml`.
+    - `evaluate.py` labelled policy files by file name only, so same-named files overwrote each
+      other in comparisons. Now labelled `<folder>/<name>`.
