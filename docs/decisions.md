@@ -630,3 +630,10 @@ why, and how to undo it.
     - **How it will be judged:** per-dataset test ADE, teacher-forced and at exec 1, against the
       table in `stars_ma_all_test.md`. Closed-loop training did not help on STEPS (47), where
       compounding error was already small, so it gets a fair test only on these datasets.
+
+61. **The scratch Optuna search has converged** (`docs/results/hpo_steps_cvae_scratch.md`). After 475
+    trials (23 complete, 452 pruned by the median pruner), trial 53 is still the best (0.0798 m
+    validation ADE). The top eight trials are within 0.0005 m of each other, which is below seed
+    noise (about 0.0007 m, decision 44). KL weight (52%) and encoder dropout (22%) explain most
+    of the variance. No further search on STEPS with this search space: remaining gains have to
+    come from data, schedule (60) or architecture, not from these hyperparameters.
