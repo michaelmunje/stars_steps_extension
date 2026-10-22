@@ -51,7 +51,7 @@ one GB200.
 | `core/rollout.py` | Recorded episodes; robot-absent counterfactual |
 | `core/metrics.py` | Task, comfort/safety and counterfactual disruption metrics |
 | `environments/lightweight/env.py` | Differential-drive robot (acceleration limits, exact arcs), collisions, success, timeout |
-| `pedestrians/` | `replay`, `social_force`, `reactive_replay` (ORCA: Phase 2, see Status) |
+| `pedestrians/` | `replay`, `social_force`, `reactive_replay`, `orca` |
 | `policies/` | `social_navigation` (trajectory scoring, 10 parameters, hard safety constraint), `goal_seeking` baseline, parameter specs |
 | `predictors/stars.py` | Multi-agent STARS forecaster as the policy's pedestrian predictor |
 | `optimization/` | `evaluator` (batched candidates, objective), `cmaes` (pycma; checkpoint/resume) |
@@ -156,7 +156,7 @@ select it under `predictor:` in `policy.yaml`.
 | --- | --- |
 | Unity + ROS 1 Noetic | Batched PyTorch simulator, no Unity/ROS dependency (preserved behaviour, replaced stack) |
 | Social-force agents (`SFAgent.cs`) | `pedestrians/social_force.py`: same structure (goal relaxation, exponential agent/wall/robot repulsion, side step), batched |
-| ORCA (stub in SEAN 2.0) | Planned (Phase 2); `pyrvo` builds as a reference |
+| ORCA (stub in SEAN 2.0) | `orca`: batched port of RVO2, validated against `pyrvo` |
 | Trajectory playback (ETH/Zara CSV) | `replay` and `reactive_replay` from a documented CSV schema and STEPS |
 | Social situations (cross_path, down_path, join/leave group) | Scenario kinds `crossing`, `head_on`/`following`/`overtaking`, `stationary_group`, `group_toward` (online situation classifier not yet ported) |
 | Metrics (intimate/personal violations, collisions, path length, min distance) | Preserved with per-step distances; adds counterfactual disruption, stops, smoothness, time-to-goal |
@@ -170,7 +170,12 @@ select it under `predictor:` in `policy.yaml`.
 - **Done (Phases 1–2a).** The lightweight backend, three pedestrian models, two policies and the
   STARS predictor. Also CMA-ES with validation selection and resume, scenarios, recorded STEPS
   traffic, metrics, plots and tests.
-- **Phase 2b, ORCA.** Not yet implemented.
+- **Phase 2b, ORCA.** `pedestrians/orca.py` is a batched torch port of RVO2's ORCA (reciprocal
+  pedestrian lines, `linearProgram1/2/3`, RVO2 obstacle lines for wall segments, static discs),
+  with the robot as a non-reciprocal moving obstacle and `reactive_replay` or `goal` preferred
+  velocities. Against `pyrvo` (RVO2), one-step velocities agree to about 1e-7 m/s on 2–20-agent
+  scenes and 1e-4 m/s in contact-heavy ones; dense closed-loop runs diverge chaotically but behave
+  alike.
 - **Phase 3, Isaac Sim / Isaac Lab.** Not implemented. Officially, Isaac Sim supports Ubuntu
   22.04/24.04 and aarch64 only on DGX Spark. GB200 likely lacks the RT cores rendering needs. A
   headless physics test inside an Apptainer container on a compute node is the next step. See
