@@ -102,16 +102,22 @@ more person in the graph [46].
 - Pedestrians cannot walk through walls [64].
 - The comfort term counts time within 0.45 m of a pedestrian [58].
 
-Results on 270 test scenarios (30 per kind, including 30 recorded STEPS scenes) [65]:
+Results on 270 test scenarios (30 per kind, including 30 recorded STEPS scenes). The objective
+charges 0.2 per extra loop, and the tuner also sets the controller's waiting costs [70, 75]:
 
-| Policy | Objective | Success | Collision | Time within 0.45 m | Recorded success |
-| --- | --- | --- | --- | --- | --- |
-| Goal-seeking | -2.149 | 38% | 62% | 11.4% | 27% |
-| Default social | -0.167 | 84% | 7.0% | 16.6% | 77% |
-| v1 (tuned against reactive replay) | 0.209 | 90% | 0.7% | 1.3% | 67% |
-| Tuned in the crowd, first run | 0.251 | 96% | 0.7% | 13.3% | 83% |
-| **Tuned in the crowd, v2** (`cmaes_crowd_v2`) | **0.303** | **96%** | 1.5% | 5.4% | **90%** |
+| Policy | Objective | Success | Collision | Time within 0.45 m | Loops / episode | Recorded success |
+| --- | --- | --- | --- | --- | --- | --- |
+| Goal-seeking | -2.149 | 38% | 62% | 11.4% | 0.00 | 27% |
+| Default social | -0.196 | 83% | 7.8% | 16.4% | 0.01 | 77% |
+| v1 (tuned against reactive replay) | 0.196 | 91% | 0.7% | 1.3% | 0.09 | 67% |
+| Tuned in the crowd, v2 | 0.276 | 96% | 1.5% | 5.4% | 0.10 | 87% |
+| Tuned in the crowd, v3 (wall-respecting crowd) | 0.321 | 97% | 0.4% | 1.4% | 0.19 | 77% |
+| **Tuned in the crowd, v4** (`cmaes_crowd_v4`) | **0.388** | **99%** | 0.7% | 2.6% | **0.08** | **100%** |
 
-Figure: [`navigation_compare_crowd_v4.png`](navigation_compare_crowd_v4.png), v1 vs first crowd
-run vs v2 on recorded, crossing, group, dense-flow and narrow-passage scenes. Remaining artefact:
-tuned policies wait by circling in dense flow and narrow passages.
+Evaluation noise is about ±0.02 [72].
+
+Figures:
+- [`navigation_compare_crowd_v6.png`](navigation_compare_crowd_v6.png): v2 against v4. The loop in
+  the narrow passage is gone; dense flow still loops.
+- [`navigation_compare_crowd_v4.png`](navigation_compare_crowd_v4.png): v1, the first crowd run
+  and v2 in the wall-respecting crowd.
