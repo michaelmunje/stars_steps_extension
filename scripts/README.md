@@ -113,7 +113,7 @@ directly for a single seed, but they are not the documented entry point for a fu
 
 ## Related documentation
 
-- [Project README](../README.md) — setup, task definition, copy-paste pretraining commands, resume
+- [Project README](../README.md) — setup and task definition; [`docs/baselines.md`](../docs/baselines.md) — copy-paste pretraining commands, resume
   semantics, and the current detached-run workflow.
 - [`src/baselines/README.md`](../src/baselines/README.md) — model adapters, trainers, and evaluation.
 - [`src/datasets_preprocessing/README.md`](../src/datasets_preprocessing/README.md) — converter
