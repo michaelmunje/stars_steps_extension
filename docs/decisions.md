@@ -320,3 +320,19 @@ why, and how to undo it.
       numbers; default 1 keeps the old behaviour).
     - `cmaes_stars_best_warm.yaml` warm-starts from the v1 policy with sigma 0.1 and refresh 10,
       fine-tuning it with STARS forecasts in the loop.
+
+41. **Optuna (after 72 + 49 trials) confirms the KL weight is what matters.**
+
+    | Study | Most important parameters (fANOVA) | Batch size |
+    | --- | --- | --- |
+    | From scratch | KL weight 58%, dropout 19% | 4% |
+    | From phase-1 encoder | KL weight 51%, warm-up 13%, latent size 10% | 2% |
+
+    Frozen vs fine-tuned encoder accounts for 1%. The top trials share:
+    - KL 0.07-0.09 and decoder width 512;
+    - an encoder of width 128 (smaller than the 256 recipe);
+    - 4,096 pedestrians/batch, LR 6e-4-1e-3, warm-up 2-4 epochs.
+
+    The best trial (53, val 0.0798 best-of-6) is now trained at full length with seeds 42 and 1
+    (`cvae_hpo53_scratch_seed*`). Reports: `docs/results/hpo_steps_cvae_{scratch,ssl}.md` (from
+    `baselines.hpo_report`).
