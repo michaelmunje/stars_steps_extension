@@ -53,9 +53,9 @@ why, and how to undo it.
     reruns passed. Not yet identified; watch for it.
 
 14. **Pushing**: the scaling work goes to `main` of `stars_steps_extension` once optimisations
-    are in; later work (Optuna search, SEAN 3.0 simulator) continues on a new branch.
+    are in; later work (Optuna search, SEAN-JAX simulator) continues on a new branch.
 
-15. **SEAN 3.0 simulator lives in this repository** (a `sean3/` package next to `src/`), because
+15. **SEAN-JAX simulator lives in this repository** (a `seanjax/` package next to `src/`), because
     it will use the trajectory forecaster for pedestrians and share the dataset loaders.
     Splitting it into its own repository later is straightforward.
 
@@ -74,3 +74,67 @@ why, and how to undo it.
 | CVAE + 4-step rollout loss | 4,096 | 10.6k | 59 GB |
 | any | 65,536 | out of memory | |
 | Phase 1, all six datasets | 16,384 | 56k | 55 GB |
+
+## 2026-10-21 (continued): simulator and profiling
+
+16. **The simulator package is `seanjax`** (renamed from `sean3` as requested). Despite the name
+    it is implemented in PyTorch, which the specification allows ("PyTorch ... with JAX
+    optional"); a JAX port is not planned for now. Package: `src/seanjax/`; configs and scripts:
+    `seanjax/configs/`, `seanjax/scripts/`.
+
+17. **Isaac Sim / Isaac Lab (Phase 3) is high risk on this cluster.** Findings (survey of the
+    official docs and package indexes):
+    - Isaac Sim 6.2.0 pip wheels do exist for aarch64 / Python 3.12.
+    - It officially supports only Ubuntu 22.04/24.04, and aarch64 only on DGX Spark.
+    - GB200 is a data-centre Blackwell part, likely without RT cores, so RTX rendering and
+      camera sensors are probably unavailable.
+    - Isaac Lab 3.0.0 needs a urllib3 override to resolve.
+    - Apptainer is available on compute nodes only (`module load tacc-apptainer`).
+
+    Decision: build Phases 1-2 on the lightweight batched backend (which runs on the GPUs).
+    Isaac is attempted later only as a headless physics smoke test inside an Apptainer
+    container; it is not on the critical path.
+
+18. **ROS 2 (Phase 4)** is obtainable without sudo via RoboStack (`robostack-jazzy`, linux-aarch64,
+    py3.12: ros-base, rclpy, nav2). `people_msgs` is missing there. Not installed yet.
+
+19. **ORCA (Phase 2)**: there is no pip binding. `pyrvo` 0.4.3 builds from sdist with `CC=gcc CXX=g++`
+    and can serve as the reference oracle for a batched torch ORCA port.
+
+20. **Robot after the episode ends**:
+    - A robot that reached its goal leaves the scene.
+    - A robot that collided or timed out stays as a stopped obstacle.
+
+    Otherwise an early crash would look less disruptive than a careful pass.
+
+21. **Reactive pedestrians**:
+    - Social-force repulsion from pedestrians and the robot has a sideways component
+      (`sidestep: 0.5`, as in SEAN 2.0's agents). Without it, a pedestrian stalls ~1.5 s face
+      to face with a robot.
+    - Pedestrians cannot interpenetrate the robot: any overlap is resolved after each step.
+      So a robot-pedestrian collision comes from the robot's motion, matching SEAN's
+      robot-at-fault counting.
+    - Robot repulsion was raised to strength 5, range 0.5 m.
+
+22. **Recorded STEPS scenarios**:
+    - Each scenario is the busiest of 8 random 30 s windows.
+    - The robot crosses the occupied area through where the crowd is at mid-window.
+    - Recordings are split by STEPS's grouped manifest.
+
+    Random windows were too sparse: the robot never came within 3.9 m of anyone.
+
+23. **CMA-ES objective weights** (success 1, collision 2, disruption 1, time 0.3, comfort 0.5;
+    disruption = mean counterfactual displacement, comfort = personal-zone fraction) are a first
+    guess. Change them in `seanjax/configs/cmaes*.yaml`.
+
+24. **Profiling (job 65475)**: in closed-loop training, efficient-attention backward with dropout
+    takes 28% of GPU time, bf16<->fp32 casts 22%, LayerNorm backward 12%, matmuls 12%.
+    - `--attention math` is +10% faster for phase 1 (54k vs 49k pedestrians/s, 64 vs 57 GB).
+      Its closed-loop number is pending.
+    - `torch.compile` is slower (46k) and compiles for 66 s.
+    - Activation checkpointing costs 27% but fits 64k pedestrians per batch.
+
+    Defaults are unchanged until the closed-loop comparison is in.
+
+25. **Never modify `.venv` while jobs are starting**: a job importing during `uv add` saw
+    inconsistent package metadata and failed (`A distribution name is required`).
