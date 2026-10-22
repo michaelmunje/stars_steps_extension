@@ -276,3 +276,21 @@ why, and how to undo it.
     The two fast policies lose about 0.02. Their weights were tuned around constant velocity's
     errors. CMA-ES with the best forecaster in the loop (job 65618) tests whether re-tuning
     recovers that. Tables: `runs/seanjax/paired/{constant_velocity,stars_best}/`.
+
+38. **Best forecaster so far: low-KL CVAE from scratch with the search settings**
+    (`cvae_hpo0_scratch_full`). STEPS test, best of 20, versus constant velocity:
+
+    | Metric | Low-KL CVAE | Constant velocity |
+    | --- | --- | --- |
+    | All-agent ADE / FDE | 0.081 / 0.129 m | 0.276 / 0.518 m |
+    | Moving ADE / FDE | 0.342 / 0.600 m | 0.894 / 1.771 m |
+    | Joint ADE | 0.097 m | 0.279 m |
+
+    - Against the previous best (KL-1.0 fine-tuned CVAE: moving ADE 0.532 m) that is -36%.
+    - Samples are now diverse: 0.16 m final spread, against 0.009 m before.
+    - 20 s simulation mean speed is 0.102 m/s (real 0.141; KL-1.0 models 0.06-0.08).
+    - Simulated acceleration remains far below the data (0.03 vs 0.31 m/s^2). Part of the data
+      value is likely tracking jitter at 2.5 Hz; to be checked against smoothed tracks before
+      treating it as a model deficiency.
+
+    Seeds 1-2 of this configuration (job for `cvae_hpo0_scratch_seed{1,2}`) measure the spread.
