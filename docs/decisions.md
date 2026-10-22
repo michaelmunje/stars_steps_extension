@@ -569,3 +569,32 @@ why, and how to undo it.
     - Figure: `docs/results/navigation_compare_crowd_v2.png`. In `dense_flow` all policies still
       make a small loop near the goal while waiting for the cross flow; left as is, since it is
       collision-free and the objective already charges for the detour.
+
+57. **Splitting the all-dataset test evaluation (job 65718 at risk of its 4 h limit).** The STEPS
+    test evaluation took 12 min. The full six-dataset test set is about 13x larger (Grand Central
+    alone is 441 MB of windows), and closed-loop evaluation at exec 1/4/12 with K = 20 runs about
+    320 forward passes per batch. The evaluator writes nothing until the end, so a timeout would
+    lose everything. Instead of cancelling 65718, job 65741 runs a lighter version next to it:
+    teacher-forced metrics plus closed-loop at exec 4 only, with Grand Central on its own GPU.
+    Outputs: `eval_test_gc.json` and `eval_test_rest.json` per all-dataset model. Whichever
+    finishes first is reported.
+
+58. **Crowd tuning v2: intimate-zone comfort term, larger validation set.** Two problems showed up
+    in the first crowd-tuning run (`checkpoints/seanjax/cmaes_crowd/convergence.png`):
+    - **The comfort term does not separate policies.** In the test set, the fraction of time a
+      pedestrian is within 1.2 m is 0.35-0.40 for every policy, goal-seeking included, because
+      dense scenes make that unavoidable. CMA-ES therefore drove `personal_space_radius` to its
+      lower bound (0.3 m). The 0.45 m intimate-zone rate does separate them: 13% for the
+      crowd-tuned policy against 0.8% for v1. `cmaes_crowd_v2.yaml` uses
+      `intimate_violation_rate` with weight 1.0.
+    - **Selection noise.** Validation J moved by about ±0.05 between generations with 12
+      scenarios per kind, which is as large as the differences between policies. Validation now
+      uses 24 per kind.
+
+    Job `cma_crowd2` runs three searches:
+    - warm start from `cmaes_crowd`, seed 42;
+    - the same with seed 7, to measure how much the result depends on the search seed;
+    - warm start from the cautious v1 policy.
+
+    All policies will then be re-evaluated on the test set under the v2 objective. The v1 tables
+    are left as they are.
