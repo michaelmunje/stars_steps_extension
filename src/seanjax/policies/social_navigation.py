@@ -194,7 +194,7 @@ class SocialNavigationPolicy(Policy):
         command = commands[best]
         emergency = ~valid.any(dim=1)
         command = torch.where(emergency[:, None], torch.zeros_like(command), command)
-        stop = (commands.abs().sum(-1) == 0).nonzero()[:1, 0]                     # the (0, 0) candidate
+        stop = (commands[:, 0].abs() + (commands[:, 0] != 0) * 1e3 + commands[:, 1].abs()).argmin()[None]  # v = 0, w ~ 0
         self.last_info = {"emergency_stop": emergency, "valid_fraction": valid.float().mean(1),
-                          "stop_valid": valid[:, stop].any(1) if stop.numel() else torch.zeros_like(emergency)}
+                          "stop_valid": valid[:, stop].any(1)}
         return command
