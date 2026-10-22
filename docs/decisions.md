@@ -598,3 +598,18 @@ why, and how to undo it.
 
     All policies will then be re-evaluated on the test set under the v2 objective. The v1 tables
     are left as they are.
+
+59. **All-dataset models on the test split** (`docs/results/stars_ma_all_test.md`).
+    - The from-scratch model with trial-53 settings beats the SSL-pretrained, fine-tuned one on
+      every dataset, by 0.002-0.010 m of ADE. Pretraining pays off on STEPS alone (46) but not with
+      these settings on the full mixture, so `cvae_hpo53_scratch_all` is the recommended
+      all-dataset model.
+    - It is 2-3.5x better than constant velocity everywhere. On STEPS it scores 0.078, level
+      with the STEPS-only models (0.079-0.080) within about twice the seed noise.
+    - **Compounding error.** Re-forecasting every model step (exec 1) from the model's own
+      predictions costs little on STEPS (0.078 -> 0.081) but 14-20% on PTDPES, Madras, UCY and
+      ETH (e.g. ETH 0.234 -> 0.280). The STARS crowd runs at exec 1, so it should use the
+      STEPS model for STEPS scenes. A crowd for other datasets would need closed-loop
+      fine-tuning, which did not help on STEPS (47) but may on these datasets.
+    - Job 65718 finished just inside its limit, so the backup from 57 was not needed. Its
+      exec-4 numbers agree with 65718's to within 0.003 m.

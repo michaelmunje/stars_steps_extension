@@ -36,6 +36,23 @@ speed is above 0.2 m/s; about 90% of STEPS pedestrians are slower. The full tabl
 - **Searches:** [`hpo_steps_cvae_scratch.md`](hpo_steps_cvae_scratch.md) and
   [`hpo_steps_cvae_ssl.md`](hpo_steps_cvae_ssl.md).
 
+### All six datasets (test split) [59]
+
+Full table: [`stars_ma_all_test.md`](stars_ma_all_test.md). From-scratch model with trial-53
+settings, agent ADE / FDE, best-of-20, against constant velocity:
+
+| Dataset | Constant velocity | STARS (`cvae_hpo53_scratch_all`) |
+| --- | --- | --- |
+| STEPS | 0.276 / 0.518 | 0.078 / 0.123 |
+| PTDPES | 0.963 / 1.800 | 0.284 / 0.413 |
+| Madras | 0.627 / 1.180 | 0.209 / 0.315 |
+| Grand Central | 0.703 / 1.427 | 0.244 / 0.403 |
+| UCY | 0.397 / 0.891 | 0.193 / 0.383 |
+| ETH | 0.727 / 1.428 | 0.234 / 0.373 |
+
+- SSL pretraining plus fine-tuning is 0.002–0.010 m worse on every dataset.
+- Feeding back its own predictions every step costs little on STEPS but 14–20% elsewhere.
+
 ## Navigation (SEAN-JAX lightweight backend, 80 scripted test scenarios)
 
 Objective v1 = success − 2·collision − disruption − 0.3·time − 0.5·personal-zone rate.
