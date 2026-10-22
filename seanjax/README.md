@@ -33,8 +33,32 @@ python seanjax/scripts/visualize_rollout.py --checkpoint checkpoints/seanjax/cma
 ```
 
 All scripts take `--device` (`cuda`, `cpu`; default: CUDA if available) and `--pedestrians`
-(`replay`, `social_force`, `reactive_replay`). `seanjax/configs/cmaes_recorded.yaml` adds recorded
-STEPS traffic to the scenario mix.
+(`replay`, `social_force`, `reactive_replay`, `orca`, `stars_crowd`). `seanjax/configs/cmaes_recorded.yaml`
+adds recorded STEPS traffic to the scenario mix.
+
+**Current reference setup (STARS crowd, STARS predictor, recorded + scripted scenes):**
+
+```bash
+# Evaluate the reference policy (v4) in the forecaster-driven crowd on 270 test scenes
+python seanjax/scripts/evaluate.py --config seanjax/configs/cmaes_crowd_v4.yaml \
+  --policy checkpoints/seanjax/cmaes_crowd_v4/best_policy.yaml --split test --device cuda
+
+# Side-by-side figure against another policy
+python seanjax/scripts/compare_policies.py --config seanjax/configs/cmaes_crowd_v4.yaml \
+  --policies social checkpoints/seanjax/cmaes_crowd_v4/best_policy.yaml \
+  --scenarios recorded crossing dense_flow narrow_passage --output runs/seanjax/compare.png
+
+# Re-tune from it (about 1 h on one GB200 for 100 generations)
+python seanjax/scripts/train_cmaes.py --config seanjax/configs/cmaes_crowd_v4.yaml --device cuda \
+  --policy checkpoints/seanjax/cmaes_crowd_v4/best_policy.yaml --out-dir checkpoints/seanjax/my_run
+
+# Why does the robot turn instead of waiting? (per-step stop feasibility and turning)
+python seanjax/scripts/diagnose_waiting.py --config seanjax/configs/cmaes_crowd_v4.yaml \
+  --policy checkpoints/seanjax/cmaes_crowd_v4/best_policy.yaml --kinds dense_flow narrow_passage
+```
+
+Results and figures: `docs/results/README.md`; the reasoning behind each config version is in
+`docs/decisions.md` (crowd configs v2-v7: decisions 58-81).
 
 On TACC Horizon, run tuning on a GPU node, for example:
 `sbatch scripts/horizon/gpu_jobs.slurm "python seanjax/scripts/train_cmaes.py --config seanjax/configs/cmaes.yaml --device cuda"`.
@@ -87,6 +111,13 @@ for CSV data.
   forces, and returns smoothly to its path. An undisturbed walker reproduces its reference exactly
   (tested).
 
+- **ORCA**: a batched port of RVO2 (see [Status](#status)).
+- **STARS crowd** (`stars_crowd`): the multi-agent STARS forecaster moves the pedestrians. Each
+  pedestrian follows its reference for its first 3.2 s, then the forecaster re-forecasts every
+  0.4 s with the robot in the graph as one more person. CVAE intents follow a seeded AR(1)
+  process. Moves that would cross a wall slide along it; recorded scenes' arena box does not
+  block pedestrians. Config: `seanjax/configs/pedestrians_stars.yaml`.
+
 The robot is a non-reciprocal obstacle for every model, and reactive pedestrians cannot
 interpenetrate it. The **counterfactual** run uses identical inputs with the robot removed, and the
 disruption metrics compare the two.
@@ -108,7 +139,10 @@ Commands that come within `safety_margin` of a pedestrian within `safety_horizon
 wall, are discarded (a hard constraint). If none remain, the robot stops (emergency stop). Tunable
 parameters: `goal_weight`, `collision_weight`, `pedestrian_weight`, `disruption_weight`,
 `obstacle_weight`, `preferred_speed`, `personal_space_radius`, `prediction_horizon`, `turn_penalty`,
-`smoothness_weight`. `goal_seeking` is the same controller with every pedestrian term off.
+`smoothness_weight`, plus the waiting-behaviour scales `speed_scale`, `retreat_scale` and
+`alignment_weight` (decision 70). `idle_turn_weight` and `side_commit_weight` exist but did not
+help (decisions 79, 81); keep them at 0. `goal_seeking` is the same controller with every
+pedestrian term off.
 
 ### Metrics
 
@@ -116,11 +150,14 @@ parameters: `goal_weight`, `collision_weight`, `pedestrian_weight`, `disruption_
 | --- | --- |
 | Task | `success`, `collision` (`ped_`/`obstacle_`), `timeout`, `time_to_goal`, `normalized_time`, `path_length` |
 | Comfort and safety | `min_ped_clearance`, `intimate_violation_rate` (< 0.45 m), `personal_violation_rate` (< 1.2 m, SEAN 2.0 zones), `stops`, `emergency_stops`, `command_smoothness`, `jerk` |
-| Disruption (vs. robot absent) | `disruption_displacement`, `disruption_max_displacement`, `velocity_deviation`, `ped_delay`, `peds_affected`, `reference_deviation` |
+| Path quality | `path_efficiency` (straight-line / driven, 0 on failure), `heading_change` (rad), `loops` (full turns beyond half a turn) |
+| Disruption (vs. robot absent) | `disruption_displacement`, `disruption_max_displacement`, `velocity_deviation`, `ped_delay`, `peds_affected`, `reference_deviation`; in the STARS crowd use `robot_influence` (forecast change attributable to the robot) and `disruption_local`, because counterfactual trajectories of a learned crowd diverge chaotically |
 
 Disruption, comfort and goal achievement are reported separately. The CMA-ES objective (`objective:`
-in the config) weights `success`, `collision`, a disruption metric, `normalized_time` and a comfort
-metric; all are configurable.
+in the config) weights `success`, `collision`, a disruption metric, `normalized_time`, a comfort
+metric, `detour` (1 - path efficiency), command `smoothness` and `circling` (per loop); all are
+configurable. Evaluation in the STARS crowd is not bit-for-bit reproducible (bf16 on GPU);
+differences below about 0.02 in the objective are noise.
 
 ### Trajectory data
 
@@ -167,9 +204,13 @@ select it under `predictor:` in `policy.yaml`.
 
 ## Status
 
-- **Done (Phases 1–2a).** The lightweight backend, three pedestrian models, two policies and the
-  STARS predictor. Also CMA-ES with validation selection and resume, scenarios, recorded STEPS
-  traffic, metrics, plots and tests.
+- **Done (Phases 1–2a).** The lightweight backend, five pedestrian models (including the STARS
+  crowd), two policies and the STARS predictor. Also CMA-ES with validation selection and resume,
+  scenarios, recorded STEPS traffic, metrics, plots and tests.
+- **Reference policy.** `checkpoints/seanjax/cmaes_crowd_v4/best_policy.yaml`. In the STARS crowd
+  (270 test scenes) it has 99% success, 0.7% collisions and 100% success on 30 recorded STEPS
+  scenes. Known limitation: it still loops occasionally while waiting in dense cross flow (0.17
+  loops per episode); see decisions 68-81.
 - **Phase 2b, ORCA.** `pedestrians/orca.py` is a batched torch port of RVO2's ORCA (reciprocal
   pedestrian lines, `linearProgram1/2/3`, RVO2 obstacle lines for wall segments, static discs),
   with the robot as a non-reciprocal moving obstacle and `reactive_replay` or `goal` preferred
