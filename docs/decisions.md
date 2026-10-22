@@ -756,3 +756,23 @@ why, and how to undo it.
     - Job 65801 tests the same policy, without re-tuning, at `speed_cost` 0.2 and 0.0, with the
       waiting diagnostic and a figure (`runs/seanjax/crowd_v4_speed*`). The goal term already
       rewards progress, so a lower speed cost should not slow free-space driving much.
+
+69. **The speed cost is not the cause of circling** (job 65801, `runs/seanjax/crowd_v4_speed*`).
+    `cmaes_crowd_v2` without re-tuning:
+
+    | `speed_cost` | Objective | Success | Dense-flow path eff. | Recorded success | Turning while stop allowed (dense flow) |
+    | --- | --- | --- | --- | --- | --- |
+    | 0.5 (tuned with) | 0.303 | 96% | 0.89 | 90% | 24% |
+    | 0.2 | 0.250 | 94% | 0.85 | 70% | — |
+    | 0.0 | 0.187 | 90% | 0.81 | 63% | 20% |
+
+    A lower speed cost makes every metric worse and barely changes the turning. Decision 68's
+    hypothesis is rejected; the other policy parameters were tuned with 0.5, so this is not a
+    fair test of a lower value, only evidence that it is not the main driver.
+
+    **What changes next.** I am stopping hand-diagnosis of the controller. It has three
+    hand-set terms that shape waiting behaviour: `speed_cost`, `retreat_cost` and the goal-
+    alignment weight. The principled fix is to let CMA-ES tune them along with the rest, and to
+    add a circling penalty to the objective so that the evaluation charges for loops directly
+    (net heading change per metre travelled). Both are queued behind the current no-loop
+    re-tune result.
