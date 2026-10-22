@@ -169,3 +169,22 @@ why, and how to undo it.
     max_nodes 4,096/8,192/16,384 and should separate the two. If smaller batches win, the
     default per-GPU batch drops and scale comes from more GPUs/seeds rather than larger
     batches.
+
+29. **The tuned navigation policy transfers across pedestrian models.** The v1 policy was tuned
+    against reactive replay; on test scenarios with other pedestrian models (objective; default
+    social -> tuned):
+    - ORCA: 0.636 -> 0.726.
+    - Social force: 0.248 -> 0.442.
+    - Replay: 0.427 -> 0.700. Here goal-seeking collides in 65% of scenarios and the default
+      social controller in 8.7%.
+
+    The tuned policy has 0 collisions under all three, so tuning against one pedestrian model
+    did not overfit to it.
+
+30. **Early Optuna trends** (30-epoch trials; validation best-of-6 agent ADE ~0.081-0.086 m vs
+    ~0.095 m best-of-20 for the hand-set recipe):
+    - The best trials use KL weight 0.09-0.18 (recipe: 1.0) and dropout 0.02-0.12 (recipe: 0.2).
+    - They use 4-8k pedestrians per batch, decoder width 512 and LR 4e-4-1e-3.
+
+    The recipe defaults stay until the searches finish; the winning settings then get full-length
+    runs with several seeds.
