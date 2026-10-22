@@ -1037,3 +1037,24 @@ why, and how to undo it.
     1-3% on STEPS, PTDPES, Madras and Grand Central (80), and seed noise has only been measured on
     STEPS. Two more seeds of `cvae_hpo53_scratch_all`, plus one more each of the PTDPES and Grand
     Central single-dataset models, put error bars on those gaps.
+    **Result: no effect.** v4 with `pass_side_weight` 1 and 3, no re-tuning
+    (`runs/seanjax/crowd_v10_pass*`): objective 0.352 and 0.349 against 0.367 in the same run;
+    loops 0.08 for all three; collisions unchanged. The comparison figure shows paths identical
+    to v4. Not tuned. The parameter stays at its default 0.
+
+83. **Per-episode outcomes depend on batch composition; aggregates are stable.** v4 collided on
+    the seed-0 `dense_flow` and `narrow_passage` scenes in `runs/seanjax/crowd_v10_pass3/compare.png`.
+    In `navigation_compare_crowd_v6.png` it reached the goal on the same scenes. Checks
+    (`runs/seanjax/repro/`):
+    - Two runs of the same three-scene figure on the current code agree (dense-flow collision at
+      14.8 s against 14.6 s; narrow-passage collision at 6.9 s in both).
+    - The full 270-scene test evaluation on the current code gives 0.387 objective, 98.5%
+      success and 0.7% collisions: the same as v4's earlier results (0.375-0.388). The controller
+      changes since 78 do not alter v4 when their weights are 0.
+    - **Cause.** `compare_policies.py` simulates its scenes as one batch, and the earlier figure
+      had five scenes against three now. Batch shape changes bf16 GPU reductions in the STARS
+      crowd, and in close encounters that can flip an episode's outcome.
+    - **Consequence.** Single-episode figures illustrate behaviour, not rates. Collision and
+      success rates come only from the 270-scene evaluation. A deterministic crowd (fp32,
+      `torch.use_deterministic_algorithms`) would make figures reproducible at some speed cost;
+      not done.
