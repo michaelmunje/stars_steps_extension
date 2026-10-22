@@ -1,0 +1,8 @@
+# Multi-agent STARS on STEPS only. Use with:
+#   python -m baselines.train_stars_ma --config configs/stars_ma/steps.yaml --phase ssl --run-dir ...
+# `datasets` lists the training sources; each also supplies its validation split unless
+# `val_datasets` is given. An entry is a name or {name, weight, path, split_strategy}; `weight`
+# multiplies how often that dataset's windows are sampled (1 = natural proportions).
+# Any trainer option (e.g. max_nodes, learning_rate, knn) can be set here too.
+datasets:
+  - steps

@@ -1,0 +1,7 @@
+# STEPS with PTDPES as extra pretraining data, sampled at half PTDPES's natural rate;
+# validated and selected on STEPS only.
+datasets:
+  - steps
+  - {name: ptdpes, weight: 0.5}
+val_datasets:
+  - steps

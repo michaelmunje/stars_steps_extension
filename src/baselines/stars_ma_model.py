@@ -61,6 +61,18 @@ def _retime(transformer: nn.Module, steps: int) -> nn.Module:
     return transformer
 
 
+# Fused attention kernels cap one call at 65,535 sequences (with dropout); a large batch has
+# hundreds of thousands of edge sequences, so the temporal transformers run in chunks.
+TEMPORAL_CHUNK = 32768
+
+
+def _temporal(transformer: nn.Module, x: torch.Tensor, padding: torch.Tensor) -> torch.Tensor:
+    if x.shape[0] <= TEMPORAL_CHUNK:
+        return transformer(x, src_key_padding_mask=padding)
+    return torch.cat([transformer(x[i:i + TEMPORAL_CHUNK], src_key_padding_mask=padding[i:i + TEMPORAL_CHUNK])
+                      for i in range(0, x.shape[0], TEMPORAL_CHUNK)])
+
+
 class StarsMotionEncoder(nn.Module):
     """STARS's homogeneous graph encoder at the native rate, with optional node motion features."""
 
@@ -109,11 +121,11 @@ class StarsMotionEncoder(nn.Module):
         hidden = base.node_type_emb(data.node_type)
         if self.use_node_features:
             node_pad = ~data.valid_mask.bool()
-            hidden = hidden + self.node_proj(self.node_encoder(data.node_attr, src_key_padding_mask=node_pad))
+            hidden = hidden + self.node_proj(_temporal(self.node_encoder, data.node_attr, node_pad))
         source, destination = data.edge_index
         if source.numel():
             edge_valid = (data.valid_mask[source] * data.valid_mask[destination]).bool()
-            edge_emb = base.edge_encoder(data.edge_attr, src_key_padding_mask=~edge_valid)
+            edge_emb = _temporal(base.edge_encoder, data.edge_attr, ~edge_valid)
         else:
             # The upstream edge transformer cannot reshape an empty batch; no edges, no messages.
             edge_emb = hidden.new_zeros((0, self.hidden_dim))
@@ -239,14 +251,17 @@ class TrajectoryDecoder(nn.Module):
         hidden = F.gelu(self.input(context))
         if self.social is not None and edge_index.numel():
             hidden = self.social_norm(hidden + self.social(hidden, edge_index, edge_attr=edge_emb))
-        state = torch.tanh(self.initial(hidden))
-        step = last_velocity * dt
-        steps = []
-        for _ in range(self.prediction_steps):
-            state = self.cell(torch.cat([step, hidden], dim=-1), state)
-            step = self.output(state)
-            steps.append(step)
-        return torch.stack(steps, dim=1).cumsum(dim=1)
+        # Positions accumulate over the horizon: keep the recurrence in float32 under bf16 autocast.
+        with torch.autocast(device_type=hidden.device.type, enabled=False):
+            hidden = hidden.float()
+            state = torch.tanh(self.initial(hidden))
+            step = last_velocity.float() * dt
+            steps = []
+            for _ in range(self.prediction_steps):
+                state = self.cell(torch.cat([step, hidden], dim=-1), state)
+                step = self.output(state)
+                steps.append(step)
+            return torch.stack(steps, dim=1).cumsum(dim=1)
 
 
 class StarsMultiAgentForecaster(nn.Module):
@@ -354,5 +369,8 @@ def rollout(model: StarsMultiAgentForecaster, batch, *, rounds: int, exec_steps:
                 steps = window.shape[1]
                 window = torch.cat([window, scene], dim=1)[:, -steps:]
                 valid = torch.cat([valid, torch.ones_like(scene[..., 0], dtype=torch.bool)], dim=1)[:, -steps:]
-                current = _rebuild(batch, window, valid, dt=model.dt, knn=knn, radius=radius)
+                if hasattr(batch, "rebuild"):  # stars_ma_batch.GraphBatch: all graphs at once on the device
+                    current = batch.rebuild(window, valid)
+                else:
+                    current = _rebuild(batch, window, valid, dt=model.dt, knn=knn, radius=radius)
         return torch.cat(executed, dim=1)

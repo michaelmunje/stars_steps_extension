@@ -10,8 +10,10 @@ probe (`baselines.train_stars`, `baselines.stars`) is unchanged and remains the 
 | `src/baselines/stars_ma_graph.py` | Torch graph builder: node selection, local-frame node motion features, STARS SE(2) edge features, kNN/radius topology; differentiable in positions |
 | `src/baselines/stars_ma_model.py` | `StarsMotionEncoder`, phase-1 `StarsMotionVAE`, `TrajectoryDecoder` (deterministic / CVAE), `StarsMultiAgentForecaster`, closed-loop `rollout` |
 | `src/baselines/stars_ma_data.py` | `StarsMultiAgentDataset`: one graph per scene window over the shared `Scene` samples |
+| `src/baselines/stars_ma_batch.py` | Training data path: cached `WindowStore` per split (GPU-resident), batched on-device graph construction (`build_batch`, `GraphBatch.rebuild` for rollouts), node-budget batching |
 | `src/baselines/stars_ma_metrics.py` | Best-of-K ADE/FDE (target / agent / joint), interacting vs isolated, density bins, collisions, closest approach, diversity, motion distributions |
-| `src/baselines/train_stars_ma.py` | `--phase ssl` and `--phase forecast` (frozen / finetune / scratch, deterministic / CVAE, multi-step rollout loss) |
+| `src/baselines/train_stars_ma.py` | `--phase ssl` and `--phase forecast` (frozen / finetune / scratch, deterministic / CVAE, multi-step rollout loss); dataset configs, DDP, bf16, resume, `--benchmark` |
+| `configs/stars_ma/*.yaml` | Dataset lists: `steps`, `ptdpes`, `all` (every converted dataset), `steps_plus_ptdpes` (weighted mixture) |
 | `src/baselines/evaluate_stars_ma.py` | Teacher-forced, closed-loop and long-horizon simulation report (JSON) |
 | `tests/test_stars_ma.py` | Contracts below |
 

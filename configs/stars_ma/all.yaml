@@ -1,0 +1,10 @@
+# Multi-agent STARS on every converted dataset at once (pretraining mixture).
+# ATC is left out until its scene index is built (python -m preprocess datasets/atc ...).
+# Validation reports each dataset separately; checkpoints are selected on their mean agent ADE.
+datasets:
+  - steps
+  - ptdpes
+  - madras
+  - grand_central      # temporal split (registered default)
+  - ucy
+  - eth
