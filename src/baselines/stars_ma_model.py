@@ -66,10 +66,19 @@ def _retime(transformer: nn.Module, steps: int) -> nn.Module:
 TEMPORAL_CHUNK = 32768
 
 
-def _temporal(transformer: nn.Module, x: torch.Tensor, padding: torch.Tensor) -> torch.Tensor:
+def _temporal(transformer: nn.Module, x: torch.Tensor, padding: torch.Tensor, checkpoint: bool = False) -> torch.Tensor:
+    """Run a temporal transformer over ``x [S, T, F]`` in chunks; ``checkpoint`` recomputes activations
+    in the backward pass instead of storing them (much less memory, ~1/3 more compute)."""
+    def run(chunk, mask):
+        if checkpoint and torch.is_grad_enabled():
+            from torch.utils.checkpoint import checkpoint as recompute
+
+            return recompute(lambda a, b: transformer(a, src_key_padding_mask=b), chunk, mask, use_reentrant=False)
+        return transformer(chunk, src_key_padding_mask=mask)
+
     if x.shape[0] <= TEMPORAL_CHUNK:
-        return transformer(x, src_key_padding_mask=padding)
-    return torch.cat([transformer(x[i:i + TEMPORAL_CHUNK], src_key_padding_mask=padding[i:i + TEMPORAL_CHUNK])
+        return run(x, padding)
+    return torch.cat([run(x[i:i + TEMPORAL_CHUNK], padding[i:i + TEMPORAL_CHUNK])
                       for i in range(0, x.shape[0], TEMPORAL_CHUNK)])
 
 
@@ -94,6 +103,7 @@ class StarsMotionEncoder(nn.Module):
         # optimiser or the checkpoint as dead weights.
         del self.base.robot_feat_proj
         self.use_node_features = bool(recipe["use_node_features"])
+        self.checkpoint_temporal = False  # runtime memory option, not part of the recipe
         if self.use_node_features:
             self.node_encoder = _retime(
                 upstream.TemporalEdgeTransformer(
@@ -121,11 +131,11 @@ class StarsMotionEncoder(nn.Module):
         hidden = base.node_type_emb(data.node_type)
         if self.use_node_features:
             node_pad = ~data.valid_mask.bool()
-            hidden = hidden + self.node_proj(_temporal(self.node_encoder, data.node_attr, node_pad))
+            hidden = hidden + self.node_proj(_temporal(self.node_encoder, data.node_attr, node_pad, self.checkpoint_temporal))
         source, destination = data.edge_index
         if source.numel():
             edge_valid = (data.valid_mask[source] * data.valid_mask[destination]).bool()
-            edge_emb = _temporal(base.edge_encoder, data.edge_attr, ~edge_valid)
+            edge_emb = _temporal(base.edge_encoder, data.edge_attr, ~edge_valid, self.checkpoint_temporal)
         else:
             # The upstream edge transformer cannot reshape an empty batch; no edges, no messages.
             edge_emb = hidden.new_zeros((0, self.hidden_dim))

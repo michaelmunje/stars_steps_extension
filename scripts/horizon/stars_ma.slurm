@@ -28,6 +28,8 @@ unset TMUX TMUX_PANE
 source .venv/bin/activate
 export PYTHONPATH="$PROJECT_DIR/src${PYTHONPATH:+:$PYTHONPATH}"
 export HF_HUB_OFFLINE=1 WANDB_MODE=offline OMP_NUM_THREADS=8
+# The default nvc compiler cannot build Triton/torch.compile helpers or C extensions.
+export CC=gcc CXX=g++
 
 GPUS_PER_NODE="${GPUS_PER_NODE:-$(nvidia-smi -L | wc -l)}"
 MASTER_ADDR="$(scontrol show hostnames "$SLURM_JOB_NODELIST" | head -n 1)"

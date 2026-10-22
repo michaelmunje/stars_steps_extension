@@ -39,6 +39,8 @@ source .venv/bin/activate
 export PYTHONPATH="$PROJECT_DIR/src${PYTHONPATH:+:$PYTHONPATH}"
 # Compute nodes have no internet access.
 export HF_HUB_OFFLINE=1 WANDB_MODE=offline
+# The default nvc compiler cannot build Triton/torch.compile helpers or C extensions.
+export CC=gcc CXX=g++
 
 LOG_DIR="logs/horizon/${SLURM_JOB_ID:-local}"
 mkdir -p "$LOG_DIR"

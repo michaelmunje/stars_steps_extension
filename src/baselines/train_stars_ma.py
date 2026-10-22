@@ -135,6 +135,8 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--warmup-epochs", type=float, default=2.0)
     parser.add_argument("--amp", action=argparse.BooleanOptionalAction, default=True, help="bf16 autocast on CUDA")
     parser.add_argument("--compile", action="store_true", help="torch.compile the temporal transformers")
+    parser.add_argument("--activation-checkpointing", action="store_true",
+                        help="Recompute temporal-transformer activations in backward: less memory, more compute")
     parser.add_argument("--eval-every", type=int, default=1, help="Validate every this many epochs")
     parser.add_argument("--selection", choices=("macro", "pooled"), default="macro",
                         help="Forecast selection: mean of per-dataset agent ADE (macro) or over all agents")
@@ -549,6 +551,7 @@ def train(args) -> None:
 
         model, groups = _build_model(args, payload)
         model = model.to(device)
+        model.encoder.checkpoint_temporal = args.activation_checkpointing
         _maybe_compile(model, args)
         optimizer = torch.optim.AdamW(groups(args.recipe["learning_rate"]), weight_decay=args.recipe["weight_decay"])
         steps_per_epoch = len(epoch_batches(train_store, args, 0, train=True, weights=weights))
