@@ -4,9 +4,10 @@ The search runs in the unit hypercube over the selected parameters (``optimize:`
 each parameter's bounds and scale (log or linear, ``ParameterSpec``); parameters not optimised
 keep their (possibly overridden) defaults.
 
-Per generation, every candidate is evaluated on the *same* freshly drawn training scenarios
-(``train_per_kind`` per kind, new seeds each generation: scenario randomisation across training,
-comparability within a generation). Every ``validate_every`` generations the distribution mean
+Per generation, every candidate is evaluated on the *same* training scenarios (``train_per_kind``
+per kind). They are redrawn every ``train_refresh_every`` generations: scenario randomisation
+across training, comparability within a generation, and with a refresh period > 1 less noise
+for CMA-ES's step-size adaptation. Every ``validate_every`` generations the distribution mean
 and the generation's best candidate are scored on a fixed validation set; the best validation
 score selects ``best_policy.yaml``. The untouched test set is only used by ``evaluate.py``.
 State (the CMA-ES object, best solution, history) is checkpointed every generation and a run
@@ -41,6 +42,7 @@ class CMAESConfig:
     initial: dict[str, float] = field(default_factory=dict)
     kinds: list[str] = field(default_factory=lambda: ["crossing", "head_on", "overtaking", "following"])
     train_per_kind: int = 4
+    train_refresh_every: int = 1  # generations sharing one training scenario draw (common random numbers)
     val_per_kind: int = 6
     validate_every: int = 5
     duration: float = 30.0
@@ -119,7 +121,8 @@ class CMAESTrainer:
             started = time.perf_counter()
             solutions = es.ask()
             candidates = [self.decode(x) for x in solutions]
-            scenarios = self._scenarios("train", c.train_per_kind, g * c.train_per_kind)
+            draw = (g - 1) // max(1, c.train_refresh_every)
+            scenarios = self._scenarios("train", c.train_per_kind, draw * c.train_per_kind)
             results = self.evaluator.evaluate(candidates, scenarios)
             objectives = np.array([r.objective for r in results])
             es.tell(solutions, (-objectives).tolist())

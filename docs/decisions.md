@@ -307,3 +307,16 @@ why, and how to undo it.
     Its acceleration (0.03 m/s^2) is still ~3x too low, so simulations are smoother and slightly
     more passive than reality. The evaluator now also reports `real_smoothed_*` statistics and
     Wasserstein distances against them.
+
+40. **CMA-ES from scratch does not find the best policy region; warm-start instead.**
+    - Tuning with the best STARS forecaster in the loop reached 0.544 on the scripted test,
+      against 0.536 for the default with the same predictor. The CV-tuned v1 policy reaches 0.647
+      with that predictor.
+    - goal_weight again ended at its bound (49.6/50).
+    - The recorded-traffic run with the older forecaster ended at 0.520.
+
+    Changes:
+    - `train_refresh_every` holds the training scenarios fixed for N generations (common random
+      numbers; default 1 keeps the old behaviour).
+    - `cmaes_stars_best_warm.yaml` warm-starts from the v1 policy with sigma 0.1 and refresh 10,
+      fine-tuning it with STARS forecasts in the loop.
