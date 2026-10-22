@@ -1,0 +1,65 @@
+{
+  "dataset": "UCY Students",
+  "canonical_dataset": "ucy",
+  "artifact_root": "datasets/_backups/ucy_seven_sequence_v3_20260907",
+  "scene_sequences": [
+    "students001",
+    "students003",
+    "uni_examples"
+  ],
+  "sample_hz": 2.5,
+  "pedestrians": 967,
+  "tracks_with_canonical_gaps": 0,
+  "recording_duration_seconds": 688.4,
+  "total_trajectory_duration_seconds": 16182.0,
+  "trajlets": 4702,
+  "non_static_trajlets": 3753,
+  "non_static_percent_exact": 79.81709910676308,
+  "opentraj_display_percent_uses_integer_truncation": true,
+  "comparison": {
+    "pedestrians": {
+      "ours": 967,
+      "opentraj": 967,
+      "difference": 0,
+      "status": "match"
+    },
+    "recording_duration_minutes": {
+      "ours": 11.473333333333333,
+      "opentraj": 11.5,
+      "difference": -0.026666666666667282,
+      "status": "match_at_reported_precision"
+    },
+    "total_trajectory_duration_hours": {
+      "ours": 4.495,
+      "opentraj": 4.5,
+      "difference": -0.004999999999999893,
+      "status": "match_at_reported_precision"
+    },
+    "trajlets": {
+      "ours": 4702,
+      "opentraj": 4702,
+      "difference": 0,
+      "status": "match"
+    },
+    "non_static_percent": {
+      "ours": 79.81709910676308,
+      "opentraj": 96,
+      "difference": -16.18290089323692,
+      "status": "matches_upstream_code_paper_cell_is_irreproducible"
+    }
+  },
+  "pinned_opentraj_execution": {
+    "pedestrians": 967,
+    "recording_duration_seconds": 688.4,
+    "total_trajectory_duration_seconds": 16182.0,
+    "trajlets": 4702,
+    "non_static_trajlets": 3753,
+    "non_static_percent_exact": 79.81709910676308,
+    "non_static_percent_printed_by_general_stats": 79
+  },
+  "investigation_notes": [
+    "OpenTraj's UCY-Students row combines students001, students003, and uni_examples. The five-fold forecasting corpus uses students001 and students003 only, so this audit reads the archived lossless seven-sequence conversion without adding uni_examples to model training or evaluation.",
+    "A direct run of the pinned OpenTraj loader, students03 homography, Kalman smoother, and exact splitter produces 3753/4702 = 79.8171%; its own general_stats.py prints 79%. This exactly matches our unified pipeline.",
+    "The released trajlet code has used a strict >1.0 m endpoint-displacement criterion throughout its repository history. On the current source data, approximately 96% would require a threshold near 0.08 m, which is not the documented or implemented protocol and would invalidate the other rows. The paper's 96% cell is therefore irreproducible from its released code and data and is retained as an explicitly flagged paper inconsistency."
+  ]
+}

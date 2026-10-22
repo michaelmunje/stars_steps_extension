@@ -1,0 +1,62 @@
+{
+  "dataset": "UCY Zara",
+  "canonical_dataset": "ucy",
+  "artifact_root": "datasets/_backups/ucy_seven_sequence_v3_20260907",
+  "scene_sequences": [
+    "crowds_zara01",
+    "crowds_zara02",
+    "crowds_zara03"
+  ],
+  "sample_hz": 2.5,
+  "pedestrians": 489,
+  "tracks_with_canonical_gaps": 0,
+  "recording_duration_seconds": 1080.4,
+  "total_trajectory_duration_seconds": 7538.8,
+  "trajlets": 2130,
+  "non_static_trajlets": 1606,
+  "non_static_percent_exact": 75.39906103286386,
+  "opentraj_display_percent_uses_integer_truncation": true,
+  "comparison": {
+    "pedestrians": {
+      "ours": 489,
+      "opentraj": 489,
+      "difference": 0,
+      "status": "match"
+    },
+    "recording_duration_minutes": {
+      "ours": 18.006666666666668,
+      "opentraj": 18.0,
+      "difference": 0.006666666666667709,
+      "status": "match_at_reported_precision"
+    },
+    "total_trajectory_duration_hours": {
+      "ours": 2.0941111111111113,
+      "opentraj": 2.1,
+      "difference": -0.0058888888888888324,
+      "status": "match_at_reported_precision"
+    },
+    "trajlets": {
+      "ours": 2130,
+      "opentraj": 2130,
+      "difference": 0,
+      "status": "match"
+    },
+    "non_static_percent": {
+      "ours": 75.39906103286386,
+      "opentraj": 75,
+      "difference": 0.3990610328638553,
+      "status": "match_at_reported_precision"
+    }
+  },
+  "pinned_opentraj_execution": {
+    "pedestrians": 489,
+    "recording_duration_seconds": 1080.4,
+    "total_trajectory_duration_seconds": 7538.799999999999,
+    "trajlets": 2130,
+    "non_static_trajlets": 1606
+  },
+  "investigation_notes": [
+    "OpenTraj's UCY-Zara row combines Zara01, Zara02, and Zara03. The standard five-fold forecasting corpus uses Zara01 and Zara02 only, so this audit reads the archived lossless seven-sequence unified conversion. Zara03 is not reintroduced into forecasting training or evaluation.",
+    "A direct run of the pinned OpenTraj VSP loader, homographies, Kalman smoother, and trajlet splitter matches every unrounded value exactly."
+  ]
+}

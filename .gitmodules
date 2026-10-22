@@ -1,0 +1,31 @@
+[submodule "references/agentformer"]
+	path = references/agentformer
+	url = https://github.com/Khrylx/AgentFormer.git
+	ignore = untracked
+[submodule "references/moflow"]
+	path = references/moflow
+	url = https://github.com/DSL-Lab/MoFlow.git
+[submodule "references/trajectron-plus-plus"]
+	path = references/trajectron-plus-plus
+	url = https://github.com/StanfordASL/Trajectron-plus-plus.git
+[submodule "references/trajnetplusplusbaselines"]
+	path = references/trajnetplusplusbaselines
+	url = https://github.com/vita-epfl/trajnetplusplusbaselines.git
+[submodule "references/trajnetplusplustools"]
+	path = references/trajnetplusplustools
+	url = https://github.com/vita-epfl/trajnetplusplustools.git
+[submodule "references/social-gan"]
+	path = references/social-gan
+	url = https://github.com/agrimgupta92/sgan.git
+[submodule "references/scholler-cv"]
+	path = references/scholler-cv
+	url = https://github.com/cschoeller/constant_velocity_pedestrian_motion.git
+[submodule "references/social-vae"]
+	path = references/social-vae
+	url = https://github.com/xupei0610/SocialVAE.git
+[submodule "references/opentraj"]
+	path = references/opentraj
+	url = https://github.com/crowdbotp/OpenTraj.git
+[submodule "references/stars"]
+	path = references/stars
+	url = https://github.com/ut-amrl/stars.git

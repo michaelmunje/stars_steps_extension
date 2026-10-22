@@ -1,0 +1,42 @@
+{
+  "social_gan": {
+    "repository": "https://github.com/agrimgupta92/sgan",
+    "commit": "691231e1adb6a344c7bcea9ebf2534518b226ead",
+    "role": "Social GAN preprocessing/data-adapter reference"
+  },
+  "scholler_constant_velocity": {
+    "repository": "https://github.com/cschoeller/constant_velocity_pedestrian_motion",
+    "commit": "7fe07167659bb93fb400cb752c135ebee59221f5",
+    "role": "deterministic last-observed-displacement CV reference"
+  },
+  "social_vae": {
+    "repository": "https://github.com/xupei0610/SocialVAE",
+    "commit": "eb23cbae562bac2c2dcf0d81529e6ab2ac280962",
+    "role": "SocialVAE feature and augmentation reference"
+  },
+  "trajnetplusplustools": {
+    "repository": "https://github.com/vita-epfl/trajnetplusplustools",
+    "commit": "39d56e0ee64ad85b71584e48819042aecd3ca434",
+    "role": "TrajNet++ categorization/characterization parity reference"
+  },
+  "trajectron_plus_plus": {
+    "repository": "https://github.com/StanfordASL/Trajectron-plus-plus",
+    "commit": "1031c7bd1a444273af378c1ec1dcca907ba59830",
+    "role": "CVAE K=20"
+  },
+  "moflow": {
+    "repository": "https://github.com/DSL-Lab/MoFlow",
+    "commit": "f1b89b0e80ce95646214923e271e3c280d305cfa",
+    "role": "flow matching K=20"
+  },
+  "agentformer": {
+    "repository": "https://github.com/Khrylx/AgentFormer",
+    "commit": "e4fe8dd6df3b3d2033665c5f8ac3544e81c44db5",
+    "role": "Transformer K=20"
+  },
+  "stars": {
+    "repository": "https://github.com/ut-amrl/stars",
+    "commit": "13d840c5c0677ff52e928eea1679ba5ce1f19c14",
+    "role": "STARS homogeneous GNN-VAE encoder (HGNNCombinedVAE) + SE(2) edge features; deterministic K=1 forecasting head"
+  }
+}

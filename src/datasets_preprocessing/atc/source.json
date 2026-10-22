@@ -1,0 +1,29 @@
+{
+  "dataset": "atc",
+  "raw_glob": "raw/atc-*.csv",
+  "parser": "csv",
+  "fields": {
+    "time": 0,
+    "track_id": 1,
+    "x": 2,
+    "y": 3,
+    "heading": 6
+  },
+  "time_scale_s": 1.0,
+  "canonical_hz": 2.5,
+  "scene_identity": "atc_map is the physical scene; each daily recording is a distinct scene_sequence",
+  "position_scale_m": 0.001,
+  "position_transform": "fixed_scene_center",
+  "scene_center_m": [
+    3.7245,
+    -2.52
+  ],
+  "heading": "motion_angle_rad",
+  "area_m2": 900.0,
+  "area_source": "documented ATC monitored area (Brscic et al. 2013 / dataset documentation)",
+  "heading_provenance": {
+    "kind": "measured_sensor_yaw",
+    "meaning": "Measured body/camera orientation, which can differ from direction of travel.",
+    "source": "the ATC laser-tracker system's own body-orientation estimate (raw column 6, `heading_rad`; carried through as `motion_angle_rad`), not derived from converted positions."
+  }
+}

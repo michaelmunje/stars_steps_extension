@@ -1,0 +1,142 @@
+{
+  "condition": {
+    "checkpoint_metric": "val_minADE",
+    "data_seed": 42,
+    "fine_tuning_learning_rate": null,
+    "forecast_preprocessing_hash": "sha256:9ae74e432c3a970d7ce573f4896e0a7c8344a84a7e0785b85d6717ad9574de17",
+    "k": 20,
+    "model": "moflow_teacher",
+    "source_datasets": [
+      "ptdpes"
+    ],
+    "target_dataset": "eth_ucy",
+    "target_fold": "hotel",
+    "target_fraction": null,
+    "training_stage": "pretrain",
+    "transfer_optimization_hash": "sha256:8748ecfcd44a1de61ef0f420768984da264cbb1ba7fcc5d09dc6eb3aea369d5e"
+  },
+  "metrics": {
+    "topk_ade": {
+      "mean": 0.2249705270166161,
+      "n_seeds": 3,
+      "standard_error": 0.01778197282896951,
+      "std": 0.030799280398584476
+    },
+    "topk_fde": {
+      "mean": 0.3904761275029123,
+      "n_seeds": 3,
+      "standard_error": 0.04470422389369369,
+      "std": 0.07742998709681205
+    }
+  },
+  "runs": [
+    {
+      "checkpoint_data_seed": 42,
+      "checkpoint_metric": "val_minADE",
+      "checkpoint_reference": "moflow_transfer_v2_ptdpes_0",
+      "data_seed": 42,
+      "fine_tuning_best_epoch": null,
+      "fine_tuning_learning_rate": null,
+      "fine_tuning_validation_metric": null,
+      "finetuning_seed": 0,
+      "forecast_preprocessing_hash": "sha256:9ae74e432c3a970d7ce573f4896e0a7c8344a84a7e0785b85d6717ad9574de17",
+      "k": 20,
+      "model": "moflow_teacher",
+      "n_predictions": 133,
+      "pretraining_best_epoch": 3,
+      "pretraining_best_validation_metric": null,
+      "pretraining_checkpoint": null,
+      "pretraining_seed": 0,
+      "pretraining_validation_metric": 0.3666893195347488,
+      "run_dir": "experiments/downstream/direct/moflow/moflow_transfer_v2_ptdpes_0/seed0/eth_ucy-hotel/test",
+      "seed": 0,
+      "source_datasets": [
+        "ptdpes"
+      ],
+      "target_dataset": "eth_ucy",
+      "target_fold": "hotel",
+      "target_fraction": null,
+      "topk_ade": 0.2164416060803976,
+      "topk_ade_standard_error": 0.013001434313403813,
+      "topk_fde": 0.3618783385569888,
+      "topk_fde_standard_error": 0.027177884479412193,
+      "training_stage": "pretrain",
+      "transfer_optimization_hash": "sha256:8748ecfcd44a1de61ef0f420768984da264cbb1ba7fcc5d09dc6eb3aea369d5e",
+      "visual_scenes": 10
+    },
+    {
+      "checkpoint_data_seed": 42,
+      "checkpoint_metric": "val_minADE",
+      "checkpoint_reference": "moflow_transfer_v2_ptdpes_1",
+      "data_seed": 42,
+      "fine_tuning_best_epoch": null,
+      "fine_tuning_learning_rate": null,
+      "fine_tuning_validation_metric": null,
+      "finetuning_seed": 1,
+      "forecast_preprocessing_hash": "sha256:9ae74e432c3a970d7ce573f4896e0a7c8344a84a7e0785b85d6717ad9574de17",
+      "k": 20,
+      "model": "moflow_teacher",
+      "n_predictions": 133,
+      "pretraining_best_epoch": 3,
+      "pretraining_best_validation_metric": null,
+      "pretraining_checkpoint": null,
+      "pretraining_seed": 1,
+      "pretraining_validation_metric": 0.36761990273818373,
+      "run_dir": "experiments/downstream/direct/moflow/moflow_transfer_v2_ptdpes_1/seed1/eth_ucy-hotel/test",
+      "seed": 1,
+      "source_datasets": [
+        "ptdpes"
+      ],
+      "target_dataset": "eth_ucy",
+      "target_fold": "hotel",
+      "target_fraction": null,
+      "topk_ade": 0.19933450581940046,
+      "topk_ade_standard_error": 0.011553159400163738,
+      "topk_fde": 0.3314127172658542,
+      "topk_fde_standard_error": 0.02437884567573443,
+      "training_stage": "pretrain",
+      "transfer_optimization_hash": "sha256:8748ecfcd44a1de61ef0f420768984da264cbb1ba7fcc5d09dc6eb3aea369d5e",
+      "visual_scenes": 10
+    },
+    {
+      "checkpoint_data_seed": 42,
+      "checkpoint_metric": "val_minADE",
+      "checkpoint_reference": "moflow_transfer_v2_ptdpes_2",
+      "data_seed": 42,
+      "fine_tuning_best_epoch": null,
+      "fine_tuning_learning_rate": null,
+      "fine_tuning_validation_metric": null,
+      "finetuning_seed": 2,
+      "forecast_preprocessing_hash": "sha256:9ae74e432c3a970d7ce573f4896e0a7c8344a84a7e0785b85d6717ad9574de17",
+      "k": 20,
+      "model": "moflow_teacher",
+      "n_predictions": 133,
+      "pretraining_best_epoch": 1,
+      "pretraining_best_validation_metric": null,
+      "pretraining_checkpoint": null,
+      "pretraining_seed": 2,
+      "pretraining_validation_metric": 0.3810699954088032,
+      "run_dir": "experiments/downstream/direct/moflow/moflow_transfer_v2_ptdpes_2/seed2/eth_ucy-hotel/test",
+      "seed": 2,
+      "source_datasets": [
+        "ptdpes"
+      ],
+      "target_dataset": "eth_ucy",
+      "target_fold": "hotel",
+      "target_fraction": null,
+      "topk_ade": 0.25913546915005026,
+      "topk_ade_standard_error": 0.022370828548583143,
+      "topk_fde": 0.4781373266858938,
+      "topk_fde_standard_error": 0.05154945930178416,
+      "training_stage": "pretrain",
+      "transfer_optimization_hash": "sha256:8748ecfcd44a1de61ef0f420768984da264cbb1ba7fcc5d09dc6eb3aea369d5e",
+      "visual_scenes": 10
+    }
+  ],
+  "seeds": [
+    0,
+    1,
+    2
+  ],
+  "standard_error_unit": "independent model seeds"
+}

@@ -1,0 +1,61 @@
+{
+  "dataset": "ETH Univ",
+  "canonical_dataset": "eth",
+  "artifact_root": "datasets/eth",
+  "scene_sequences": [
+    "seq_eth"
+  ],
+  "sample_hz": 2.5,
+  "pedestrians": 360,
+  "tracks_with_canonical_gaps": 0,
+  "recording_duration_seconds": 773.6,
+  "total_trajectory_duration_seconds": 3419.2,
+  "trajlets": 823,
+  "non_static_trajlets": 770,
+  "non_static_percent_exact": 93.56014580801944,
+  "opentraj_display_percent_uses_integer_truncation": true,
+  "comparison": {
+    "pedestrians": {
+      "ours": 360,
+      "opentraj": 360,
+      "difference": 0,
+      "status": "match"
+    },
+    "recording_duration_minutes": {
+      "ours": 12.893333333333334,
+      "opentraj": 13.0,
+      "difference": -0.10666666666666558,
+      "status": "match_at_reported_precision"
+    },
+    "total_trajectory_duration_hours": {
+      "ours": 0.9497777777777777,
+      "opentraj": 1.0,
+      "difference": -0.05022222222222228,
+      "status": "matches_upstream_code_table_is_approximate"
+    },
+    "trajlets": {
+      "ours": 823,
+      "opentraj": 823,
+      "difference": 0,
+      "status": "match"
+    },
+    "non_static_percent": {
+      "ours": 93.56014580801944,
+      "opentraj": 93,
+      "difference": 0.5601458080194419,
+      "status": "match_at_reported_precision"
+    }
+  },
+  "pinned_opentraj_execution": {
+    "pedestrians": 360,
+    "recording_duration_seconds": 773.4,
+    "total_trajectory_duration_seconds": 3419.1999999999985,
+    "trajlets": 823,
+    "non_static_trajlets": 770
+  },
+  "investigation_notes": [
+    "Pinned OpenTraj source computes 3419.2 s (56m59.2s, 0.94978 h), exactly matching ours. The paper's 1 h cell is therefore a coarse display value, not a strict one-decimal rounding of its implementation output.",
+    "OpenTraj's benchmark loader sets use_kalman=True for ETH-Univ. This gives 770 non-static trajlets; unsmoothed source positions give 768. Our analysis branch correctly uses the OpenTraj Kalman-smoothed positions.",
+    "Our canonical recording span is 773.6 s versus 773.4 s in the pinned loader. ETH contains a video-frame phase irregularity, and an integer 2.5 Hz grid must quantize this half-timestep endpoint. The 0.2 s difference does not change the displayed 13 min value, trajectory count, duration sum, or trajlet counts."
+  ]
+}

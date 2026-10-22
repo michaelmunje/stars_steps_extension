@@ -1,0 +1,51 @@
+{
+  "dataset": "steps",
+  "raw_glob": "raw/**/frames.cleaned.jsonl",
+  "parser": "steps_fixed_lag_jsonl",
+  "source_hz": 20,
+  "output_hz": 2.5,
+  "canonical_hz": 2.5,
+  "scene_identity": "steps is the physical scene (one fixed indoor atrium); each bag is a distinct scene_sequence",
+  "fields": {
+    "track_id": "tracked_people[].track_id",
+    "x_y": "tracked_people[].position_ground_xy",
+    "heading": "tracked_people[].yaw_ground_rad"
+  },
+  "trajectory_filter": {
+    "confirmed": true,
+    "observed_this_frame": true,
+    "state_source": "global_kalman_posterior",
+    "excluded_finalization_reason": "end_of_stream_flush"
+  },
+  "position_scale_m": 1.0,
+  "position_transform": "identity",
+  "effective_area_aggregation": "union_across_recordings",
+  "area_source": "estimated from the occupancy-grid union because every recording uses the same fixed indoor scene-global coordinate frame",
+  "excluded_recordings": [
+    "atrium_20260824_120001"
+  ],
+  "excluded_recordings_reason": "atrium_20260824_120001 is the calibration bag reserved for tracking validation; converted for provenance but excluded from every split.",
+  "quality_sidecars": "quality/*.quality.parquet and quality/*.frames.parquet",
+  "heading_provenance": {
+    "kind": "measured_sensor_yaw",
+    "meaning": "Measured body/camera orientation, which can differ from direction of travel.",
+    "source": "the tracking system's Kalman-posterior body yaw over ground (`tracked_people[].yaw_ground_rad`), not derived from converted positions."
+  },
+  "cleaned_source": {
+    "release": "/robodata/atrium/ICRA_atrium_cleaned",
+    "note": "Tracks pre-filtered by the upstream cleanup pass before conversion; see each recording's cleanup.report.json.",
+    "filters": {
+      "x_min": -4.0,
+      "x_max": 14.0,
+      "y_min": -3.0,
+      "y_max": 15.0,
+      "min_speed": 0.35,
+      "min_duration": 1.5,
+      "opposite_angle_deg": 120.0,
+      "max_evidence_gap": 0.25,
+      "reset_gap": 1.0,
+      "min_yaw_concentration": 0.2
+    },
+    "comparability": "min_speed=0.35 removes stationary and slow pedestrian tracks upstream, so density and interaction statistics describe the cleaned tracks only."
+  }
+}

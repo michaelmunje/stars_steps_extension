@@ -1,0 +1,82 @@
+{
+  "dataset": "ETH",
+  "recordings": [
+    "seq_eth"
+  ],
+  "analysis_preprocessing": "opentraj_kalman_smooth",
+  "retained_trajlets": 770,
+  "frames": 1448,
+  "indicators": {
+    "speed_mean": {
+      "mean": 1.436383754769703,
+      "median": 1.4698157906532288,
+      "n": 770
+    },
+    "speed_range": {
+      "mean": 0.26261071922717155,
+      "median": 0.21112701296806335,
+      "n": 770
+    },
+    "acceleration_mean_abs": {
+      "mean": 0.08874329852496649,
+      "median": 0.07425934076309204,
+      "n": 770
+    },
+    "acceleration_max_abs": {
+      "mean": 0.20200957570757186,
+      "median": 0.17134979367256165,
+      "n": 770
+    },
+    "path_efficiency": {
+      "mean": 0.9927527997400853,
+      "median": 0.9975617229938507,
+      "n": 770
+    },
+    "local_density_max": {
+      "mean": 0.6195845175310739,
+      "median": 0.4480160020824675,
+      "n": 770
+    },
+    "ttc_min": {
+      "mean": 5.565257024459144,
+      "median": 2.8141786284482673,
+      "n": 627
+    },
+    "dca_min": {
+      "mean": 0.3998659367795751,
+      "median": 0.10584288975586262,
+      "n": 770
+    },
+    "collision_energy": {
+      "mean": 2.073641401125305,
+      "median": 0.24939539690461965,
+      "n": 328
+    }
+  },
+  "global_density": {
+    "mean": 0.01718306844594734,
+    "median": 0.01396558324524683,
+    "n": 1448
+  },
+  "angular_deviation": {
+    "1.6": {
+      "returned_sample_index": 3,
+      "returned_timestamp_s": 1.2000000000000002,
+      "mean_degrees": 0.0519904938558025,
+      "std_degrees": 6.915539048451258
+    },
+    "2.4": {
+      "returned_sample_index": 5,
+      "returned_timestamp_s": 2.0,
+      "mean_degrees": 0.10012343333476303,
+      "std_degrees": 5.429526418688926
+    },
+    "4.8": {
+      "returned_sample_index": 11,
+      "returned_timestamp_s": 4.4,
+      "mean_degrees": -0.002329056463454368,
+      "std_degrees": 9.193857284381593
+    }
+  },
+  "definitions": "Faithful OpenTraj-compatible analysis values; separate from forecasting statistics."
+}

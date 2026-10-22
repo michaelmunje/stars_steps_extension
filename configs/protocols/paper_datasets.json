@@ -1,0 +1,78 @@
+{
+  "schema_version": 1,
+  "description": "Explicit STEPS-paper dataset membership. This is independent of forecasting folds, splits, sampling, and TrajNet categories.",
+  "rows": [
+    {
+      "key": "steps",
+      "label": "STEPS",
+      "setting": "Indoor",
+      "num_physical_scenes": 1,
+      "annotation_source": "Automated",
+      "sources": [
+        {"canonical_dataset": "steps", "scene_sequences": "all_canonical", "analysis_variant": "publication"}
+      ]
+    },
+    {
+      "key": "eth",
+      "label": "ETH",
+      "setting": "University / street",
+      "num_physical_scenes": 2,
+      "annotation_source": "Manual",
+      "sources": [
+        {"canonical_dataset": "eth", "scene_sequences": ["seq_eth", "seq_hotel"], "analysis_variant": "publication"}
+      ]
+    },
+    {
+      "key": "ucy",
+      "label": "UCY",
+      "setting": "University / street",
+      "num_physical_scenes": 3,
+      "annotation_source": "Manual",
+      "sources": [
+        {
+          "canonical_dataset": "ucy",
+          "scene_sequences": [
+            "arxiepiskopi1",
+            "crowds_zara01",
+            "crowds_zara02",
+            "crowds_zara03",
+            "students001",
+            "students003",
+            "uni_examples"
+          ],
+          "analysis_variant": "publication"
+        }
+      ]
+    },
+    {
+      "key": "madras",
+      "label": "MADRAS",
+      "setting": "Public square",
+      "num_physical_scenes": 1,
+      "annotation_source": "Semi-automated",
+      "sources": [
+        {"canonical_dataset": "madras", "scene_sequences": "all_canonical", "analysis_variant": "publication"}
+      ]
+    },
+    {
+      "key": "grand_central",
+      "label": "Grand Central",
+      "setting": "Train station",
+      "num_physical_scenes": 1,
+      "annotation_source": "Manual",
+      "sources": [
+        {"canonical_dataset": "grand_central", "scene_sequences": "all_canonical", "analysis_variant": "publication"}
+      ]
+    },
+    {
+      "key": "ptdpes",
+      "label": "PTDPES",
+      "setting": "Public squares",
+      "num_physical_scenes": 39,
+      "annotation_source": "Automated",
+      "sources": [
+        {"canonical_dataset": "PTDPES", "scene_sequences": "all_canonical", "analysis_variant": "publication"}
+      ]
+    }
+  ]
+}

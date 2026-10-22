@@ -1,0 +1,35 @@
+{
+  "dataset": "PTDPES",
+  "article": "https://www.nature.com/articles/s41597-026-06686-6",
+  "source": "01.Trajectories/02.Trajectories_modified/**/*.csv excluding Test_set",
+  "track_id": "tracker_id",
+  "time": "time seconds, native 2 Hz",
+  "position": "real_world_sw_x/y; smoothed EPSG:3857 metres translated per recording",
+  "heading": "derived",
+  "canonical_hz": 2.5,
+  "canonical_storage": "linearly resampled within continuous source segments to consecutive 2.5 Hz canonical steps",
+  "scene_identity": "physical square/dataset grouping is scene_id; each source recording is scene_sequence",
+  "area_method": "occupancy_grid",
+  "area_source": "Main-table density uses the per-recording occupancy grid; supplied place polygons provide an appendix lower bound. Test_set is quarantined because all nine files are byte-identical duplicates.",
+  "diagnostic_subsets": {
+    "comparative": {
+      "recordings": 147,
+      "locations": 39
+    },
+    "seasonal": {
+      "recordings": 235,
+      "locations": 4
+    },
+    "shared_locations": [
+      "Assisi",
+      "Biberach",
+      "Celanova",
+      "Varberg"
+    ]
+  },
+  "heading_provenance": {
+    "kind": "derived_direction_of_travel",
+    "meaning": "Direction of travel (course-over-ground), not body/sensor orientation.",
+    "computed_from": "atan2 of the position delta between each row's neighboring canonical steps after resampling (convert.py::_headings)."
+  }
+}

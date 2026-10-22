@@ -1,0 +1,142 @@
+{
+  "condition": {
+    "checkpoint_metric": "val_minADE",
+    "data_seed": 42,
+    "fine_tuning_learning_rate": null,
+    "forecast_preprocessing_hash": "sha256:9ae74e432c3a970d7ce573f4896e0a7c8344a84a7e0785b85d6717ad9574de17",
+    "k": 20,
+    "model": "moflow_teacher",
+    "source_datasets": [
+      "ptdpes"
+    ],
+    "target_dataset": "eth_ucy",
+    "target_fold": "eth",
+    "target_fraction": null,
+    "training_stage": "pretrain",
+    "transfer_optimization_hash": "sha256:8748ecfcd44a1de61ef0f420768984da264cbb1ba7fcc5d09dc6eb3aea369d5e"
+  },
+  "metrics": {
+    "topk_ade": {
+      "mean": 0.324527304763156,
+      "n_seeds": 3,
+      "standard_error": 0.044490120797501864,
+      "std": 0.07705914965615
+    },
+    "topk_fde": {
+      "mean": 0.562643940087467,
+      "n_seeds": 3,
+      "standard_error": 0.104505666690876,
+      "std": 0.1810091243874557
+    }
+  },
+  "runs": [
+    {
+      "checkpoint_data_seed": 42,
+      "checkpoint_metric": "val_minADE",
+      "checkpoint_reference": "moflow_transfer_v2_ptdpes_0",
+      "data_seed": 42,
+      "fine_tuning_best_epoch": null,
+      "fine_tuning_learning_rate": null,
+      "fine_tuning_validation_metric": null,
+      "finetuning_seed": 0,
+      "forecast_preprocessing_hash": "sha256:9ae74e432c3a970d7ce573f4896e0a7c8344a84a7e0785b85d6717ad9574de17",
+      "k": 20,
+      "model": "moflow_teacher",
+      "n_predictions": 294,
+      "pretraining_best_epoch": 3,
+      "pretraining_best_validation_metric": null,
+      "pretraining_checkpoint": null,
+      "pretraining_seed": 0,
+      "pretraining_validation_metric": 0.3666893195347488,
+      "run_dir": "experiments/downstream/direct/moflow/moflow_transfer_v2_ptdpes_0/seed0/eth_ucy-eth/test",
+      "seed": 0,
+      "source_datasets": [
+        "ptdpes"
+      ],
+      "target_dataset": "eth_ucy",
+      "target_fold": "eth",
+      "target_fraction": null,
+      "topk_ade": 0.28231532216629607,
+      "topk_ade_standard_error": 0.00851306945301764,
+      "topk_fde": 0.4586503154116676,
+      "topk_fde_standard_error": 0.017961628510493936,
+      "training_stage": "pretrain",
+      "transfer_optimization_hash": "sha256:8748ecfcd44a1de61ef0f420768984da264cbb1ba7fcc5d09dc6eb3aea369d5e",
+      "visual_scenes": 10
+    },
+    {
+      "checkpoint_data_seed": 42,
+      "checkpoint_metric": "val_minADE",
+      "checkpoint_reference": "moflow_transfer_v2_ptdpes_1",
+      "data_seed": 42,
+      "fine_tuning_best_epoch": null,
+      "fine_tuning_learning_rate": null,
+      "fine_tuning_validation_metric": null,
+      "finetuning_seed": 1,
+      "forecast_preprocessing_hash": "sha256:9ae74e432c3a970d7ce573f4896e0a7c8344a84a7e0785b85d6717ad9574de17",
+      "k": 20,
+      "model": "moflow_teacher",
+      "n_predictions": 294,
+      "pretraining_best_epoch": 3,
+      "pretraining_best_validation_metric": null,
+      "pretraining_checkpoint": null,
+      "pretraining_seed": 1,
+      "pretraining_validation_metric": 0.36761990273818373,
+      "run_dir": "experiments/downstream/direct/moflow/moflow_transfer_v2_ptdpes_1/seed1/eth_ucy-eth/test",
+      "seed": 1,
+      "source_datasets": [
+        "ptdpes"
+      ],
+      "target_dataset": "eth_ucy",
+      "target_fold": "eth",
+      "target_fraction": null,
+      "topk_ade": 0.2777972883690579,
+      "topk_ade_standard_error": 0.007481153393374083,
+      "topk_fde": 0.4576270662970385,
+      "topk_fde_standard_error": 0.01473124272726114,
+      "training_stage": "pretrain",
+      "transfer_optimization_hash": "sha256:8748ecfcd44a1de61ef0f420768984da264cbb1ba7fcc5d09dc6eb3aea369d5e",
+      "visual_scenes": 10
+    },
+    {
+      "checkpoint_data_seed": 42,
+      "checkpoint_metric": "val_minADE",
+      "checkpoint_reference": "moflow_transfer_v2_ptdpes_2",
+      "data_seed": 42,
+      "fine_tuning_best_epoch": null,
+      "fine_tuning_learning_rate": null,
+      "fine_tuning_validation_metric": null,
+      "finetuning_seed": 2,
+      "forecast_preprocessing_hash": "sha256:9ae74e432c3a970d7ce573f4896e0a7c8344a84a7e0785b85d6717ad9574de17",
+      "k": 20,
+      "model": "moflow_teacher",
+      "n_predictions": 294,
+      "pretraining_best_epoch": 1,
+      "pretraining_best_validation_metric": null,
+      "pretraining_checkpoint": null,
+      "pretraining_seed": 2,
+      "pretraining_validation_metric": 0.3810699954088032,
+      "run_dir": "experiments/downstream/direct/moflow/moflow_transfer_v2_ptdpes_2/seed2/eth_ucy-eth/test",
+      "seed": 2,
+      "source_datasets": [
+        "ptdpes"
+      ],
+      "target_dataset": "eth_ucy",
+      "target_fold": "eth",
+      "target_fraction": null,
+      "topk_ade": 0.41346930375411395,
+      "topk_ade_standard_error": 0.016724936607393263,
+      "topk_fde": 0.7716544385536948,
+      "topk_fde_standard_error": 0.0376730116159138,
+      "training_stage": "pretrain",
+      "transfer_optimization_hash": "sha256:8748ecfcd44a1de61ef0f420768984da264cbb1ba7fcc5d09dc6eb3aea369d5e",
+      "visual_scenes": 10
+    }
+  ],
+  "seeds": [
+    0,
+    1,
+    2
+  ],
+  "standard_error_unit": "independent model seeds"
+}

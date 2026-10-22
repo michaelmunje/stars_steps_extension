@@ -1,0 +1,3102 @@
+[
+  {
+    "dataset": "eth",
+    "recordings": 2,
+    "frames": 2616,
+    "agent_frames": 15452,
+    "mean": 5.9067278287461775,
+    "median": 5.0,
+    "p95": 13.0,
+    "p99": 22.84999999999991,
+    "max": 27,
+    "solo_frame_share": 0.08409785932721713,
+    "definition": "distinct track ids sharing a timestamp within one recording, over occupied frames only",
+    "per_recording": {
+      "seq_eth": {
+        "frames": 1448,
+        "mean": 6.151933701657459,
+        "max": 27
+      },
+      "seq_hotel": {
+        "frames": 1168,
+        "mean": 5.602739726027397,
+        "max": 18
+      }
+    }
+  },
+  {
+    "dataset": "ucy",
+    "recordings": 7,
+    "frames": 4447,
+    "agent_frames": 62116,
+    "mean": 13.968068360692602,
+    "median": 8.0,
+    "p95": 49.0,
+    "p99": 61.0,
+    "max": 75,
+    "solo_frame_share": 0.031032156510006747,
+    "definition": "distinct track ids sharing a timestamp within one recording, over occupied frames only",
+    "per_recording": {
+      "arxiepiskopi1": {
+        "frames": 76,
+        "mean": 17.86842105263158,
+        "max": 24
+      },
+      "crowds_zara01": {
+        "frames": 865,
+        "mean": 5.764161849710983,
+        "max": 20
+      },
+      "crowds_zara02": {
+        "frames": 1051,
+        "mean": 9.030447193149381,
+        "max": 18
+      },
+      "crowds_zara03": {
+        "frames": 752,
+        "mean": 6.461436170212766,
+        "max": 18
+      },
+      "students001": {
+        "frames": 443,
+        "mean": 48.160270880361175,
+        "max": 75
+      },
+      "students003": {
+        "frames": 540,
+        "mean": 32.36666666666667,
+        "max": 51
+      },
+      "uni_examples": {
+        "frames": 720,
+        "mean": 3.623611111111111,
+        "max": 9
+      }
+    }
+  },
+  {
+    "dataset": "madras",
+    "recordings": 12,
+    "frames": 3959,
+    "agent_frames": 277387,
+    "mean": 70.0649153826724,
+    "median": 48.0,
+    "p95": 223.0999999999999,
+    "p99": 550.0,
+    "max": 595,
+    "solo_frame_share": 0.0035362465269007325,
+    "definition": "distinct track ids sharing a timestamp within one recording, over occupied frames only",
+    "per_recording": {
+      "LargeView_tracers": {
+        "frames": 54,
+        "mean": 138.5,
+        "max": 277
+      },
+      "LargeView_zoom_A": {
+        "frames": 184,
+        "mean": 178.47826086956522,
+        "max": 561
+      },
+      "LargeView_zoom_O": {
+        "frames": 300,
+        "mean": 253.64,
+        "max": 595
+      },
+      "TopView_1A": {
+        "frames": 529,
+        "mean": 56.024574669187146,
+        "max": 72
+      },
+      "TopView_1B": {
+        "frames": 400,
+        "mean": 54.1275,
+        "max": 68
+      },
+      "TopView_1C": {
+        "frames": 510,
+        "mean": 29.774509803921568,
+        "max": 50
+      },
+      "TopView_2A": {
+        "frames": 403,
+        "mean": 79.94292803970224,
+        "max": 110
+      },
+      "TopView_2B": {
+        "frames": 339,
+        "mean": 59.40117994100295,
+        "max": 122
+      },
+      "TopView_2C": {
+        "frames": 456,
+        "mean": 49.203947368421055,
+        "max": 62
+      },
+      "TopView_2D": {
+        "frames": 402,
+        "mean": 29.45771144278607,
+        "max": 49
+      },
+      "TopView_2E": {
+        "frames": 182,
+        "mean": 25.87912087912088,
+        "max": 48
+      },
+      "TopView_2F": {
+        "frames": 200,
+        "mean": 15.8,
+        "max": 29
+      }
+    }
+  },
+  {
+    "dataset": "grand_central",
+    "recordings": 1,
+    "frames": 11460,
+    "agent_frames": 873804,
+    "mean": 76.24816753926702,
+    "median": 73.0,
+    "p95": 153.0,
+    "p99": 232.0,
+    "max": 284,
+    "solo_frame_share": 0.040837696335078534,
+    "definition": "distinct track ids sharing a timestamp within one recording, over occupied frames only",
+    "per_recording": {
+      "grand_central": {
+        "frames": 11460,
+        "mean": 76.24816753926702,
+        "max": 284
+      }
+    }
+  },
+  {
+    "dataset": "steps",
+    "recordings": 198,
+    "frames": 277411,
+    "agent_frames": 4413998,
+    "mean": 15.911402215485326,
+    "median": 16.0,
+    "p95": 29.0,
+    "p99": 37.0,
+    "max": 51,
+    "solo_frame_share": 0.01798054150700585,
+    "definition": "distinct track ids sharing a timestamp within one recording, over occupied frames only",
+    "per_recording": {
+      "atrium_20260818_094501": {
+        "frames": 1476,
+        "mean": 2.3895663956639566,
+        "max": 7
+      },
+      "atrium_20260818_103001": {
+        "frames": 1358,
+        "mean": 1.6855670103092784,
+        "max": 4
+      },
+      "atrium_20260818_111501": {
+        "frames": 1494,
+        "mean": 4.335341365461847,
+        "max": 9
+      },
+      "atrium_20260818_120001": {
+        "frames": 1494,
+        "mean": 3.710843373493976,
+        "max": 9
+      },
+      "atrium_20260818_124501": {
+        "frames": 1304,
+        "mean": 3.8420245398773005,
+        "max": 14
+      },
+      "atrium_20260818_133001": {
+        "frames": 1494,
+        "mean": 14.97991967871486,
+        "max": 27
+      },
+      "atrium_20260818_141501": {
+        "frames": 1493,
+        "mean": 6.159410582719357,
+        "max": 13
+      },
+      "atrium_20260818_150001": {
+        "frames": 1494,
+        "mean": 7.765060240963855,
+        "max": 12
+      },
+      "atrium_20260819_094502": {
+        "frames": 1428,
+        "mean": 2.253501400560224,
+        "max": 7
+      },
+      "atrium_20260819_103001": {
+        "frames": 1494,
+        "mean": 10.28714859437751,
+        "max": 16
+      },
+      "atrium_20260819_111501": {
+        "frames": 1494,
+        "mean": 11.637884872824632,
+        "max": 16
+      },
+      "atrium_20260819_120001": {
+        "frames": 1494,
+        "mean": 3.6626506024096384,
+        "max": 10
+      },
+      "atrium_20260819_124501": {
+        "frames": 1494,
+        "mean": 10.664658634538153,
+        "max": 19
+      },
+      "atrium_20260819_133001": {
+        "frames": 1494,
+        "mean": 4.3681392235609104,
+        "max": 14
+      },
+      "atrium_20260819_141501": {
+        "frames": 1494,
+        "mean": 10.508032128514056,
+        "max": 17
+      },
+      "atrium_20260819_150001": {
+        "frames": 1494,
+        "mean": 9.098393574297189,
+        "max": 12
+      },
+      "atrium_20260819_154501": {
+        "frames": 1493,
+        "mean": 5.937039517749498,
+        "max": 9
+      },
+      "atrium_20260820_094501": {
+        "frames": 1494,
+        "mean": 5.762382864792503,
+        "max": 13
+      },
+      "atrium_20260820_103001": {
+        "frames": 1494,
+        "mean": 4.28380187416332,
+        "max": 11
+      },
+      "atrium_20260820_111501": {
+        "frames": 1493,
+        "mean": 5.711319490957803,
+        "max": 9
+      },
+      "atrium_20260820_120001": {
+        "frames": 1494,
+        "mean": 37.94846050870147,
+        "max": 51
+      },
+      "atrium_20260820_124501": {
+        "frames": 1494,
+        "mean": 38.201472556894245,
+        "max": 46
+      },
+      "atrium_20260820_133001": {
+        "frames": 1494,
+        "mean": 5.494645247657296,
+        "max": 10
+      },
+      "atrium_20260820_141501": {
+        "frames": 1494,
+        "mean": 15.012717536813922,
+        "max": 22
+      },
+      "atrium_20260820_150001": {
+        "frames": 1494,
+        "mean": 24.6144578313253,
+        "max": 29
+      },
+      "atrium_20260820_154501": {
+        "frames": 1494,
+        "mean": 15.014725568942437,
+        "max": 20
+      },
+      "atrium_20260821_094501": {
+        "frames": 1491,
+        "mean": 4.832997987927565,
+        "max": 9
+      },
+      "atrium_20260821_103001": {
+        "frames": 796,
+        "mean": 1.535175879396985,
+        "max": 6
+      },
+      "atrium_20260821_111501": {
+        "frames": 1493,
+        "mean": 5.976557267247153,
+        "max": 11
+      },
+      "atrium_20260821_120001": {
+        "frames": 1494,
+        "mean": 6.270414993306559,
+        "max": 14
+      },
+      "atrium_20260821_124502": {
+        "frames": 1494,
+        "mean": 13.301204819277109,
+        "max": 19
+      },
+      "atrium_20260821_133001": {
+        "frames": 1494,
+        "mean": 11.30722891566265,
+        "max": 21
+      },
+      "atrium_20260821_141501": {
+        "frames": 1493,
+        "mean": 14.87073007367716,
+        "max": 19
+      },
+      "atrium_20260821_150001": {
+        "frames": 1493,
+        "mean": 5.414601473543201,
+        "max": 13
+      },
+      "atrium_20260821_154502": {
+        "frames": 1494,
+        "mean": 3.9497991967871484,
+        "max": 9
+      },
+      "atrium_20260821_163001": {
+        "frames": 1491,
+        "mean": 4.934272300469484,
+        "max": 10
+      },
+      "atrium_20260821_171501": {
+        "frames": 879,
+        "mean": 3.3265073947667805,
+        "max": 10
+      },
+      "atrium_20260824_094501": {
+        "frames": 1491,
+        "mean": 12.778672032193159,
+        "max": 26
+      },
+      "atrium_20260824_103001": {
+        "frames": 1493,
+        "mean": 16.69457468184863,
+        "max": 22
+      },
+      "atrium_20260824_111501": {
+        "frames": 1494,
+        "mean": 16.311244979919678,
+        "max": 24
+      },
+      "atrium_20260824_120001": {
+        "frames": 1493,
+        "mean": 34.332217012726055,
+        "max": 49
+      },
+      "atrium_20260824_124501": {
+        "frames": 1494,
+        "mean": 31.647925033467203,
+        "max": 43
+      },
+      "atrium_20260824_133001": {
+        "frames": 1493,
+        "mean": 30.27193569993302,
+        "max": 38
+      },
+      "atrium_20260824_141501": {
+        "frames": 1494,
+        "mean": 16.0615796519411,
+        "max": 27
+      },
+      "atrium_20260824_150001": {
+        "frames": 1491,
+        "mean": 28.323943661971832,
+        "max": 34
+      },
+      "atrium_20260824_154501": {
+        "frames": 1494,
+        "mean": 22.7235609103079,
+        "max": 40
+      },
+      "atrium_20260824_163001": {
+        "frames": 1494,
+        "mean": 15.259705488621151,
+        "max": 25
+      },
+      "atrium_20260824_171501": {
+        "frames": 1491,
+        "mean": 8.054996646545943,
+        "max": 12
+      },
+      "atrium_20260825_094501": {
+        "frames": 1491,
+        "mean": 19.16096579476861,
+        "max": 26
+      },
+      "atrium_20260825_103001": {
+        "frames": 1491,
+        "mean": 21.065727699530516,
+        "max": 28
+      },
+      "atrium_20260825_111501": {
+        "frames": 1494,
+        "mean": 21.832663989290495,
+        "max": 26
+      },
+      "atrium_20260825_120001": {
+        "frames": 1493,
+        "mean": 27.931011386470193,
+        "max": 35
+      },
+      "atrium_20260825_124501": {
+        "frames": 1493,
+        "mean": 22.21701272605492,
+        "max": 35
+      },
+      "atrium_20260825_133001": {
+        "frames": 1491,
+        "mean": 25.305164319248828,
+        "max": 45
+      },
+      "atrium_20260825_141501": {
+        "frames": 1494,
+        "mean": 18.728915662650603,
+        "max": 25
+      },
+      "atrium_20260825_150001": {
+        "frames": 1494,
+        "mean": 24.94243641231593,
+        "max": 37
+      },
+      "atrium_20260825_154501": {
+        "frames": 1487,
+        "mean": 6.1842636180228645,
+        "max": 22
+      },
+      "atrium_20260825_163001": {
+        "frames": 1491,
+        "mean": 18.295774647887324,
+        "max": 23
+      },
+      "atrium_20260825_171501": {
+        "frames": 1491,
+        "mean": 9.238765928906775,
+        "max": 14
+      },
+      "atrium_20260826_094501": {
+        "frames": 1493,
+        "mean": 23.19490957803081,
+        "max": 43
+      },
+      "atrium_20260826_103001": {
+        "frames": 1494,
+        "mean": 21.119812583668004,
+        "max": 28
+      },
+      "atrium_20260826_111501": {
+        "frames": 1494,
+        "mean": 18.44176706827309,
+        "max": 26
+      },
+      "atrium_20260826_120002": {
+        "frames": 1491,
+        "mean": 26.24614352783367,
+        "max": 37
+      },
+      "atrium_20260826_124501": {
+        "frames": 1494,
+        "mean": 20.755689424364125,
+        "max": 32
+      },
+      "atrium_20260826_133001": {
+        "frames": 1493,
+        "mean": 18.49162759544541,
+        "max": 27
+      },
+      "atrium_20260826_141501": {
+        "frames": 1494,
+        "mean": 18.13922356091031,
+        "max": 25
+      },
+      "atrium_20260826_150001": {
+        "frames": 1493,
+        "mean": 18.210314802411254,
+        "max": 30
+      },
+      "atrium_20260826_154501": {
+        "frames": 1491,
+        "mean": 14.631790744466802,
+        "max": 28
+      },
+      "atrium_20260826_163001": {
+        "frames": 1491,
+        "mean": 8.03755868544601,
+        "max": 12
+      },
+      "atrium_20260826_171501": {
+        "frames": 1494,
+        "mean": 15.045515394912986,
+        "max": 20
+      },
+      "atrium_20260827_094501": {
+        "frames": 1493,
+        "mean": 8.585398526456798,
+        "max": 14
+      },
+      "atrium_20260827_103001": {
+        "frames": 1493,
+        "mean": 5.986604152712659,
+        "max": 12
+      },
+      "atrium_20260827_111501": {
+        "frames": 1494,
+        "mean": 14.866800535475234,
+        "max": 22
+      },
+      "atrium_20260827_120001": {
+        "frames": 1494,
+        "mean": 22.737617135207497,
+        "max": 33
+      },
+      "atrium_20260827_124501": {
+        "frames": 1491,
+        "mean": 24.92823608316566,
+        "max": 32
+      },
+      "atrium_20260827_133001": {
+        "frames": 1491,
+        "mean": 19.085177733065056,
+        "max": 24
+      },
+      "atrium_20260827_141501": {
+        "frames": 1494,
+        "mean": 22.2764390896921,
+        "max": 29
+      },
+      "atrium_20260827_150001": {
+        "frames": 1492,
+        "mean": 21.945040214477213,
+        "max": 38
+      },
+      "atrium_20260827_154501": {
+        "frames": 1492,
+        "mean": 8.785522788203753,
+        "max": 18
+      },
+      "atrium_20260827_163001": {
+        "frames": 1492,
+        "mean": 8.471849865951743,
+        "max": 17
+      },
+      "atrium_20260827_171501": {
+        "frames": 1494,
+        "mean": 12.291164658634537,
+        "max": 19
+      },
+      "atrium_20260828_094501": {
+        "frames": 1493,
+        "mean": 12.90488948425988,
+        "max": 29
+      },
+      "atrium_20260828_103001": {
+        "frames": 1494,
+        "mean": 13.268406961178046,
+        "max": 23
+      },
+      "atrium_20260828_111501": {
+        "frames": 1492,
+        "mean": 19.652815013404826,
+        "max": 31
+      },
+      "atrium_20260828_120001": {
+        "frames": 1494,
+        "mean": 22.63186077643909,
+        "max": 31
+      },
+      "atrium_20260828_124501": {
+        "frames": 1494,
+        "mean": 20.799866131191433,
+        "max": 36
+      },
+      "atrium_20260828_133001": {
+        "frames": 1491,
+        "mean": 26.576794097920857,
+        "max": 36
+      },
+      "atrium_20260828_141501": {
+        "frames": 1493,
+        "mean": 18.58472873409243,
+        "max": 26
+      },
+      "atrium_20260828_150001": {
+        "frames": 1490,
+        "mean": 12.074496644295301,
+        "max": 15
+      },
+      "atrium_20260828_154502": {
+        "frames": 1491,
+        "mean": 11.981891348088531,
+        "max": 24
+      },
+      "atrium_20260828_163001": {
+        "frames": 1491,
+        "mean": 10.869885982562039,
+        "max": 16
+      },
+      "atrium_20260828_171501": {
+        "frames": 1491,
+        "mean": 10.936955063715628,
+        "max": 17
+      },
+      "atrium_20260831_094501": {
+        "frames": 1493,
+        "mean": 20.093101138647018,
+        "max": 32
+      },
+      "atrium_20260831_103001": {
+        "frames": 1493,
+        "mean": 19.175485599464167,
+        "max": 31
+      },
+      "atrium_20260831_111501": {
+        "frames": 1348,
+        "mean": 24.135756676557865,
+        "max": 32
+      },
+      "atrium_20260831_120001": {
+        "frames": 1493,
+        "mean": 17.424648359008707,
+        "max": 35
+      },
+      "atrium_20260831_124501": {
+        "frames": 1491,
+        "mean": 25.575452716297786,
+        "max": 38
+      },
+      "atrium_20260831_133001": {
+        "frames": 1491,
+        "mean": 21.62977867203219,
+        "max": 31
+      },
+      "atrium_20260831_141501": {
+        "frames": 1494,
+        "mean": 18.24631860776439,
+        "max": 23
+      },
+      "atrium_20260831_150001": {
+        "frames": 1493,
+        "mean": 16.411922304085735,
+        "max": 21
+      },
+      "atrium_20260831_154501": {
+        "frames": 1491,
+        "mean": 20.99195171026157,
+        "max": 38
+      },
+      "atrium_20260831_163001": {
+        "frames": 1491,
+        "mean": 14.58953722334004,
+        "max": 20
+      },
+      "atrium_20260831_171501": {
+        "frames": 1494,
+        "mean": 15.386880856760374,
+        "max": 21
+      },
+      "atrium_20260901_094501": {
+        "frames": 1494,
+        "mean": 8.813253012048193,
+        "max": 14
+      },
+      "atrium_20260901_103002": {
+        "frames": 1494,
+        "mean": 11.06091030789826,
+        "max": 16
+      },
+      "atrium_20260901_111501": {
+        "frames": 1493,
+        "mean": 27.12860013395847,
+        "max": 35
+      },
+      "atrium_20260901_120002": {
+        "frames": 1494,
+        "mean": 24.814591700133867,
+        "max": 36
+      },
+      "atrium_20260901_124501": {
+        "frames": 1491,
+        "mean": 28.132126089872568,
+        "max": 37
+      },
+      "atrium_20260901_133001": {
+        "frames": 1494,
+        "mean": 20.414993306559573,
+        "max": 31
+      },
+      "atrium_20260901_141501": {
+        "frames": 1494,
+        "mean": 20.769745649263722,
+        "max": 29
+      },
+      "atrium_20260901_150001": {
+        "frames": 1491,
+        "mean": 11.522468142186453,
+        "max": 22
+      },
+      "atrium_20260901_154501": {
+        "frames": 1493,
+        "mean": 6.788345612860013,
+        "max": 10
+      },
+      "atrium_20260901_163001": {
+        "frames": 1491,
+        "mean": 6.150234741784038,
+        "max": 15
+      },
+      "atrium_20260901_171501": {
+        "frames": 1491,
+        "mean": 7.78672032193159,
+        "max": 15
+      },
+      "atrium_20260902_094501": {
+        "frames": 1491,
+        "mean": 18.19181757209926,
+        "max": 32
+      },
+      "atrium_20260902_103001": {
+        "frames": 1491,
+        "mean": 20.06639839034205,
+        "max": 31
+      },
+      "atrium_20260902_111501": {
+        "frames": 1491,
+        "mean": 19.72300469483568,
+        "max": 27
+      },
+      "atrium_20260902_124501": {
+        "frames": 1494,
+        "mean": 23.049531459170012,
+        "max": 31
+      },
+      "atrium_20260902_133001": {
+        "frames": 1494,
+        "mean": 20.36077643908969,
+        "max": 29
+      },
+      "atrium_20260902_141501": {
+        "frames": 1491,
+        "mean": 16.31924882629108,
+        "max": 24
+      },
+      "atrium_20260902_171501": {
+        "frames": 1494,
+        "mean": 11.92904953145917,
+        "max": 20
+      },
+      "atrium_20260903_094501": {
+        "frames": 1488,
+        "mean": 14.32728494623656,
+        "max": 22
+      },
+      "atrium_20260903_103001": {
+        "frames": 1493,
+        "mean": 20.114534494306763,
+        "max": 26
+      },
+      "atrium_20260903_111501": {
+        "frames": 1494,
+        "mean": 24.08835341365462,
+        "max": 31
+      },
+      "atrium_20260903_120001": {
+        "frames": 1491,
+        "mean": 26.189805499664654,
+        "max": 44
+      },
+      "atrium_20260903_124501": {
+        "frames": 1491,
+        "mean": 23.95439302481556,
+        "max": 35
+      },
+      "atrium_20260903_133001": {
+        "frames": 1491,
+        "mean": 15.819584171696848,
+        "max": 22
+      },
+      "atrium_20260903_141501": {
+        "frames": 1493,
+        "mean": 18.8780977896852,
+        "max": 28
+      },
+      "atrium_20260903_150001": {
+        "frames": 1493,
+        "mean": 16.35632953784327,
+        "max": 26
+      },
+      "atrium_20260903_154501": {
+        "frames": 1494,
+        "mean": 11.53012048192771,
+        "max": 17
+      },
+      "atrium_20260903_163001": {
+        "frames": 1494,
+        "mean": 14.806559571619813,
+        "max": 20
+      },
+      "atrium_20260903_171501": {
+        "frames": 1491,
+        "mean": 7.164319248826291,
+        "max": 12
+      },
+      "atrium_20260904_094501": {
+        "frames": 1493,
+        "mean": 17.271265907568655,
+        "max": 34
+      },
+      "atrium_20260904_103001": {
+        "frames": 1491,
+        "mean": 14.482897384305835,
+        "max": 19
+      },
+      "atrium_20260904_111501": {
+        "frames": 1491,
+        "mean": 18.083836351441985,
+        "max": 24
+      },
+      "atrium_20260904_120001": {
+        "frames": 1494,
+        "mean": 15.234270414993306,
+        "max": 25
+      },
+      "atrium_20260904_124501": {
+        "frames": 1494,
+        "mean": 15.218206157965193,
+        "max": 24
+      },
+      "atrium_20260904_133001": {
+        "frames": 1494,
+        "mean": 18.72623828647925,
+        "max": 31
+      },
+      "atrium_20260904_141501": {
+        "frames": 1491,
+        "mean": 20.613011401743798,
+        "max": 25
+      },
+      "atrium_20260904_150001": {
+        "frames": 1493,
+        "mean": 15.087073007367716,
+        "max": 20
+      },
+      "atrium_20260904_154501": {
+        "frames": 1491,
+        "mean": 11.652582159624414,
+        "max": 24
+      },
+      "atrium_20260904_163001": {
+        "frames": 1491,
+        "mean": 9.205902079141516,
+        "max": 17
+      },
+      "atrium_20260904_171501": {
+        "frames": 1265,
+        "mean": 1.5280632411067194,
+        "max": 6
+      },
+      "atrium_20260907_094501": {
+        "frames": 22,
+        "mean": 1.0,
+        "max": 1
+      },
+      "atrium_20260907_103001": {
+        "frames": 54,
+        "mean": 1.0,
+        "max": 1
+      },
+      "atrium_20260907_111501": {
+        "frames": 61,
+        "mean": 2.0327868852459017,
+        "max": 3
+      },
+      "atrium_20260907_120001": {
+        "frames": 133,
+        "mean": 2.112781954887218,
+        "max": 5
+      },
+      "atrium_20260907_124501": {
+        "frames": 178,
+        "mean": 2.264044943820225,
+        "max": 4
+      },
+      "atrium_20260907_133001": {
+        "frames": 201,
+        "mean": 1.626865671641791,
+        "max": 4
+      },
+      "atrium_20260907_141501": {
+        "frames": 116,
+        "mean": 1.043103448275862,
+        "max": 2
+      },
+      "atrium_20260907_150001": {
+        "frames": 295,
+        "mean": 1.2881355932203389,
+        "max": 3
+      },
+      "atrium_20260907_154501": {
+        "frames": 488,
+        "mean": 1.7274590163934427,
+        "max": 4
+      },
+      "atrium_20260907_163001": {
+        "frames": 100,
+        "mean": 2.45,
+        "max": 3
+      },
+      "atrium_20260907_171501": {
+        "frames": 29,
+        "mean": 1.206896551724138,
+        "max": 2
+      },
+      "atrium_20260908_094501": {
+        "frames": 1493,
+        "mean": 23.150033489618217,
+        "max": 35
+      },
+      "atrium_20260908_103001": {
+        "frames": 1493,
+        "mean": 26.04755525787006,
+        "max": 39
+      },
+      "atrium_20260908_111501": {
+        "frames": 1493,
+        "mean": 19.851975887474882,
+        "max": 26
+      },
+      "atrium_20260908_120001": {
+        "frames": 1491,
+        "mean": 21.123407109322603,
+        "max": 27
+      },
+      "atrium_20260908_124501": {
+        "frames": 1492,
+        "mean": 20.523458445040216,
+        "max": 28
+      },
+      "atrium_20260908_133002": {
+        "frames": 1364,
+        "mean": 12.107038123167156,
+        "max": 18
+      },
+      "atrium_20260908_141501": {
+        "frames": 1494,
+        "mean": 14.17938420348059,
+        "max": 22
+      },
+      "atrium_20260908_150001": {
+        "frames": 1494,
+        "mean": 23.715528781793843,
+        "max": 30
+      },
+      "atrium_20260908_154501": {
+        "frames": 1494,
+        "mean": 15.809906291834002,
+        "max": 21
+      },
+      "atrium_20260908_163001": {
+        "frames": 1494,
+        "mean": 15.786479250334672,
+        "max": 25
+      },
+      "atrium_20260908_171501": {
+        "frames": 1494,
+        "mean": 4.306559571619813,
+        "max": 10
+      },
+      "atrium_20260909_094501": {
+        "frames": 1493,
+        "mean": 21.405224380442064,
+        "max": 35
+      },
+      "atrium_20260909_103001": {
+        "frames": 1491,
+        "mean": 23.75452716297787,
+        "max": 30
+      },
+      "atrium_20260909_111501": {
+        "frames": 1494,
+        "mean": 14.997322623828648,
+        "max": 21
+      },
+      "atrium_20260909_120001": {
+        "frames": 1494,
+        "mean": 26.609772423025436,
+        "max": 35
+      },
+      "atrium_20260909_124501": {
+        "frames": 1491,
+        "mean": 25.319919517102615,
+        "max": 34
+      },
+      "atrium_20260909_133001": {
+        "frames": 1491,
+        "mean": 21.579476861167002,
+        "max": 28
+      },
+      "atrium_20260909_141501": {
+        "frames": 1494,
+        "mean": 18.633199464524765,
+        "max": 26
+      },
+      "atrium_20260909_150001": {
+        "frames": 1493,
+        "mean": 24.348961821835232,
+        "max": 30
+      },
+      "atrium_20260909_154501": {
+        "frames": 1493,
+        "mean": 13.732752846617549,
+        "max": 30
+      },
+      "atrium_20260909_163001": {
+        "frames": 1493,
+        "mean": 12.112525117213664,
+        "max": 17
+      },
+      "atrium_20260909_171501": {
+        "frames": 1494,
+        "mean": 21.45917001338688,
+        "max": 29
+      },
+      "atrium_20260910_094501": {
+        "frames": 1494,
+        "mean": 13.840696117804551,
+        "max": 20
+      },
+      "atrium_20260910_103001": {
+        "frames": 1492,
+        "mean": 11.953083109919572,
+        "max": 19
+      },
+      "atrium_20260910_111501": {
+        "frames": 1494,
+        "mean": 17.502677376171352,
+        "max": 23
+      },
+      "atrium_20260910_120001": {
+        "frames": 1493,
+        "mean": 14.679839249832552,
+        "max": 22
+      },
+      "atrium_20260910_124501": {
+        "frames": 1491,
+        "mean": 14.312541918175722,
+        "max": 22
+      },
+      "atrium_20260910_133001": {
+        "frames": 1492,
+        "mean": 21.55697050938338,
+        "max": 29
+      },
+      "atrium_20260910_141501": {
+        "frames": 1491,
+        "mean": 23.4916163648558,
+        "max": 31
+      },
+      "atrium_20260910_150001": {
+        "frames": 1491,
+        "mean": 14.796780684104627,
+        "max": 26
+      },
+      "atrium_20260910_154501": {
+        "frames": 1491,
+        "mean": 11.767940979208586,
+        "max": 18
+      },
+      "atrium_20260910_163001": {
+        "frames": 1491,
+        "mean": 14.678068410462776,
+        "max": 21
+      },
+      "atrium_20260910_171501": {
+        "frames": 1494,
+        "mean": 8.982597054886211,
+        "max": 16
+      },
+      "atrium_20260911_094501": {
+        "frames": 1494,
+        "mean": 16.80722891566265,
+        "max": 29
+      },
+      "atrium_20260911_103001": {
+        "frames": 1494,
+        "mean": 20.231593038821956,
+        "max": 27
+      },
+      "atrium_20260911_111501": {
+        "frames": 1491,
+        "mean": 26.124748490945674,
+        "max": 36
+      },
+      "atrium_20260911_120001": {
+        "frames": 1494,
+        "mean": 21.36077643908969,
+        "max": 37
+      },
+      "atrium_20260911_124501": {
+        "frames": 1491,
+        "mean": 18.230717639168343,
+        "max": 26
+      },
+      "atrium_20260911_133001": {
+        "frames": 1491,
+        "mean": 21.44600938967136,
+        "max": 27
+      },
+      "atrium_20260911_141501": {
+        "frames": 1491,
+        "mean": 13.460093896713616,
+        "max": 18
+      },
+      "atrium_20260911_150001": {
+        "frames": 1494,
+        "mean": 8.19946452476573,
+        "max": 29
+      },
+      "atrium_20260911_154501": {
+        "frames": 1490,
+        "mean": 16.65503355704698,
+        "max": 31
+      },
+      "atrium_20260911_163002": {
+        "frames": 1494,
+        "mean": 2.7724230254350735,
+        "max": 5
+      },
+      "atrium_20260911_171501": {
+        "frames": 309,
+        "mean": 1.3106796116504855,
+        "max": 2
+      }
+    }
+  },
+  {
+    "dataset": "PTDPES",
+    "recordings": 382,
+    "frames": 1445198,
+    "agent_frames": 24189642,
+    "mean": 16.737943174568468,
+    "median": 9.0,
+    "p95": 61.0,
+    "p99": 100.0,
+    "max": 189,
+    "solo_frame_share": 0.0977326290238431,
+    "definition": "distinct track ids sharing a timestamp within one recording, over occupied frames only",
+    "per_recording": {
+      "01.Trajectories_comparative__csv__04_evening_Assisi_15fps_1800sec_yolov10l_final__3576bad5": {
+        "frames": 4501,
+        "mean": 33.20417684958898,
+        "max": 60
+      },
+      "01.Trajectories_comparative__csv__04_morning_Assisi_15fps_1800sec_yolov10l_final__94036f54": {
+        "frames": 4490,
+        "mean": 6.896436525612472,
+        "max": 19
+      },
+      "01.Trajectories_comparative__csv__04_noon_Assisi_15fps_1800sec_yolov10l_final__938195b2": {
+        "frames": 1031,
+        "mean": 39.28806983511154,
+        "max": 52
+      },
+      "01.Trajectories_comparative__csv__04_saturday_Assisi_15fps_30min_yolov10l_final__26a81722": {
+        "frames": 4501,
+        "mean": 38.13819151299711,
+        "max": 74
+      },
+      "01.Trajectories_comparative__csv__07_evening_Bevagna_15_1084min_yolov10l_final__66700034": {
+        "frames": 2592,
+        "mean": 11.710262345679013,
+        "max": 43
+      },
+      "01.Trajectories_comparative__csv__07_morning_Bevagna_15_30min_yolov10l_final__33dc2498": {
+        "frames": 459,
+        "mean": 1.5403050108932461,
+        "max": 4
+      },
+      "01.Trajectories_comparative__csv__07_noon_Bevagna_15_30min_yolov10l_final__7b972d69": {
+        "frames": 4161,
+        "mean": 5.739005046863735,
+        "max": 20
+      },
+      "01.Trajectories_comparative__csv__07_saturday_Bevagna_15fps_30min_yolov10l_final__8937cd3c": {
+        "frames": 2650,
+        "mean": 2.5845283018867926,
+        "max": 9
+      },
+      "01.Trajectories_comparative__csv__08_evening_Biberach_15fps_1800sec_yolov10l_final__3adf3bc6": {
+        "frames": 4501,
+        "mean": 36.315263274827814,
+        "max": 62
+      },
+      "01.Trajectories_comparative__csv__08_morning_Biberach_15fps_1800sec_yolov10l_final__4c844494": {
+        "frames": 3394,
+        "mean": 2.7961107837360046,
+        "max": 9
+      },
+      "01.Trajectories_comparative__csv__08_noon_Biberach_15fps_1800sec_yolov10l_final__f76792a4": {
+        "frames": 4501,
+        "mean": 23.234392357253945,
+        "max": 43
+      },
+      "01.Trajectories_comparative__csv__09_evening_Varberg_15fps_1800sec_yolov10l_final__d0556e8c": {
+        "frames": 4498,
+        "mean": 8.625389061805247,
+        "max": 21
+      },
+      "01.Trajectories_comparative__csv__09_morning_Varberg_15fps_1800sec_yolov10l_final__2eacc0e8": {
+        "frames": 1461,
+        "mean": 1.29637234770705,
+        "max": 4
+      },
+      "01.Trajectories_comparative__csv__09_noon_Varberg_15fps_1800sec_yolov10l_final__94adf52a": {
+        "frames": 4501,
+        "mean": 12.438791379693402,
+        "max": 27
+      },
+      "01.Trajectories_comparative__csv__09_saturday_Varberg_15fps_30min_yolov10l_final__04523765": {
+        "frames": 4501,
+        "mean": 15.571650744279049,
+        "max": 36
+      },
+      "01.Trajectories_comparative__csv__102_evening_Bielsko-Biala_15fps_30min_yolov10l_final__f2a0ef0d": {
+        "frames": 4470,
+        "mean": 9.314988814317674,
+        "max": 26
+      },
+      "01.Trajectories_comparative__csv__102_morning_Bielsko_Biala_15fps_30min_yolov10l_final__acea20d2": {
+        "frames": 3957,
+        "mean": 3.153399039676523,
+        "max": 9
+      },
+      "01.Trajectories_comparative__csv__102_noon_Bielsko-Biala_15fps_30min_yolov10l_final__b51c3a29": {
+        "frames": 4499,
+        "mean": 10.032229384307623,
+        "max": 27
+      },
+      "01.Trajectories_comparative__csv__102_saturday_Bieslko_Biala_15fps_30min_yolov10l_final__04020e19": {
+        "frames": 4500,
+        "mean": 8.366888888888889,
+        "max": 18
+      },
+      "01.Trajectories_comparative__csv__103_evening_Brzeg_15fps_1800sec_yolov10l_final__ba382d17": {
+        "frames": 4501,
+        "mean": 7.3105976449677845,
+        "max": 19
+      },
+      "01.Trajectories_comparative__csv__103_morning_Brzeg_15fps_1800sec_yolov10l_final__8b1b58f4": {
+        "frames": 4489,
+        "mean": 4.436845622633103,
+        "max": 11
+      },
+      "01.Trajectories_comparative__csv__103_noon_Brzeg_15fps_1800sec_yolov10l_final__47531065": {
+        "frames": 4501,
+        "mean": 9.755387691624083,
+        "max": 27
+      },
+      "01.Trajectories_comparative__csv__103_saturday_Brzeg_15fps_1800sec_yolov10l_final__15cdbf93": {
+        "frames": 4496,
+        "mean": 7.872108540925267,
+        "max": 24
+      },
+      "01.Trajectories_comparative__csv__104_evening_Brzesko_yolov10l_final__a2efefb5": {
+        "frames": 4464,
+        "mean": 6.707437275985663,
+        "max": 16
+      },
+      "01.Trajectories_comparative__csv__104_morning_Brzesko_yolov10l_final__5bb2a712": {
+        "frames": 2692,
+        "mean": 1.6485884101040118,
+        "max": 4
+      },
+      "01.Trajectories_comparative__csv__104_noon_Brzesko_yolov10l_final__3c9bfe04": {
+        "frames": 4485,
+        "mean": 4.850167224080267,
+        "max": 13
+      },
+      "01.Trajectories_comparative__csv__104_saturday_Brzesko_yolov10l_final__6e8ef173": {
+        "frames": 2763,
+        "mean": 2.0155627940644227,
+        "max": 9
+      },
+      "01.Trajectories_comparative__csv__105_evening_Brzesko_market_15_30min_yolov10l_final__dbf95f8b": {
+        "frames": 3685,
+        "mean": 3.433921302578019,
+        "max": 12
+      },
+      "01.Trajectories_comparative__csv__105_morning_Brzesko_market_15_30min_yolov10l_final__23711c88": {
+        "frames": 838,
+        "mean": 1.2673031026252983,
+        "max": 5
+      },
+      "01.Trajectories_comparative__csv__105_noon_Brzesko_market_15_980min_yolov10l_final__2e15adad": {
+        "frames": 1755,
+        "mean": 1.70997150997151,
+        "max": 6
+      },
+      "01.Trajectories_comparative__csv__105_saturday_Brzesko_Market_15fps_1800sec_yolov10l_final__c2f8fbae": {
+        "frames": 2129,
+        "mean": 2.5941756693283233,
+        "max": 15
+      },
+      "01.Trajectories_comparative__csv__110_evening_Luban_yolov10l_final__c27e8a25": {
+        "frames": 4501,
+        "mean": 6.382803821373028,
+        "max": 15
+      },
+      "01.Trajectories_comparative__csv__110_morning_Luban_yolov10l_final__a2df3aa9": {
+        "frames": 3853,
+        "mean": 1.74046197767973,
+        "max": 7
+      },
+      "01.Trajectories_comparative__csv__110_noon_Luban_yolov10l_final__43104031": {
+        "frames": 4501,
+        "mean": 14.836925127749389,
+        "max": 32
+      },
+      "01.Trajectories_comparative__csv__110_saturday_Luban_yolov10l_final__04fc2a3a": {
+        "frames": 4501,
+        "mean": 29.604310153299267,
+        "max": 47
+      },
+      "01.Trajectories_comparative__csv__112_evening_Czersk_15fps_1800sec_yolov10l_final__b5908af0": {
+        "frames": 4150,
+        "mean": 5.724819277108434,
+        "max": 16
+      },
+      "01.Trajectories_comparative__csv__112_morning_Czersk_15fps_1800sec_yolov10l_final__96cdc24f": {
+        "frames": 4682,
+        "mean": 3.530969671080735,
+        "max": 12
+      },
+      "01.Trajectories_comparative__csv__112_noon_Czersk_15fps_1800sec_yolov10l_final__df0db88f": {
+        "frames": 4498,
+        "mean": 9.585148955091151,
+        "max": 21
+      },
+      "01.Trajectories_comparative__csv__112_saturday_Czersk_15fps_30min_yolov10l_final__42eced37": {
+        "frames": 4501,
+        "mean": 31.537658298155964,
+        "max": 49
+      },
+      "01.Trajectories_comparative__csv__113_evening_Debica_15fps_30min_yolov10l_final__c5df353f": {
+        "frames": 4501,
+        "mean": 5.552766051988447,
+        "max": 22
+      },
+      "01.Trajectories_comparative__csv__113_morning_Debica_15fps_30min_yolov10l_final__3052cce5": {
+        "frames": 4340,
+        "mean": 3.4108294930875576,
+        "max": 11
+      },
+      "01.Trajectories_comparative__csv__113_noon_Debica_15fps_30min_yolov10l_final__ec3d80c9": {
+        "frames": 4501,
+        "mean": 7.055543212619418,
+        "max": 15
+      },
+      "01.Trajectories_comparative__csv__113_saturday_Debica_15fps_30min_yolov10l_final__1d859eea": {
+        "frames": 4501,
+        "mean": 5.343034881137525,
+        "max": 12
+      },
+      "01.Trajectories_comparative__csv__114_evening_Frombork_15fps_1800sec_yolov10l_final__3e752169": {
+        "frames": 636,
+        "mean": 4.544025157232705,
+        "max": 11
+      },
+      "01.Trajectories_comparative__csv__114_morning_Frombork_15fps_1800sec_yolov10l_final__1f43ebc1": {
+        "frames": 738,
+        "mean": 1.2859078590785908,
+        "max": 3
+      },
+      "01.Trajectories_comparative__csv__114_noon_Frombork_15fps_1800sec_yolov10l_final__8f296a28": {
+        "frames": 3022,
+        "mean": 3.3927862342819326,
+        "max": 16
+      },
+      "01.Trajectories_comparative__csv__114_saturday_Frombork_15fps_30min_yolov10l_final__f64e4b19": {
+        "frames": 4353,
+        "mean": 5.258442453480359,
+        "max": 14
+      },
+      "01.Trajectories_comparative__csv__118_evening_Jaworzno_15fps_30sec_yolov10l_final__47365e9d": {
+        "frames": 4143,
+        "mean": 5.14409847936278,
+        "max": 21
+      },
+      "01.Trajectories_comparative__csv__118_morning_Jaworzno_15fps_1800sec_yolov10l_final__a0b4eb8e": {
+        "frames": 4823,
+        "mean": 3.189301264772963,
+        "max": 11
+      },
+      "01.Trajectories_comparative__csv__118_noon_Jaworzno_15fps_30sec_yolov10l_final__1e23036a": {
+        "frames": 4251,
+        "mean": 4.752293577981652,
+        "max": 23
+      },
+      "01.Trajectories_comparative__csv__118_saturday_Jaworzno_15fps_30min_yolov10l_final__517397dd": {
+        "frames": 3346,
+        "mean": 3.6464435146443517,
+        "max": 26
+      },
+      "01.Trajectories_comparative__csv__119_evening_Jelenia_Gora_15fps_1800sec_yolov10l_final__1e24c6f5": {
+        "frames": 4495,
+        "mean": 11.7559510567297,
+        "max": 27
+      },
+      "01.Trajectories_comparative__csv__119_morning_Jelenia_Gora_15fps_1800sec_yolov10l_final__df7cbf27": {
+        "frames": 4127,
+        "mean": 2.5107826508359583,
+        "max": 10
+      },
+      "01.Trajectories_comparative__csv__119_noon_Jelenia_Gora_15fps_1800sec_yolov10l_final__2428610c": {
+        "frames": 4499,
+        "mean": 9.710380084463214,
+        "max": 30
+      },
+      "01.Trajectories_comparative__csv__119_saturday_Jelenia_Gora_15fps_1800sec_yolov10l_final__4d888462": {
+        "frames": 4501,
+        "mean": 16.34147967118418,
+        "max": 29
+      },
+      "01.Trajectories_comparative__csv__122_evening_Ozorkow_15fps_1800sec_yolov10l_final__01f89049": {
+        "frames": 3154,
+        "mean": 2.816740646797717,
+        "max": 11
+      },
+      "01.Trajectories_comparative__csv__122_morning_Ozorkow_15fps_1800sec_yolov10l_final__57d05890": {
+        "frames": 2597,
+        "mean": 1.41817481709665,
+        "max": 4
+      },
+      "01.Trajectories_comparative__csv__122_noon_Ozorkow_15fps_1800sec_yolov10l_final__c26af740": {
+        "frames": 2633,
+        "mean": 1.639574629699962,
+        "max": 5
+      },
+      "01.Trajectories_comparative__csv__124_evening_Swidnik_15fps_1800sec_yolov10l_final__994bba4c": {
+        "frames": 4501,
+        "mean": 16.513663630304375,
+        "max": 32
+      },
+      "01.Trajectories_comparative__csv__124_morning_Swidnik_15fps_1800sec_yolov10l_final__fcfbb245": {
+        "frames": 1983,
+        "mean": 1.4185577407967727,
+        "max": 4
+      },
+      "01.Trajectories_comparative__csv__124_noon_Swidnik_15fps_1800sec_yolov10l_final__71da5110": {
+        "frames": 4258,
+        "mean": 4.063644903710662,
+        "max": 16
+      },
+      "01.Trajectories_comparative__csv__124_saturday_Swidnik_15fps_30min_yolov10l_final__2dfad7bd": {
+        "frames": 3005,
+        "mean": 2.0369384359400997,
+        "max": 8
+      },
+      "01.Trajectories_comparative__csv__125_evening_Lublin_yolov10l_final__0ad0b6cb": {
+        "frames": 3593,
+        "mean": 10.47759532424158,
+        "max": 25
+      },
+      "01.Trajectories_comparative__csv__125_morning_Lublin_yolov10l_final__c2333872": {
+        "frames": 3679,
+        "mean": 3.7205762435444414,
+        "max": 15
+      },
+      "01.Trajectories_comparative__csv__125_noon_Lublin_yolov10l_final__e5959ae7": {
+        "frames": 4501,
+        "mean": 9.626305265496557,
+        "max": 28
+      },
+      "01.Trajectories_comparative__csv__125_saturday_Lublin_yolov10l_final__e8f7feca": {
+        "frames": 4468,
+        "mean": 9.662041181736795,
+        "max": 36
+      },
+      "01.Trajectories_comparative__csv__126_evening_Lubliniec_15fps_30sec_yolov10l_final__9e1e2dfe": {
+        "frames": 4465,
+        "mean": 6.339305711086226,
+        "max": 15
+      },
+      "01.Trajectories_comparative__csv__126_morning_Lubliniec_15fps_1800sec_yolov10l_final__d6b4c170": {
+        "frames": 5038,
+        "mean": 3.260420801905518,
+        "max": 10
+      },
+      "01.Trajectories_comparative__csv__126_noon_Lubliniec_15fps_1800sec_yolov10l_final__1789ac31": {
+        "frames": 4501,
+        "mean": 10.98555876471895,
+        "max": 26
+      },
+      "01.Trajectories_comparative__csv__126_saturday_Lubliniec_15fps_30min_yolov10l_final__64bb1458": {
+        "frames": 4501,
+        "mean": 9.03621417462786,
+        "max": 19
+      },
+      "01.Trajectories_comparative__csv__128_morning_Myslenice_15fps_30sec_yolov10l_final__869e7618": {
+        "frames": 4190,
+        "mean": 3.050835322195704,
+        "max": 8
+      },
+      "01.Trajectories_comparative__csv__128_noon_Myslenice_15fps_1800sec_yolov10l_final__8be7652a": {
+        "frames": 3513,
+        "mean": 2.9217193282095075,
+        "max": 12
+      },
+      "01.Trajectories_comparative__csv__128_saturday_Myslenice_15fps_30min_yolov10l_final__07557e20": {
+        "frames": 4353,
+        "mean": 5.804272915230875,
+        "max": 15
+      },
+      "01.Trajectories_comparative__csv__130_evening_Nowy_Targ_15fps_30sec_yolov10l_final__56760daa": {
+        "frames": 4501,
+        "mean": 18.64918906909576,
+        "max": 36
+      },
+      "01.Trajectories_comparative__csv__130_morning_Nowy_Targ_15fps_30sec_yolov10l_final__807828fa": {
+        "frames": 4170,
+        "mean": 2.7400479616306956,
+        "max": 8
+      },
+      "01.Trajectories_comparative__csv__130_noon_Nowy_Targ_15fps_30sec_yolov10l_final__d83e3039": {
+        "frames": 4501,
+        "mean": 13.427238391468563,
+        "max": 39
+      },
+      "01.Trajectories_comparative__csv__130_saturday_Nowy_Targ_15fps_30min_yolov10l_final__7c7939c8": {
+        "frames": 4477,
+        "mean": 10.010051373687737,
+        "max": 24
+      },
+      "01.Trajectories_comparative__csv__16_evening_Wolsztyn_15fps_1800sec_yolov10l_final__bda5ee3d": {
+        "frames": 4501,
+        "mean": 10.248833592534993,
+        "max": 20
+      },
+      "01.Trajectories_comparative__csv__16_morning_Wolsztyn_15fps_1800sec_yolov10l_final__7475429c": {
+        "frames": 677,
+        "mean": 1.5391432791728212,
+        "max": 4
+      },
+      "01.Trajectories_comparative__csv__16_noon_Wolsztyn_15fps_1800sec_yolov10l_final__8c64fe2b": {
+        "frames": 4497,
+        "mean": 9.734044918834778,
+        "max": 20
+      },
+      "01.Trajectories_comparative__csv__16_saturday_Wolsztyn_15fps_30min_yolov10l_final__86756adf": {
+        "frames": 4426,
+        "mean": 4.419114324446452,
+        "max": 13
+      },
+      "01.Trajectories_comparative__csv__20_evening_Kromeriz_15fps_1800sec_yolov10l_final__b69d13c3": {
+        "frames": 1709,
+        "mean": 1.6290228203627852,
+        "max": 7
+      },
+      "01.Trajectories_comparative__csv__20_morning_Kromeriz_15fps_1800sec_yolov10l_final__d9f4159a": {
+        "frames": 352,
+        "mean": 1.1534090909090908,
+        "max": 2
+      },
+      "01.Trajectories_comparative__csv__20_noon_Kromeriz_15fps_1800sec_yolov10l_final__9e3d8e22": {
+        "frames": 1141,
+        "mean": 2.1069237510955303,
+        "max": 8
+      },
+      "01.Trajectories_comparative__csv__20_saturday_Kromeriz_15fps_30min_yolov10l_final__fffe235f": {
+        "frames": 368,
+        "mean": 1.1005434782608696,
+        "max": 2
+      },
+      "01.Trajectories_comparative__csv__45_evening_Montefalco_15fps_1800sec_yolov10l_final__3421dfc5": {
+        "frames": 2079,
+        "mean": 3.88985088985089,
+        "max": 13
+      },
+      "01.Trajectories_comparative__csv__45_morning_Montefalco_15fps_1800sec_yolov10l_final__7197ace5": {
+        "frames": 870,
+        "mean": 1.232183908045977,
+        "max": 3
+      },
+      "01.Trajectories_comparative__csv__45_noon_Montefalco_15fps_1800sec_yolov10l_final__5365ee59": {
+        "frames": 3547,
+        "mean": 3.6016351846630954,
+        "max": 10
+      },
+      "01.Trajectories_comparative__csv__48_evening_Prijedor_15_30min_yolov10l_final__6e0aca33": {
+        "frames": 4501,
+        "mean": 10.965563208175961,
+        "max": 27
+      },
+      "01.Trajectories_comparative__csv__48_morning_Prijedor_15_30min_yolov10l_final__f4ada599": {
+        "frames": 4501,
+        "mean": 9.577427238391468,
+        "max": 24
+      },
+      "01.Trajectories_comparative__csv__48_noon_Prijedor_15_30min_yolov10l_final__6cd23fa4": {
+        "frames": 4501,
+        "mean": 14.249722283936903,
+        "max": 34
+      },
+      "01.Trajectories_comparative__csv__48_saturday_Prijedor_15fps_1800sec_yolov10l_final__7d55a8d4": {
+        "frames": 4500,
+        "mean": 6.053333333333334,
+        "max": 14
+      },
+      "01.Trajectories_comparative__csv__52_evening_Schwabish_Gmund_15_30min_yolov10l_final__5c27bb2f": {
+        "frames": 4496,
+        "mean": 8.27891459074733,
+        "max": 20
+      },
+      "01.Trajectories_comparative__csv__52_morning_Schwabish_Gmund_15_30min_yolov10l_final__910fa97f": {
+        "frames": 3909,
+        "mean": 2.9363008442056793,
+        "max": 9
+      },
+      "01.Trajectories_comparative__csv__52_noon_Schwabish_Gmund_15_30min_yolov10l_final__fbc27d34": {
+        "frames": 4495,
+        "mean": 13.135261401557285,
+        "max": 28
+      },
+      "01.Trajectories_comparative__csv__52_saturday_Schwabish_Gmund_15fps_30min_yolov10l_final__e4679149": {
+        "frames": 4501,
+        "mean": 22.32814930015552,
+        "max": 41
+      },
+      "01.Trajectories_comparative__csv__61_evening_Sittard_15fps_1800sec_yolov10l_final__8c8bc32b": {
+        "frames": 4204,
+        "mean": 4.908896289248335,
+        "max": 16
+      },
+      "01.Trajectories_comparative__csv__61_morning_Sittard_15fps_1800sec_yolov10l_final__027fe443": {
+        "frames": 4041,
+        "mean": 3.204652313783717,
+        "max": 9
+      },
+      "01.Trajectories_comparative__csv__61_noon_Sittard_15fps_1800sec_yolov10l_final__65b231c3": {
+        "frames": 4320,
+        "mean": 7.743287037037037,
+        "max": 21
+      },
+      "01.Trajectories_comparative__csv__64_evening_NoviSad_15fps_30min_yolov10l_final__bf3309c3": {
+        "frames": 4501,
+        "mean": 67.32170628749166,
+        "max": 105
+      },
+      "01.Trajectories_comparative__csv__64_noon_NoviSad_15fps_30min_yolov10l_final__7a25975f": {
+        "frames": 4501,
+        "mean": 38.37636080870917,
+        "max": 64
+      },
+      "01.Trajectories_comparative__csv__64_saturday_Novi_Sad_15fps_30min_yolov10l_final__63b9f8a2": {
+        "frames": 4501,
+        "mean": 22.96067540546545,
+        "max": 65
+      },
+      "01.Trajectories_comparative__csv__67_evening_Trencin-Mierove_yolov10l_final__d5c14d84": {
+        "frames": 4500,
+        "mean": 11.884666666666666,
+        "max": 32
+      },
+      "01.Trajectories_comparative__csv__67_morning_Trencin-Mierove_15fps_30min_yolov10l_final__bd8745d8": {
+        "frames": 3719,
+        "mean": 2.5334767410594248,
+        "max": 9
+      },
+      "01.Trajectories_comparative__csv__67_noon_Trencin-Mierove_15fps_30min_yolov10l_final__703f2fa4": {
+        "frames": 4500,
+        "mean": 14.18288888888889,
+        "max": 40
+      },
+      "01.Trajectories_comparative__csv__67_saturday_Trencin_Mierove_15fps_989min_yolov10l_final__1635b874": {
+        "frames": 2476,
+        "mean": 12.288772213247173,
+        "max": 26
+      },
+      "01.Trajectories_comparative__csv__68_evening_Trencin-Sturovo_15_30min_yolov10l_final__bec2c7b8": {
+        "frames": 2945,
+        "mean": 2.9113752122241086,
+        "max": 9
+      },
+      "01.Trajectories_comparative__csv__68_morning_Trencin-Sturovo_15fps_30min_yolov10l_final__2aa82703": {
+        "frames": 907,
+        "mean": 1.6306504961411246,
+        "max": 5
+      },
+      "01.Trajectories_comparative__csv__68_noon_Trencin-Sturovo_15fps_30min_yolov10l_final__e920ded0": {
+        "frames": 3675,
+        "mean": 3.7583673469387757,
+        "max": 11
+      },
+      "01.Trajectories_comparative__csv__68_saturday_Trencin-Sturovo_15fps_30min_yolov10l_final__a4c02d67": {
+        "frames": 3949,
+        "mean": 8.230184856925804,
+        "max": 25
+      },
+      "01.Trajectories_comparative__csv__74_evening_Celanova_15_30min_yolov10l_final__bff11927": {
+        "frames": 3472,
+        "mean": 2.536290322580645,
+        "max": 8
+      },
+      "01.Trajectories_comparative__csv__74_morning_Celanova_15fps_30min_yolov10l_final__19847df7": {
+        "frames": 1896,
+        "mean": 1.7621308016877637,
+        "max": 5
+      },
+      "01.Trajectories_comparative__csv__74_noon_Celanova_15fps_30min_yolov10l_final__0a68a16c": {
+        "frames": 4370,
+        "mean": 7.043478260869565,
+        "max": 18
+      },
+      "01.Trajectories_comparative__csv__74_saturday_Celanova_15fps_30min_yolov10l_final__fa1f16c5": {
+        "frames": 4501,
+        "mean": 15.891579648966896,
+        "max": 35
+      },
+      "01.Trajectories_comparative__csv__82_morning_Villamartin_yolov10l_final__f3e86cb4": {
+        "frames": 3333,
+        "mean": 1.6684668466846684,
+        "max": 4
+      },
+      "01.Trajectories_comparative__csv__82_noon_Villamartin_yolov10l_final__bbc5686b": {
+        "frames": 2266,
+        "mean": 1.5344218887908208,
+        "max": 5
+      },
+      "01.Trajectories_comparative__csv__82_saturday_Villamartin_yolov10l_final__a575ca18": {
+        "frames": 1580,
+        "mean": 2.036075949367089,
+        "max": 9
+      },
+      "01.Trajectories_comparative__csv__87_evening_Luhacovice_15_30min_yolov10l_final__8f70cc5b": {
+        "frames": 4501,
+        "mean": 17.41146411908465,
+        "max": 38
+      },
+      "01.Trajectories_comparative__csv__87_morning_Luhac_ovice_15fps_30min_yolov10l_final__8f19819e": {
+        "frames": 1757,
+        "mean": 2.3369379624359703,
+        "max": 7
+      },
+      "01.Trajectories_comparative__csv__87_noon_Luhacovice_15fps_30min_yolov10l_final__c167146c": {
+        "frames": 4501,
+        "mean": 18.263941346367474,
+        "max": 32
+      },
+      "01.Trajectories_comparative__csv__87_saturday_Luhacovice_15fps_30min_yolov10l_final__f8790ead": {
+        "frames": 4501,
+        "mean": 22.858253721395247,
+        "max": 52
+      },
+      "01.Trajectories_comparative__csv__89_evening_Most_15_30min_yolov10l_final__8b31a1f9": {
+        "frames": 2199,
+        "mean": 2.0422919508867667,
+        "max": 8
+      },
+      "01.Trajectories_comparative__csv__89_morning_Most_15_1604min_yolov10l_final__e38b2963": {
+        "frames": 2701,
+        "mean": 2.3109959274342837,
+        "max": 6
+      },
+      "01.Trajectories_comparative__csv__89_noon_Most_15_30min_yolov10l_final__1ab965ad": {
+        "frames": 2903,
+        "mean": 2.391319324836376,
+        "max": 7
+      },
+      "01.Trajectories_comparative__csv__89_saturday_Most_15fps_1776min_yolov10l_final__932fb662": {
+        "frames": 1345,
+        "mean": 1.4721189591078068,
+        "max": 5
+      },
+      "01.Trajectories_comparative__csv__90_evening_Pribram_yolov10l_final__a94be10d": {
+        "frames": 3786,
+        "mean": 3.8911780243000527,
+        "max": 9
+      },
+      "01.Trajectories_comparative__csv__90_morning_Pribram_yolov10l_final__3441bb33": {
+        "frames": 2105,
+        "mean": 1.9890736342042756,
+        "max": 7
+      },
+      "01.Trajectories_comparative__csv__90_noon_Pribram_15fps_1800sec_yolov10l_final__7f529c35": {
+        "frames": 3490,
+        "mean": 2.8808022922636103,
+        "max": 12
+      },
+      "01.Trajectories_comparative__csv__90_saturday_Pribram_15fps_1763min_yolov10l_final__f4191cf8": {
+        "frames": 2277,
+        "mean": 2.7940272288098376,
+        "max": 13
+      },
+      "01.Trajectories_comparative__csv__91_evening_Zlin_15_30min_yolov10l_final__16aa414d": {
+        "frames": 4501,
+        "mean": 23.363696956231948,
+        "max": 43
+      },
+      "01.Trajectories_comparative__csv__91_morning_Zli_n_15fps_30min_yolov10l_final__507215e8": {
+        "frames": 1725,
+        "mean": 4.895652173913043,
+        "max": 10
+      },
+      "01.Trajectories_comparative__csv__91_noon_Zlin_15fps_30min_yolov10l_final__6e91adbc": {
+        "frames": 4501,
+        "mean": 23.550988669184626,
+        "max": 45
+      },
+      "01.Trajectories_comparative__csv__92_evening_Valasske_15fps_1800sec_yolov10l_final__06a10f11": {
+        "frames": 4496,
+        "mean": 11.663923487544483,
+        "max": 26
+      },
+      "01.Trajectories_comparative__csv__92_morning_Valasske_15fps_1800sec_yolov10l_final__2e0fb99d": {
+        "frames": 4110,
+        "mean": 3.443552311435523,
+        "max": 11
+      },
+      "01.Trajectories_comparative__csv__92_noon_Valasske_15fps_1800sec_yolov10l_final__1c02f7ec": {
+        "frames": 4369,
+        "mean": 5.812085145342183,
+        "max": 16
+      },
+      "01.Trajectories_comparative__csv__92_saturday_Valasske_15fps_30min_yolov10l_final__fc0fb684": {
+        "frames": 4333,
+        "mean": 5.690745441957073,
+        "max": 15
+      },
+      "01.Trajectories_comparative__csv__93_evening_Vrchlabi_15fps_1800sec_yolov10l_final__01b0eac1": {
+        "frames": 1317,
+        "mean": 2.1427486712224755,
+        "max": 7
+      },
+      "01.Trajectories_comparative__csv__93_morning_Vrchlabi_15fps_1800sec_yolov10l_final__e54e0d0a": {
+        "frames": 2072,
+        "mean": 2.0463320463320462,
+        "max": 8
+      },
+      "01.Trajectories_comparative__csv__93_noon_Vrchlabi_15fps_1800sec_yolov10l_final__ed979a2b": {
+        "frames": 4024,
+        "mean": 4.5017395626242545,
+        "max": 24
+      },
+      "01.Trajectories_comparative__csv__93_saturday_Vrchlabi_15fps_30min_yolov10l_final__c9026056": {
+        "frames": 2713,
+        "mean": 3.2664946553630667,
+        "max": 11
+      },
+      "01.Trajectories_comparative__csv__98_morning_Szentendre_15_30min_yolov10l_final__db65ba05": {
+        "frames": 2319,
+        "mean": 1.4441569642087106,
+        "max": 4
+      },
+      "01.Trajectories_comparative__csv__98_noon_Szentendre_15_30min_yolov10l_final__424ca0e2": {
+        "frames": 4501,
+        "mean": 24.18884692290602,
+        "max": 50
+      },
+      "01.Trajectories_comparative__csv__98_saturday_Szentendre_15fps_30min_yolov10l_final__a3c13a14": {
+        "frames": 4499,
+        "mean": 13.6570348966437,
+        "max": 28
+      },
+      "01.Trajectories_comparative__csv__99_evening_Leicester_15fps_1800sec_yolov10l_final__c1faecb4": {
+        "frames": 4501,
+        "mean": 17.626527438347033,
+        "max": 35
+      },
+      "01.Trajectories_comparative__csv__99_morning_Leicester_15fps_1800sec_yolov10l_final__4b81c1bb": {
+        "frames": 4303,
+        "mean": 4.425981873111782,
+        "max": 15
+      },
+      "01.Trajectories_comparative__csv__99_noon_Leicester_15fps_1800sec_yolov10l_final__7d1a9754": {
+        "frames": 4501,
+        "mean": 16.193956898467007,
+        "max": 32
+      },
+      "01.Trajectories_comparative__csv__99_saturday_Leicester_15fps_30min_yolov10l_final__435b3057": {
+        "frames": 4501,
+        "mean": 26.400577649411243,
+        "max": 46
+      },
+      "02.Trajectories_season__Assisi__speed__04_20250325_morning_Assisi_15_1800sec_HD_yolov10l_final__77ef8e5c": {
+        "frames": 4397,
+        "mean": 5.7425517398226065,
+        "max": 19
+      },
+      "02.Trajectories_season__Assisi__speed__04_20250325_noon_Assisi_15_1800sec_HD_yolov10l_final__b15b9e2c": {
+        "frames": 3134,
+        "mean": 45.28142948308871,
+        "max": 89
+      },
+      "02.Trajectories_season__Assisi__speed__04_20250329_evening_Assisi_15_1800sec_HD_yolov10l_final__003c4286": {
+        "frames": 4501,
+        "mean": 45.82448344812264,
+        "max": 105
+      },
+      "02.Trajectories_season__Assisi__speed__04_20250329_noon_Assisi_15_1800sec_HD_yolov10l_final__c27204ca": {
+        "frames": 4501,
+        "mean": 55.051766274161295,
+        "max": 95
+      },
+      "02.Trajectories_season__Assisi__speed__04_20250401_evening_Assisi_15_1800sec_HD_yolov10l_final__6890ac9c": {
+        "frames": 3746,
+        "mean": 21.78723972237053,
+        "max": 56
+      },
+      "02.Trajectories_season__Assisi__speed__04_20250401_morning_Assisi_15_1800sec_HD_yolov10l_final__5cf935de": {
+        "frames": 4489,
+        "mean": 5.525729561149476,
+        "max": 13
+      },
+      "02.Trajectories_season__Assisi__speed__04_20250401_noon_Assisi_15_1800sec_HD_yolov10l_final__725b8a3f": {
+        "frames": 4501,
+        "mean": 18.182848255943124,
+        "max": 45
+      },
+      "02.Trajectories_season__Assisi__speed__04_20250405_morning_Assisi_15_1800sec_HD_yolov10l_final__f2a627e7": {
+        "frames": 4501,
+        "mean": 22.18595867584981,
+        "max": 66
+      },
+      "02.Trajectories_season__Assisi__speed__04_20250408_evening_Assisi_15_1800sec_HD_yolov10l_final__cf881ad7": {
+        "frames": 4501,
+        "mean": 31.939346811819597,
+        "max": 55
+      },
+      "02.Trajectories_season__Assisi__speed__04_20250408_morning_Assisi_15_1800sec_HD_yolov10l_final__c9b1f0d1": {
+        "frames": 4435,
+        "mean": 4.867869222096956,
+        "max": 21
+      },
+      "02.Trajectories_season__Assisi__speed__04_20250408_noon_Assisi_15_1800sec_HD_yolov10l_final__a76e7816": {
+        "frames": 4501,
+        "mean": 60.03065985336592,
+        "max": 118
+      },
+      "02.Trajectories_season__Assisi__speed__04_20250412_evening_Assisi_15_1800sec_HD_yolov10l_final__32a1fe1a": {
+        "frames": 4501,
+        "mean": 83.5712063985781,
+        "max": 129
+      },
+      "02.Trajectories_season__Assisi__speed__04_20250412_noon_Assisi_15_1800sec_HD_yolov10l_final__4c4468f8": {
+        "frames": 4501,
+        "mean": 78.24616751832926,
+        "max": 116
+      },
+      "02.Trajectories_season__Assisi__speed__04_20250415_evening_Assisi_15_1800sec_HD_yolov10l_final__1930783f": {
+        "frames": 4501,
+        "mean": 41.28793601421906,
+        "max": 69
+      },
+      "02.Trajectories_season__Assisi__speed__04_20250415_morning_Assisi_15_1800sec_HD_yolov10l_final__3bc96870": {
+        "frames": 4170,
+        "mean": 5.43189448441247,
+        "max": 26
+      },
+      "02.Trajectories_season__Assisi__speed__04_20250415_noon_Assisi_15_1800sec_HD_yolov10l_final__d27c6d1d": {
+        "frames": 4501,
+        "mean": 38.26527438347034,
+        "max": 78
+      },
+      "02.Trajectories_season__Assisi__speed__04_20250416_morning_Assisi_15_1800sec_HD_yolov10l_final__cd78ed0a": {
+        "frames": 4471,
+        "mean": 7.812346231268172,
+        "max": 17
+      },
+      "02.Trajectories_season__Assisi__speed__04_20250416_noon_Assisi_15_1800sec_HD_yolov10l_final__e76d6c77": {
+        "frames": 4501,
+        "mean": 48.037547211730725,
+        "max": 79
+      },
+      "02.Trajectories_season__Assisi__speed__04_20250419_morning_Assisi_15_1800sec_HD_yolov10l_final__94a58dbf": {
+        "frames": 4498,
+        "mean": 26.194753223654956,
+        "max": 70
+      },
+      "02.Trajectories_season__Assisi__speed__04_20250419_noon_Assisi_15_1800sec_HD_yolov10l_final__a8a207b5": {
+        "frames": 4501,
+        "mean": 118.38347033992446,
+        "max": 156
+      },
+      "02.Trajectories_season__Assisi__speed__04_20250422_evening_Assisi_15_1800sec_HD_yolov10l_final__9a6f4563": {
+        "frames": 4501,
+        "mean": 84.46722950455454,
+        "max": 154
+      },
+      "02.Trajectories_season__Assisi__speed__04_20250422_morning_Assisi_15_1800sec_HD_yolov10l_final__23ff1231": {
+        "frames": 4501,
+        "mean": 34.39946678515885,
+        "max": 75
+      },
+      "02.Trajectories_season__Assisi__speed__04_20250422_noon_Assisi_15_1800sec_HD_yolov10l_final__c4569ae9": {
+        "frames": 4501,
+        "mean": 82.58364807820485,
+        "max": 119
+      },
+      "02.Trajectories_season__Assisi__speed__04_20250426_noon_Assisi_15_1800sec_HD_yolov10l_final__336419ce": {
+        "frames": 4501,
+        "mean": 133.52077316151966,
+        "max": 189
+      },
+      "02.Trajectories_season__Assisi__speed__04_20250427_evening_Assisi_15_1800sec_HD_yolov10l_final__f6553a1b": {
+        "frames": 4501,
+        "mean": 84.6945123305932,
+        "max": 137
+      },
+      "02.Trajectories_season__Assisi__speed__04_20250429_evening_Assisi_15_1800sec_HD_yolov10l_final__2ff2b67e": {
+        "frames": 4501,
+        "mean": 39.28749166851811,
+        "max": 90
+      },
+      "02.Trajectories_season__Assisi__speed__04_20250429_noon_Assisi_15_1800sec_HD_yolov10l_final__bb9c8dac": {
+        "frames": 4501,
+        "mean": 59.14818929126861,
+        "max": 114
+      },
+      "02.Trajectories_season__Assisi__speed__04_20250504_evening_Assisi_15_1800sec_HD_yolov10l_final__6e629b52": {
+        "frames": 4501,
+        "mean": 52.64319040213286,
+        "max": 79
+      },
+      "02.Trajectories_season__Assisi__speed__04_20250504_morning_Assisi_15_1800sec_HD_yolov10l_final__0710a06f": {
+        "frames": 4501,
+        "mean": 21.617196178626973,
+        "max": 54
+      },
+      "02.Trajectories_season__Assisi__speed__04_20250506_evening_Assisi_15_1800sec_HD_yolov10l_final__72a64c02": {
+        "frames": 4501,
+        "mean": 34.67340590979782,
+        "max": 69
+      },
+      "02.Trajectories_season__Assisi__speed__04_20250506_morning_Assisi_15_1800sec_HD_yolov10l_final__ba9b46eb": {
+        "frames": 4501,
+        "mean": 14.870917573872473,
+        "max": 46
+      },
+      "02.Trajectories_season__Assisi__speed__04_20250511_evening_Assisi_15_1800sec_HD_yolov10l_final__1376cc47": {
+        "frames": 4499,
+        "mean": 32.21226939319849,
+        "max": 75
+      },
+      "02.Trajectories_season__Assisi__speed__04_20250513_evening_Assisi_15_1800sec_HD_yolov10l_final__2cf63938": {
+        "frames": 4501,
+        "mean": 30.94756720728727,
+        "max": 68
+      },
+      "02.Trajectories_season__Assisi__speed__04_20250513_morning_Assisi_15_1800sec_HD_yolov10l_final__4e195276": {
+        "frames": 4258,
+        "mean": 5.56176608736496,
+        "max": 17
+      },
+      "02.Trajectories_season__Assisi__speed__04_20250513_noon_Assisi_15_1800sec_HD_yolov10l_final__58f32595": {
+        "frames": 4501,
+        "mean": 28.293490335481003,
+        "max": 70
+      },
+      "02.Trajectories_season__Assisi__speed__04_20250518_morning_Assisi_15_1800sec_HD_yolov10l_final__4d80380a": {
+        "frames": 4501,
+        "mean": 27.08331481892913,
+        "max": 49
+      },
+      "02.Trajectories_season__Assisi__speed__04_20250518_noon_Assisi_15_1800sec_HD_yolov10l_final__52a94499": {
+        "frames": 4501,
+        "mean": 69.6925127749389,
+        "max": 125
+      },
+      "02.Trajectories_season__Assisi__speed__04_20250520_evening_Assisi_15_1800sec_HD_yolov10l_final__c1496700": {
+        "frames": 4501,
+        "mean": 41.437680515441016,
+        "max": 89
+      },
+      "02.Trajectories_season__Assisi__speed__04_20250520_morning_Assisi_15_1800sec_HD_yolov10l_final__cc1c9816": {
+        "frames": 4501,
+        "mean": 38.224838924683404,
+        "max": 73
+      },
+      "02.Trajectories_season__Assisi__speed__04_20250520_noon_Assisi_15_1800sec_HD_yolov10l_final__bc1633d5": {
+        "frames": 4501,
+        "mean": 60.96845145523217,
+        "max": 100
+      },
+      "02.Trajectories_season__Assisi__speed__04_20250525_evening_Assisi_15_1800sec_HD_yolov10l_final__f8e46d25": {
+        "frames": 4501,
+        "mean": 47.46945123305932,
+        "max": 93
+      },
+      "02.Trajectories_season__Assisi__speed__04_20250525_morning_Assisi_15_1800sec_HD_yolov10l_final__6e827bd3": {
+        "frames": 4501,
+        "mean": 23.125972006220838,
+        "max": 57
+      },
+      "02.Trajectories_season__Assisi__speed__04_20250525_noon_Assisi_15_1800sec_HD_yolov10l_final__25bf9020": {
+        "frames": 4501,
+        "mean": 78.51499666740725,
+        "max": 132
+      },
+      "02.Trajectories_season__Assisi__speed__04_20250527_evening_Assisi_15_1800sec_HD_yolov10l_final__5844d3ac": {
+        "frames": 4501,
+        "mean": 51.49277938235947,
+        "max": 104
+      },
+      "02.Trajectories_season__Assisi__speed__04_20250527_morning_Assisi_15_1800sec_HD_yolov10l_final__7fbe6ef1": {
+        "frames": 4501,
+        "mean": 18.39613419240169,
+        "max": 31
+      },
+      "02.Trajectories_season__Assisi__speed__04_20250527_noon_Assisi_15_1800sec_HD_yolov10l_final__69d8c992": {
+        "frames": 4501,
+        "mean": 55.8278160408798,
+        "max": 91
+      },
+      "02.Trajectories_season__Assisi__speed__04_20250601_evening_Assisi_15_1800sec_HD_yolov10l_final__036da19d": {
+        "frames": 4501,
+        "mean": 62.53965785381026,
+        "max": 101
+      },
+      "02.Trajectories_season__Assisi__speed__04_20250601_morning_Assisi_15_1800sec_HD_yolov10l_final__91c166d1": {
+        "frames": 4501,
+        "mean": 28.348811375249944,
+        "max": 53
+      },
+      "02.Trajectories_season__Assisi__speed__04_20250601_noon_Assisi_15_1800sec_HD_yolov10l_final__62f7ef26": {
+        "frames": 4501,
+        "mean": 79.26927349477894,
+        "max": 123
+      },
+      "02.Trajectories_season__Assisi__speed__04_20250603_evening_Assisi_15_1800sec_HD_yolov10l_final__fc1599d2": {
+        "frames": 4501,
+        "mean": 32.28726949566763,
+        "max": 85
+      },
+      "02.Trajectories_season__Assisi__speed__04_20250603_noon_Assisi_15_1800sec_HD_yolov10l_final__eb20d29b": {
+        "frames": 4501,
+        "mean": 41.83337036214174,
+        "max": 78
+      },
+      "02.Trajectories_season__Assisi__speed__04_20250615_evening_Assisi_15_1800sec_HD_yolov10l_final__851e9d41": {
+        "frames": 4437,
+        "mean": 28.413793103448278,
+        "max": 52
+      },
+      "02.Trajectories_season__Assisi__speed__04_20250615_morning_Assisi_15_1800sec_HD_yolov10l_final__0bc162a5": {
+        "frames": 4493,
+        "mean": 13.801914088582238,
+        "max": 43
+      },
+      "02.Trajectories_season__Assisi__speed__04_20250617_evening_Assisi_15_1800sec_HD_yolov10l_final__cf285f8a": {
+        "frames": 3001,
+        "mean": 20.923692102632454,
+        "max": 47
+      },
+      "02.Trajectories_season__Assisi__speed__04_20250617_morning_Assisi_15_1800sec_HD_yolov10l_final__445ce49e": {
+        "frames": 4501,
+        "mean": 13.776271939568984,
+        "max": 37
+      },
+      "02.Trajectories_season__Assisi__speed__04_20250617_noon_Assisi_15_1800sec_HD_yolov10l_final__06e32e3b": {
+        "frames": 4501,
+        "mean": 48.74894467896023,
+        "max": 82
+      },
+      "02.Trajectories_season__Assisi__speed__04_20250622_evening_Assisi_15_1800sec_HD_yolov10l_final__60522d52": {
+        "frames": 3001,
+        "mean": 45.77507497500833,
+        "max": 63
+      },
+      "02.Trajectories_season__Assisi__speed__04_20250622_noon_Assisi_15_1800sec_HD_yolov10l_final__2668c8cb": {
+        "frames": 3001,
+        "mean": 79.38320559813396,
+        "max": 123
+      },
+      "02.Trajectories_season__Assisi__speed__04_20250702_noon_Assisi_15_1800sec_HD_yolov10l_final__bba8a8fb": {
+        "frames": 3001,
+        "mean": 22.02399200266578,
+        "max": 45
+      },
+      "02.Trajectories_season__Biberach__speed__08_20250325_evening_biberach_15_1800sec_HD_yolov10l_final__3ec7f641": {
+        "frames": 4501,
+        "mean": 24.29193512552766,
+        "max": 42
+      },
+      "02.Trajectories_season__Biberach__speed__08_20250325_morning_Biberach_15_1800sec_HD_yolov10l_final__9fe0ed12": {
+        "frames": 4173,
+        "mean": 5.0620656601965015,
+        "max": 16
+      },
+      "02.Trajectories_season__Biberach__speed__08_20250329_morning_Biberach_15_1800sec_HD_yolov10l_final__20e9fd2f": {
+        "frames": 3375,
+        "mean": 2.6983703703703705,
+        "max": 10
+      },
+      "02.Trajectories_season__Biberach__speed__08_20250329_noon_Biberach_15_1800sec_HD_yolov10l_final__4826dbca": {
+        "frames": 4497,
+        "mean": 9.808539026017344,
+        "max": 25
+      },
+      "02.Trajectories_season__Biberach__speed__08_20250401_evening_Biberach_15_1800sec_HD_yolov10l_final__50e0e5d0": {
+        "frames": 8997,
+        "mean": 15.238412804268089,
+        "max": 31
+      },
+      "02.Trajectories_season__Biberach__speed__08_20250401_morning_Biberach_15_1800sec_HD_yolov10l_final__91fbb243": {
+        "frames": 8650,
+        "mean": 5.5878612716763,
+        "max": 19
+      },
+      "02.Trajectories_season__Biberach__speed__08_20250401_noon_Biberach_15_1800sec_HD_yolov10l_final__c1144b63": {
+        "frames": 4501,
+        "mean": 23.364807820484337,
+        "max": 43
+      },
+      "02.Trajectories_season__Biberach__speed__08_20250408_evening_Biberach_15_1800sec_HD_yolov10l_final__09e95a6d": {
+        "frames": 4501,
+        "mean": 37.11419684514552,
+        "max": 61
+      },
+      "02.Trajectories_season__Biberach__speed__08_20250408_morning_Biberach_15_1800sec_HD_yolov10l_final__3f840538": {
+        "frames": 3298,
+        "mean": 2.7219526986052154,
+        "max": 9
+      },
+      "02.Trajectories_season__Biberach__speed__08_20250408_noon_Biberach_15_1800sec_HD_yolov10l_final__672d987f": {
+        "frames": 4501,
+        "mean": 20.86158631415241,
+        "max": 50
+      },
+      "02.Trajectories_season__Biberach__speed__08_20250412_evening_Biberach_15_1800sec_HD_yolov10l_final__3328e3fd": {
+        "frames": 4501,
+        "mean": 21.897356143079314,
+        "max": 46
+      },
+      "02.Trajectories_season__Biberach__speed__08_20250412_noon_Biberach_15_1800sec_HD_yolov10l_final__0ba5394a": {
+        "frames": 4501,
+        "mean": 18.51721839591202,
+        "max": 37
+      },
+      "02.Trajectories_season__Biberach__speed__08_20250413_evening_Biberach_15_1800sec_HD_yolov10l_final__897b9c6c": {
+        "frames": 4501,
+        "mean": 15.616751832926017,
+        "max": 30
+      },
+      "02.Trajectories_season__Biberach__speed__08_20250415_evening_Biberach_15_1800sec_HD_yolov10l_final__db4f8220": {
+        "frames": 4501,
+        "mean": 40.98844701177516,
+        "max": 72
+      },
+      "02.Trajectories_season__Biberach__speed__08_20250415_morning_Biberach_15_1800sec_HD_yolov10l_final__0020a2ee": {
+        "frames": 4392,
+        "mean": 5.479280510018215,
+        "max": 16
+      },
+      "02.Trajectories_season__Biberach__speed__08_20250415_noon_Biberach_15_1800sec_HD_yolov10l_final__b519ab6a": {
+        "frames": 4501,
+        "mean": 25.955565429904464,
+        "max": 49
+      },
+      "02.Trajectories_season__Biberach__speed__08_20250419_evening_Biberach_15_1800sec_HD_yolov10l_final__09277231": {
+        "frames": 8926,
+        "mean": 43.559377100604976,
+        "max": 73
+      },
+      "02.Trajectories_season__Biberach__speed__08_20250419_morning_Biberach_15_1800sec_HD_yolov10l_final__0c5e0819": {
+        "frames": 5874,
+        "mean": 9.094994892747701,
+        "max": 26
+      },
+      "02.Trajectories_season__Biberach__speed__08_20250419_noon_Biberach_15_1800sec_HD_yolov10l_final__1d5cac30": {
+        "frames": 4501,
+        "mean": 19.780271050877584,
+        "max": 40
+      },
+      "02.Trajectories_season__Biberach__speed__08_20250420_morning_Biberach_15_1800sec_HD_yolov10l_final__0489a7b7": {
+        "frames": 1706,
+        "mean": 4.307737397420867,
+        "max": 12
+      },
+      "02.Trajectories_season__Biberach__speed__08_20250420_noon_Biberach_15_1800sec_HD_yolov10l_final__f0de2bc3": {
+        "frames": 4499,
+        "mean": 8.382973994220938,
+        "max": 19
+      },
+      "02.Trajectories_season__Biberach__speed__08_20250422_evening_Biberach_15_1800sec_HD_yolov10l_final__d00e617c": {
+        "frames": 4174,
+        "mean": 38.25443219932918,
+        "max": 66
+      },
+      "02.Trajectories_season__Biberach__speed__08_20250422_morning_Biberach_15_1800sec_HD_yolov10l_final__5fb79ad8": {
+        "frames": 4495,
+        "mean": 9.400444938820913,
+        "max": 22
+      },
+      "02.Trajectories_season__Biberach__speed__08_20250422_noon_Biberach_15_1800sec_HD_yolov10l_final__4a059996": {
+        "frames": 4501,
+        "mean": 34.25683181515219,
+        "max": 50
+      },
+      "02.Trajectories_season__Biberach__speed__08_20250426_noon_Biberach_15_1800sec_HD_yolov10l_final__64f6a0dd": {
+        "frames": 4501,
+        "mean": 24.776049766718508,
+        "max": 47
+      },
+      "02.Trajectories_season__Biberach__speed__08_20250427_evening_Biberach_15_1800sec_HD_yolov10l_final__43e5631a": {
+        "frames": 2906,
+        "mean": 45.89022711631108,
+        "max": 62
+      },
+      "02.Trajectories_season__Biberach__speed__08_20250429_evening_Biberach_15_1800sec_HD_yolov10l_final__453163de": {
+        "frames": 4501,
+        "mean": 27.69873361475228,
+        "max": 57
+      },
+      "02.Trajectories_season__Biberach__speed__08_20250429_noon_Biberach_15_1800sec_HD_yolov10l_final__99397644": {
+        "frames": 4501,
+        "mean": 26.506776271939568,
+        "max": 67
+      },
+      "02.Trajectories_season__Biberach__speed__08_20250504_evening_Biberach_15_1800sec_HD_yolov10l_final__1c349c02": {
+        "frames": 4501,
+        "mean": 11.271717396134193,
+        "max": 24
+      },
+      "02.Trajectories_season__Biberach__speed__08_20250504_morning_Biberach_15_1800sec_HD_yolov10l_final__97f95c8a": {
+        "frames": 1521,
+        "mean": 1.8494411571334648,
+        "max": 6
+      },
+      "02.Trajectories_season__Biberach__speed__08_20250506_evening_Biberach_15_1800sec_HD_yolov10l_final__a507ea88": {
+        "frames": 4501,
+        "mean": 14.647411686291935,
+        "max": 35
+      },
+      "02.Trajectories_season__Biberach__speed__08_20250506_morning_Biberach_15_1800sec_HD_yolov10l_final__50464872": {
+        "frames": 4282,
+        "mean": 5.633582438113032,
+        "max": 16
+      },
+      "02.Trajectories_season__Biberach__speed__08_20250511_evening_Biberach_15_1800sec_HD_yolov10l_final__b09bdd88": {
+        "frames": 4501,
+        "mean": 27.53721395245501,
+        "max": 55
+      },
+      "02.Trajectories_season__Biberach__speed__08_20250513_evening_Biberach_15_1800sec_HD_yolov10l_final__b89ea124": {
+        "frames": 4501,
+        "mean": 23.74316818484781,
+        "max": 46
+      },
+      "02.Trajectories_season__Biberach__speed__08_20250513_morning_Biberach_15_1800sec_HD_yolov10l_final__beb883eb": {
+        "frames": 2687,
+        "mean": 4.244882768887235,
+        "max": 12
+      },
+      "02.Trajectories_season__Biberach__speed__08_20250513_noon_Biberach_15_1800sec_HD_yolov10l_final__765d613e": {
+        "frames": 4501,
+        "mean": 17.791601866251945,
+        "max": 34
+      },
+      "02.Trajectories_season__Biberach__speed__08_20250518_morning_Biberach_15_1800sec_HD_yolov10l_final__fbd5162f": {
+        "frames": 2831,
+        "mean": 1.7940657011656658,
+        "max": 6
+      },
+      "02.Trajectories_season__Biberach__speed__08_20250518_noon_Biberach_15_1800sec_HD_yolov10l_final__44c4f1d1": {
+        "frames": 1429,
+        "mean": 7.432470258922323,
+        "max": 16
+      },
+      "02.Trajectories_season__Biberach__speed__08_20250520_evening_Biberach_15_1800sec_HD_yolov10l_final__d550c566": {
+        "frames": 4501,
+        "mean": 30.952455009997777,
+        "max": 50
+      },
+      "02.Trajectories_season__Biberach__speed__08_20250520_morning_Biberach_15_1800sec_HD_yolov10l_final__6749a6f7": {
+        "frames": 4421,
+        "mean": 5.472969916308528,
+        "max": 16
+      },
+      "02.Trajectories_season__Biberach__speed__08_20250525_morning_Biberach_15_1800sec_HD_yolov10l_final__dfcd07b0": {
+        "frames": 1231,
+        "mean": 1.354995938261576,
+        "max": 3
+      },
+      "02.Trajectories_season__Biberach__speed__08_20250525_noon_Biberach_15_1800sec_HD_yolov10l_final__248f9789": {
+        "frames": 3791,
+        "mean": 3.656291216037985,
+        "max": 12
+      },
+      "02.Trajectories_season__Biberach__speed__08_20250527_evening_Biberach_15_1800sec_HD_yolov10l_final__c7bddf31": {
+        "frames": 4501,
+        "mean": 27.568984670073316,
+        "max": 46
+      },
+      "02.Trajectories_season__Biberach__speed__08_20250527_morning_Biberach_15_1800sec_HD_yolov10l_final__32a3e50f": {
+        "frames": 3218,
+        "mean": 4.306401491609695,
+        "max": 16
+      },
+      "02.Trajectories_season__Biberach__speed__08_20250527_noon_Biberach_15_1800sec_HD_yolov10l_final__0d8e3989": {
+        "frames": 4501,
+        "mean": 28.57831592979338,
+        "max": 50
+      },
+      "02.Trajectories_season__Biberach__speed__08_20250601_evening_Biberach_15_1800sec_HD_yolov10l_final__6d657ce6": {
+        "frames": 1752,
+        "mean": 18.562785388127853,
+        "max": 37
+      },
+      "02.Trajectories_season__Biberach__speed__08_20250601_morning_Biberach_15_1800sec_HD_yolov10l_final__3b62a19a": {
+        "frames": 1825,
+        "mean": 2.38958904109589,
+        "max": 8
+      },
+      "02.Trajectories_season__Biberach__speed__08_20250601_noon_Biberach_15_1800sec_HD_yolov10l_final__1a8e0bdc": {
+        "frames": 4501,
+        "mean": 9.504110197733837,
+        "max": 22
+      },
+      "02.Trajectories_season__Biberach__speed__08_20250603_evening_Biberach_15_1800sec_HD_yolov10l_final__a0a54525": {
+        "frames": 4501,
+        "mean": 28.39724505665408,
+        "max": 47
+      },
+      "02.Trajectories_season__Biberach__speed__08_20250603_noon_Biberach_15_1800sec_HD_yolov10l_final__0da2ab9a": {
+        "frames": 4501,
+        "mean": 20.121972894912243,
+        "max": 40
+      },
+      "02.Trajectories_season__Biberach__speed__08_20250615_evening_Biberach_15_1800sec_HD_yolov10l_final__aba76c1d": {
+        "frames": 4448,
+        "mean": 25.894559352517987,
+        "max": 48
+      },
+      "02.Trajectories_season__Biberach__speed__08_20250615_morning_Biberach_15_1800sec_HD_yolov10l_final__5e60396c": {
+        "frames": 2671,
+        "mean": 2.2433545488581057,
+        "max": 7
+      },
+      "02.Trajectories_season__Biberach__speed__08_20250617_evening_Biberach_15_1800sec_HD_yolov10l_final__ae53a675": {
+        "frames": 3001,
+        "mean": 18.08863712095968,
+        "max": 34
+      },
+      "02.Trajectories_season__Biberach__speed__08_20250617_morning_Biberach_15_1800sec_HD_yolov10l_final__25895237": {
+        "frames": 4450,
+        "mean": 7.2202247191011235,
+        "max": 22
+      },
+      "02.Trajectories_season__Biberach__speed__08_20250617_noon_Biberach_15_1800sec_HD_yolov10l_final__98df91ee": {
+        "frames": 4501,
+        "mean": 16.779826705176628,
+        "max": 33
+      },
+      "02.Trajectories_season__Biberach__speed__08_20250622_evening_Biberach_15_1800sec_HD_yolov10l_final__6cf50d7e": {
+        "frames": 2998,
+        "mean": 10.644096064042696,
+        "max": 27
+      },
+      "02.Trajectories_season__Biberach__speed__08_20250622_noon_Biberach_15_1800sec_HD_yolov10l_final__dcc3722f": {
+        "frames": 3001,
+        "mean": 9.322892369210264,
+        "max": 21
+      },
+      "02.Trajectories_season__Celanova__speed__74_20250325_evening_celanova_15_1800sec_HD_yolov10l_final__b77cfda2": {
+        "frames": 4335,
+        "mean": 5.913264129181084,
+        "max": 16
+      },
+      "02.Trajectories_season__Celanova__speed__74_20250325_morning_Celanova_15_1800sec_HD_yolov10l_final__a1785e61": {
+        "frames": 3584,
+        "mean": 3.3529575892857144,
+        "max": 9
+      },
+      "02.Trajectories_season__Celanova__speed__74_20250329_evening_Celanova_15_1800sec_HD_yolov10l_final__4b46b6f5": {
+        "frames": 3844,
+        "mean": 5.87955254942768,
+        "max": 18
+      },
+      "02.Trajectories_season__Celanova__speed__74_20250329_morning_Celanova_15_1800sec_HD_yolov10l_final__4a476bb5": {
+        "frames": 1307,
+        "mean": 1.2815608263198164,
+        "max": 4
+      },
+      "02.Trajectories_season__Celanova__speed__74_20250329_noon_Celanova_15_1800sec_HD_yolov10l_final__6ee1eea5": {
+        "frames": 4493,
+        "mean": 7.757400400623192,
+        "max": 19
+      },
+      "02.Trajectories_season__Celanova__speed__74_20250401_evening_Celanova_15_1800sec_HD_yolov10l_final__c332305e": {
+        "frames": 3524,
+        "mean": 3.4003972758229284,
+        "max": 10
+      },
+      "02.Trajectories_season__Celanova__speed__74_20250401_morning_Celanova_15_1800sec_HD_yolov10l_final__ca5a364a": {
+        "frames": 3791,
+        "mean": 4.426800316539172,
+        "max": 15
+      },
+      "02.Trajectories_season__Celanova__speed__74_20250401_noon_Celanova_15_1800sec_HD_yolov10l_final__ba4f39f3": {
+        "frames": 4497,
+        "mean": 18.25394707582833,
+        "max": 60
+      },
+      "02.Trajectories_season__Celanova__speed__74_20250405_morning_Celanova_15_1800sec_HD_yolov10l_final__47c9bd01": {
+        "frames": 2051,
+        "mean": 1.7376889322281814,
+        "max": 5
+      },
+      "02.Trajectories_season__Celanova__speed__74_20250405_noon_Celanova_15_1800sec_HD_yolov10l_final__76cee2dd": {
+        "frames": 4168,
+        "mean": 4.6713051823416505,
+        "max": 14
+      },
+      "02.Trajectories_season__Celanova__speed__74_20250408_evening_Celanova_15_1800sec_HD_yolov10l_final__2a09353d": {
+        "frames": 3247,
+        "mean": 2.3963658761934092,
+        "max": 8
+      },
+      "02.Trajectories_season__Celanova__speed__74_20250408_morning_Celanova_15_1800sec_HD_yolov10l_final__90ea3f72": {
+        "frames": 4270,
+        "mean": 5.113348946135831,
+        "max": 20
+      },
+      "02.Trajectories_season__Celanova__speed__74_20250408_noon_Celanova_15_1800sec_HD_yolov10l_final__5d639f7b": {
+        "frames": 3803,
+        "mean": 5.391270049960557,
+        "max": 28
+      },
+      "02.Trajectories_season__Celanova__speed__74_20250412_evening_Celanova_15_1800sec_HD_yolov10l_final__c52169e5": {
+        "frames": 4501,
+        "mean": 17.35014441235281,
+        "max": 76
+      },
+      "02.Trajectories_season__Celanova__speed__74_20250412_noon_Celanova_15_1800sec_HD_yolov10l_final__d047945e": {
+        "frames": 4501,
+        "mean": 10.311041990668741,
+        "max": 24
+      },
+      "02.Trajectories_season__Celanova__speed__74_20250415_evening_Celanova_15_1800sec_HD_yolov10l_final__5e36516d": {
+        "frames": 2814,
+        "mean": 2.2487562189054726,
+        "max": 10
+      },
+      "02.Trajectories_season__Celanova__speed__74_20250415_morning_Celanova_15_1800sec_HD_yolov10l_final__99acdf7d": {
+        "frames": 2901,
+        "mean": 1.9617373319544984,
+        "max": 6
+      },
+      "02.Trajectories_season__Celanova__speed__74_20250415_noon_Celanova_15_1800sec_HD_yolov10l_final__fc06bd11": {
+        "frames": 4500,
+        "mean": 11.538444444444444,
+        "max": 28
+      },
+      "02.Trajectories_season__Celanova__speed__74_20250416_morning_Celanova_15_1800sec_HD_yolov10l_final__aa305283": {
+        "frames": 2528,
+        "mean": 1.807753164556962,
+        "max": 9
+      },
+      "02.Trajectories_season__Celanova__speed__74_20250416_noon_Celanova_15_1800sec_HD_yolov10l_final__1b6940f0": {
+        "frames": 3313,
+        "mean": 3.7654693631150016,
+        "max": 11
+      },
+      "02.Trajectories_season__Celanova__speed__74_20250419_evening_Celanova_15_1800sec_HD_yolov10l_final__558e1725": {
+        "frames": 3008,
+        "mean": 2.228723404255319,
+        "max": 10
+      },
+      "02.Trajectories_season__Celanova__speed__74_20250419_noon_Celanova_15_1800sec_HD_yolov10l_final__3f9e411a": {
+        "frames": 4402,
+        "mean": 7.787142208087233,
+        "max": 29
+      },
+      "02.Trajectories_season__Celanova__speed__74_20250420_evening_Celanova_15_1800sec_HD_yolov10l_final__96f2be73": {
+        "frames": 3217,
+        "mean": 18.77898663350948,
+        "max": 56
+      },
+      "02.Trajectories_season__Celanova__speed__74_20250420_morning_Celanova_15_1800sec_HD_yolov10l_final__8caa7a2b": {
+        "frames": 3028,
+        "mean": 2.211690885072655,
+        "max": 7
+      },
+      "02.Trajectories_season__Celanova__speed__74_20250420_noon_Celanova_15_1800sec_HD_yolov10l_final__f0beb719": {
+        "frames": 4501,
+        "mean": 96.08198178182626,
+        "max": 127
+      },
+      "02.Trajectories_season__Celanova__speed__74_20250422_evening_Celanova_15_1800sec_HD_yolov10l_final__aeba3a47": {
+        "frames": 4501,
+        "mean": 11.271495223283715,
+        "max": 21
+      },
+      "02.Trajectories_season__Celanova__speed__74_20250422_morning_Celanova_15_1800sec_HD_yolov10l_final__5f852804": {
+        "frames": 4385,
+        "mean": 4.727708095781072,
+        "max": 13
+      },
+      "02.Trajectories_season__Celanova__speed__74_20250422_noon_Celanova_15_1800sec_HD_yolov10l_final__2df4d68c": {
+        "frames": 2840,
+        "mean": 2.6049295774647887,
+        "max": 10
+      },
+      "02.Trajectories_season__Celanova__speed__74_20250426_noon_Celanova_15_1800sec_HD_yolov10l_final__d7e594c6": {
+        "frames": 2689,
+        "mean": 2.9059129788025286,
+        "max": 9
+      },
+      "02.Trajectories_season__Celanova__speed__74_20250427_evening_Celanova_15_1800sec_HD_yolov10l_final__ff9339fb": {
+        "frames": 2812,
+        "mean": 3.39402560455192,
+        "max": 8
+      },
+      "02.Trajectories_season__Celanova__speed__74_20250429_evening_Celanova_15_1800sec_HD_yolov10l_final__619bfa49": {
+        "frames": 4288,
+        "mean": 5.131296641791045,
+        "max": 19
+      },
+      "02.Trajectories_season__Celanova__speed__74_20250429_noon_Celanova_15_1800sec_HD_yolov10l_final__841d94c5": {
+        "frames": 4501,
+        "mean": 13.782714952232837,
+        "max": 30
+      },
+      "02.Trajectories_season__Celanova__speed__74_20250504_evening_Celanova_15_1800sec_HD_yolov10l_final__a2936e49": {
+        "frames": 4493,
+        "mean": 12.334075228132651,
+        "max": 27
+      },
+      "02.Trajectories_season__Celanova__speed__74_20250506_evening_Celanova_15_1800sec_HD_yolov10l_final__f266ead5": {
+        "frames": 4078,
+        "mean": 4.5823933300637565,
+        "max": 15
+      },
+      "02.Trajectories_season__Celanova__speed__74_20250506_morning_Celanova_15_1800sec_HD_yolov10l_final__0637e875": {
+        "frames": 4262,
+        "mean": 5.958000938526514,
+        "max": 21
+      },
+      "02.Trajectories_season__Celanova__speed__74_20250513_evening_Celanova_15_1800sec_HD_yolov10l_final__d20541a8": {
+        "frames": 4314,
+        "mean": 21.669448307834955,
+        "max": 49
+      },
+      "02.Trajectories_season__Celanova__speed__74_20250513_morning_Celanova_15_1800sec_HD_yolov10l_final__e102fca5": {
+        "frames": 3036,
+        "mean": 2.270421607378129,
+        "max": 8
+      },
+      "02.Trajectories_season__Celanova__speed__74_20250513_noon_Celanova_15_1800sec_HD_yolov10l_final__ee4f213e": {
+        "frames": 4360,
+        "mean": 4.173853211009174,
+        "max": 18
+      },
+      "02.Trajectories_season__Celanova__speed__74_20250518_morning_Celanova_15_1800sec_HD_yolov10l_final__cf9363c8": {
+        "frames": 2170,
+        "mean": 1.5557603686635946,
+        "max": 5
+      },
+      "02.Trajectories_season__Celanova__speed__74_20250518_noon_Celanova_15_1800sec_HD_yolov10l_final__00a991b8": {
+        "frames": 4501,
+        "mean": 13.70139968895801,
+        "max": 30
+      },
+      "02.Trajectories_season__Celanova__speed__74_20250520_evening_Celanova_15_1800sec_HD_yolov10l_final__7a96614d": {
+        "frames": 4261,
+        "mean": 6.948603614175076,
+        "max": 28
+      },
+      "02.Trajectories_season__Celanova__speed__74_20250520_morning_Celanova_15_1800sec_HD_yolov10l_final__e9c92df7": {
+        "frames": 4280,
+        "mean": 4.447429906542056,
+        "max": 19
+      },
+      "02.Trajectories_season__Celanova__speed__74_20250525_evening_Celanova_15_1800sec_HD_yolov10l_final__78351669": {
+        "frames": 4358,
+        "mean": 8.708352455254705,
+        "max": 31
+      },
+      "02.Trajectories_season__Celanova__speed__74_20250525_morning_Celanova_15_1800sec_HD_yolov10l_final__65d6eb34": {
+        "frames": 2171,
+        "mean": 2.053431598341778,
+        "max": 7
+      },
+      "02.Trajectories_season__Celanova__speed__74_20250527_evening_Celanova_15_1800sec_HD_yolov10l_final__276b3355": {
+        "frames": 4241,
+        "mean": 5.7288375383164345,
+        "max": 20
+      },
+      "02.Trajectories_season__Celanova__speed__74_20250527_morning_Celanova_15_1800sec_HD_yolov10l_final__c43c5320": {
+        "frames": 4187,
+        "mean": 10.439933126343444,
+        "max": 47
+      },
+      "02.Trajectories_season__Celanova__speed__74_20250527_noon_Celanova_15_1800sec_HD_yolov10l_final__2deb4105": {
+        "frames": 4445,
+        "mean": 11.270191226096738,
+        "max": 28
+      },
+      "02.Trajectories_season__Celanova__speed__74_20250601_evening_Celanova_15_1800sec_HD_yolov10l_final__2d9bffe5": {
+        "frames": 4306,
+        "mean": 5.543427775197399,
+        "max": 23
+      },
+      "02.Trajectories_season__Celanova__speed__74_20250601_morning_Celanova_15_1800sec_HD_yolov10l_final__f6712b5b": {
+        "frames": 1934,
+        "mean": 1.5842812823164425,
+        "max": 6
+      },
+      "02.Trajectories_season__Celanova__speed__74_20250601_noon_Celanova_15_1800sec_HD_yolov10l_final__a1dc4419": {
+        "frames": 4472,
+        "mean": 22.42933810375671,
+        "max": 77
+      },
+      "02.Trajectories_season__Celanova__speed__74_20250603_evening_Celanova_15_1800sec_HD_yolov10l_final__85519d4c": {
+        "frames": 3949,
+        "mean": 3.819954418840213,
+        "max": 17
+      },
+      "02.Trajectories_season__Celanova__speed__74_20250603_noon_Celanova_15_1800sec_HD_yolov10l_final__33ea2588": {
+        "frames": 4465,
+        "mean": 13.438521836506158,
+        "max": 32
+      },
+      "02.Trajectories_season__Celanova__speed__74_20250615_evening_Celanova_15_1800sec_HD_yolov10l_final__8b96400e": {
+        "frames": 3768,
+        "mean": 3.754511677282378,
+        "max": 9
+      },
+      "02.Trajectories_season__Celanova__speed__74_20250615_morning_Celanova_15_1800sec_HD_yolov10l_final__c3bd269d": {
+        "frames": 2572,
+        "mean": 1.7686625194401244,
+        "max": 5
+      },
+      "02.Trajectories_season__Celanova__speed__74_20250617_evening_Celanova_15_1800sec_HD_yolov10l_final__b84d9305": {
+        "frames": 2726,
+        "mean": 3.7736610418195156,
+        "max": 10
+      },
+      "02.Trajectories_season__Celanova__speed__74_20250617_morning_Celanova_15_1800sec_HD_yolov10l_final__2d12adf7": {
+        "frames": 4442,
+        "mean": 6.045249887438091,
+        "max": 17
+      },
+      "02.Trajectories_season__Celanova__speed__74_20250617_noon_Celanova_15_1800sec_HD_yolov10l_final__2357bdc5": {
+        "frames": 3186,
+        "mean": 2.7846829880728188,
+        "max": 9
+      },
+      "02.Trajectories_season__Celanova__speed__74_20250622_evening_Celanova_15_1800sec_HD_yolov10l_final__7661c53d": {
+        "frames": 3001,
+        "mean": 14.084971676107964,
+        "max": 28
+      },
+      "02.Trajectories_season__Celanova__speed__74_20250622_noon_Celanova_15_1800sec_HD_yolov10l_final__3543b88c": {
+        "frames": 3001,
+        "mean": 54.4971676107964,
+        "max": 89
+      },
+      "02.Trajectories_season__Varberg__speed__09_20250325_evening_Varberg_15_1800sec_HD_yolov10l_final__2a568447": {
+        "frames": 3617,
+        "mean": 2.3574785734033727,
+        "max": 10
+      },
+      "02.Trajectories_season__Varberg__speed__09_20250325_morning_Varberg_15_1800sec_HD_yolov10l_final__9aeebfcf": {
+        "frames": 2475,
+        "mean": 1.6387878787878787,
+        "max": 5
+      },
+      "02.Trajectories_season__Varberg__speed__09_20250325_noon_Varberg_15_1800sec_HD_yolov10l_final__e877f158": {
+        "frames": 3903,
+        "mean": 2.4117345631565463,
+        "max": 7
+      },
+      "02.Trajectories_season__Varberg__speed__09_20250329_evening_Varberg_15_1800sec_HD_yolov10l_final__35b3ca5f": {
+        "frames": 4499,
+        "mean": 9.428761947099355,
+        "max": 27
+      },
+      "02.Trajectories_season__Varberg__speed__09_20250329_morning_Varberg_15_1800sec_HD_yolov10l_final__bb6bee9c": {
+        "frames": 2215,
+        "mean": 1.797742663656885,
+        "max": 6
+      },
+      "02.Trajectories_season__Varberg__speed__09_20250329_noon_Varberg_15_1800sec_HD_yolov10l_final__71a9629a": {
+        "frames": 4501,
+        "mean": 13.555209953343702,
+        "max": 30
+      },
+      "02.Trajectories_season__Varberg__speed__09_20250401_evening_Varberg_15_1800sec_HD_yolov10l_final__86d77c4e": {
+        "frames": 4330,
+        "mean": 4.808083140877598,
+        "max": 13
+      },
+      "02.Trajectories_season__Varberg__speed__09_20250401_morning_Varberg_15_1800sec_HD_yolov10l_final__6a32799e": {
+        "frames": 2363,
+        "mean": 2.116377486246297,
+        "max": 7
+      },
+      "02.Trajectories_season__Varberg__speed__09_20250401_noon_Varberg_15_1800sec_HD_yolov10l_final__b260924a": {
+        "frames": 4500,
+        "mean": 6.248222222222222,
+        "max": 18
+      },
+      "02.Trajectories_season__Varberg__speed__09_20250408_evening_Varberg_15_1800sec_HD_yolov10l_final__363cb970": {
+        "frames": 4137,
+        "mean": 4.398839738941262,
+        "max": 14
+      },
+      "02.Trajectories_season__Varberg__speed__09_20250408_morning_Varberg_15_1800sec_HD_yolov10l_final__f6651de0": {
+        "frames": 2299,
+        "mean": 1.754675946063506,
+        "max": 5
+      },
+      "02.Trajectories_season__Varberg__speed__09_20250408_noon_Varberg_15_1800sec_HD_yolov10l_final__380293bf": {
+        "frames": 4124,
+        "mean": 3.472356935014549,
+        "max": 11
+      },
+      "02.Trajectories_season__Varberg__speed__09_20250412_evening_Varberg_15_1800sec_HD_yolov10l_final__00b01f75": {
+        "frames": 4215,
+        "mean": 4.761565836298932,
+        "max": 14
+      },
+      "02.Trajectories_season__Varberg__speed__09_20250412_noon_Varberg_15_1800sec_HD_yolov10l_final__88674def": {
+        "frames": 4501,
+        "mean": 15.029993334814487,
+        "max": 33
+      },
+      "02.Trajectories_season__Varberg__speed__09_20250415_evening_Varberg_15_1800sec_HD_yolov10l_final__34fde0e1": {
+        "frames": 4368,
+        "mean": 5.8282967032967035,
+        "max": 14
+      },
+      "02.Trajectories_season__Varberg__speed__09_20250415_morning_Varberg_15_1800sec_HD_yolov10l_final__ae235584": {
+        "frames": 2630,
+        "mean": 1.8775665399239543,
+        "max": 6
+      },
+      "02.Trajectories_season__Varberg__speed__09_20250415_noon_Varberg_15_1800sec_HD_yolov10l_final__23b1b2a4": {
+        "frames": 4501,
+        "mean": 11.569429015774272,
+        "max": 24
+      },
+      "02.Trajectories_season__Varberg__speed__09_20250419_noon_Varberg_15_1800sec_HD_yolov10l_final__b74eac7e": {
+        "frames": 4500,
+        "mean": 13.002888888888888,
+        "max": 25
+      },
+      "02.Trajectories_season__Varberg__speed__09_20250420_morning_Varberg_15_1800sec_HD_yolov10l_final__f4224ad1": {
+        "frames": 4406,
+        "mean": 4.169541534271448,
+        "max": 9
+      },
+      "02.Trajectories_season__Varberg__speed__09_20250420_noon_Varberg_15_1800sec_HD_yolov10l_final__1404015f": {
+        "frames": 4330,
+        "mean": 5.434180138568129,
+        "max": 15
+      },
+      "02.Trajectories_season__Varberg__speed__09_20250422_evening_Varberg_15_1800sec_HD_yolov10l_final__0d34e2c0": {
+        "frames": 4429,
+        "mean": 5.338451117633777,
+        "max": 13
+      },
+      "02.Trajectories_season__Varberg__speed__09_20250422_morning_Varberg_15_1800sec_HD_yolov10l_final__5b9b602d": {
+        "frames": 3092,
+        "mean": 1.8884217335058215,
+        "max": 6
+      },
+      "02.Trajectories_season__Varberg__speed__09_20250422_noon_Varberg_15_1800sec_HD_yolov10l_final__4a72aaa4": {
+        "frames": 4074,
+        "mean": 3.606038291605302,
+        "max": 11
+      },
+      "02.Trajectories_season__Varberg__speed__09_20250426_noon_Varberg_15_1800sec_HD_yolov10l_final__e9b309a7": {
+        "frames": 4501,
+        "mean": 9.460342146189735,
+        "max": 24
+      },
+      "02.Trajectories_season__Varberg__speed__09_20250427_evening_Varberg_15_1800sec_HD_yolov10l_final__e052dec5": {
+        "frames": 4033,
+        "mean": 3.628068435407885,
+        "max": 11
+      },
+      "02.Trajectories_season__Varberg__speed__09_20250429_evening_Varberg_15_1800sec_HD_yolov10l_final__8bdb3f69": {
+        "frames": 4302,
+        "mean": 5.441190144119014,
+        "max": 19
+      },
+      "02.Trajectories_season__Varberg__speed__09_20250429_noon_Varberg_15_1800sec_HD_yolov10l_final__4e0716c9": {
+        "frames": 4501,
+        "mean": 10.770273272606088,
+        "max": 34
+      },
+      "02.Trajectories_season__Varberg__speed__09_20250504_evening_Varberg_15_1800sec_HD_yolov10l_final__2af39c14": {
+        "frames": 3248,
+        "mean": 2.8685344827586206,
+        "max": 9
+      },
+      "02.Trajectories_season__Varberg__speed__09_20250504_morning_Varberg_15_1800sec_HD_yolov10l_final__cc6d4176": {
+        "frames": 1764,
+        "mean": 1.6621315192743764,
+        "max": 4
+      },
+      "02.Trajectories_season__Varberg__speed__09_20250506_evening_Varberg_15_1800sec_HD_yolov10l_final__2d3385b6": {
+        "frames": 4411,
+        "mean": 4.686012242121968,
+        "max": 12
+      },
+      "02.Trajectories_season__Varberg__speed__09_20250506_morning_Varberg_15_1800sec_HD_yolov10l_final__e4c3d7bf": {
+        "frames": 2135,
+        "mean": 2.743325526932084,
+        "max": 13
+      },
+      "02.Trajectories_season__Varberg__speed__09_20250511_evening_Varberg_15_1800sec_HD_yolov10l_final__02600258": {
+        "frames": 3628,
+        "mean": 3.0887541345093714,
+        "max": 11
+      },
+      "02.Trajectories_season__Varberg__speed__09_20250513_evening_Varberg_15_1800sec_HD_yolov10l_final__9cfa9f52": {
+        "frames": 4071,
+        "mean": 3.6364529599606974,
+        "max": 12
+      },
+      "02.Trajectories_season__Varberg__speed__09_20250513_morning_Varberg_15_1800sec_HD_yolov10l_final__2f41ede2": {
+        "frames": 2093,
+        "mean": 2.8256091734352604,
+        "max": 27
+      },
+      "02.Trajectories_season__Varberg__speed__09_20250513_noon_Varberg_15_1800sec_HD_yolov10l_final__6fe6fe5f": {
+        "frames": 4501,
+        "mean": 5.657853810264386,
+        "max": 18
+      },
+      "02.Trajectories_season__Varberg__speed__09_20250518_morning_Varberg_15_1800sec_HD_yolov10l_final__a3cbdda4": {
+        "frames": 1797,
+        "mean": 1.5993322203672788,
+        "max": 5
+      },
+      "02.Trajectories_season__Varberg__speed__09_20250518_noon_Varberg_15_1800sec_HD_yolov10l_final__3d60e965": {
+        "frames": 3655,
+        "mean": 3.6076607387140904,
+        "max": 14
+      },
+      "02.Trajectories_season__Varberg__speed__09_20250520_evening_Varberg_15_1800sec_HD_yolov10l_final__c7183ab6": {
+        "frames": 4501,
+        "mean": 7.9429015774272385,
+        "max": 17
+      },
+      "02.Trajectories_season__Varberg__speed__09_20250520_morning_Varberg_15_1800sec_HD_yolov10l_final__a3a293b8": {
+        "frames": 1596,
+        "mean": 1.6735588972431077,
+        "max": 5
+      },
+      "02.Trajectories_season__Varberg__speed__09_20250520_noon_Varberg_15_1800sec_HD_yolov10l_final__29d275a5": {
+        "frames": 4421,
+        "mean": 5.291789187966524,
+        "max": 15
+      },
+      "02.Trajectories_season__Varberg__speed__09_20250525_evening_Varberg_15_1800sec_HD_yolov10l_final__6af71ab6": {
+        "frames": 1651,
+        "mean": 2.8958207147183526,
+        "max": 12
+      },
+      "02.Trajectories_season__Varberg__speed__09_20250525_morning_Varberg_15_1800sec_HD_yolov10l_final__a29059a9": {
+        "frames": 1020,
+        "mean": 1.3774509803921569,
+        "max": 3
+      },
+      "02.Trajectories_season__Varberg__speed__09_20250525_noon_Varberg_15_1800sec_HD_yolov10l_final__13b1f1ba": {
+        "frames": 1869,
+        "mean": 2.0101658640984486,
+        "max": 6
+      },
+      "02.Trajectories_season__Varberg__speed__09_20250527_evening_Varberg_15_1800sec_HD_yolov10l_final__7d857e98": {
+        "frames": 4400,
+        "mean": 3.350909090909091,
+        "max": 13
+      },
+      "02.Trajectories_season__Varberg__speed__09_20250527_morning_Varberg_15_1800sec_HD_yolov10l_final__fc765fcc": {
+        "frames": 2354,
+        "mean": 1.7650807136788444,
+        "max": 7
+      },
+      "02.Trajectories_season__Varberg__speed__09_20250527_noon_Varberg_15_1800sec_HD_yolov10l_final__a08cd701": {
+        "frames": 3151,
+        "mean": 3.0536337670580767,
+        "max": 14
+      },
+      "02.Trajectories_season__Varberg__speed__09_20250601_evening_Varberg_15_1800sec_HD_yolov10l_final__4e4485ea": {
+        "frames": 4501,
+        "mean": 34.74716729615641,
+        "max": 70
+      },
+      "02.Trajectories_season__Varberg__speed__09_20250601_morning_Varberg_15_1800sec_HD_yolov10l_final__63021e22": {
+        "frames": 1846,
+        "mean": 1.6646803900325027,
+        "max": 6
+      },
+      "02.Trajectories_season__Varberg__speed__09_20250601_noon_Varberg_15_1800sec_HD_yolov10l_final__5bf5a78f": {
+        "frames": 4012,
+        "mean": 2.550348953140578,
+        "max": 8
+      },
+      "02.Trajectories_season__Varberg__speed__09_20250603_evening_Varberg_15_1800sec_HD_yolov10l_final__583b3357": {
+        "frames": 4474,
+        "mean": 7.412606168976308,
+        "max": 15
+      },
+      "02.Trajectories_season__Varberg__speed__09_20250603_noon_Varberg_15_1800sec_HD_yolov10l_final__c559cfa1": {
+        "frames": 4501,
+        "mean": 10.464341257498333,
+        "max": 22
+      },
+      "02.Trajectories_season__Varberg__speed__09_20250615_evening_Varberg_15_1800sec_HD_yolov10l_final__73cc2b69": {
+        "frames": 2824,
+        "mean": 2.4876062322946177,
+        "max": 8
+      },
+      "02.Trajectories_season__Varberg__speed__09_20250615_morning_Varberg_15_1800sec_HD_yolov10l_final__7cb00e70": {
+        "frames": 1749,
+        "mean": 1.6157804459691252,
+        "max": 5
+      },
+      "02.Trajectories_season__Varberg__speed__09_20250615_noon_Varberg_15_1800sec_HD_yolov10l_final__f3a59ed6": {
+        "frames": 4062,
+        "mean": 3.564746430329887,
+        "max": 11
+      },
+      "02.Trajectories_season__Varberg__speed__09_20250617_evening_Varberg_15_1800sec_HD_yolov10l_final__40af4d22": {
+        "frames": 1638,
+        "mean": 2.391941391941392,
+        "max": 9
+      },
+      "02.Trajectories_season__Varberg__speed__09_20250617_morning_Varberg_15_1800sec_HD_yolov10l_final__1200b25e": {
+        "frames": 2106,
+        "mean": 1.7488129154795822,
+        "max": 5
+      },
+      "02.Trajectories_season__Varberg__speed__09_20250617_noon_Varberg_15_1800sec_HD_yolov10l_final__47f57edf": {
+        "frames": 4399,
+        "mean": 5.975903614457831,
+        "max": 16
+      },
+      "02.Trajectories_season__Varberg__speed__09_20250622_evening_Varberg_15_1800sec_HD_yolov10l_final__9bea1bf0": {
+        "frames": 1644,
+        "mean": 2.3613138686131387,
+        "max": 11
+      },
+      "02.Trajectories_season__Varberg__speed__09_20250622_noon_Varberg_15_1800sec_HD_yolov10l_final__89d42224": {
+        "frames": 2997,
+        "mean": 6.907574240907574,
+        "max": 16
+      },
+      "02.Trajectories_season__Varberg__speed__09_20250702_noon_Varberg_15_1800sec_HD_yolov10l_final__7548ef37": {
+        "frames": 2999,
+        "mean": 10.213071023674559,
+        "max": 30
+      }
+    }
+  }
+]

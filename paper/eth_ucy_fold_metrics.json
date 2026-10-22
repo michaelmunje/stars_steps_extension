@@ -1,0 +1,590 @@
+[
+  {
+    "fold": "ETH",
+    "held_out_recordings": [
+      "seq_eth"
+    ],
+    "held_out_test_data": [
+      "biwi_eth"
+    ],
+    "canonical": {
+      "hours": 0.2148888888888889,
+      "raw_tracks": 360,
+      "median_track_span_s": 9.6,
+      "occupancy_mean": 4.603617571059432,
+      "forecast_windows": 2581,
+      "type_counts": {
+        "1": 197,
+        "2": 488,
+        "3": 1341,
+        "4": 555
+      },
+      "type3_fraction": 0.5195660596667958,
+      "valid_opentraj_trajlets": 823,
+      "retained_opentraj_trajlets": 770
+    },
+    "opentraj": {
+      "dataset": "ETH",
+      "recordings": [
+        "seq_eth"
+      ],
+      "analysis_preprocessing": "opentraj_kalman_smooth",
+      "retained_trajlets": 770,
+      "frames": 1448,
+      "indicators": {
+        "speed_mean": {
+          "mean": 1.436383754769703,
+          "median": 1.4698157906532288,
+          "n": 770
+        },
+        "speed_range": {
+          "mean": 0.26261071922717155,
+          "median": 0.21112701296806335,
+          "n": 770
+        },
+        "acceleration_mean_abs": {
+          "mean": 0.08874329852496649,
+          "median": 0.07425934076309204,
+          "n": 770
+        },
+        "acceleration_max_abs": {
+          "mean": 0.20200957570757186,
+          "median": 0.17134979367256165,
+          "n": 770
+        },
+        "path_efficiency": {
+          "mean": 0.9927527997400853,
+          "median": 0.9975617229938507,
+          "n": 770
+        },
+        "local_density_max": {
+          "mean": 0.6195845175310739,
+          "median": 0.4480160020824675,
+          "n": 770
+        },
+        "ttc_min": {
+          "mean": 5.565257024459144,
+          "median": 2.8141786284482673,
+          "n": 627
+        },
+        "dca_min": {
+          "mean": 0.3998659367795751,
+          "median": 0.10584288975586262,
+          "n": 770
+        },
+        "collision_energy": {
+          "mean": 2.073641401125305,
+          "median": 0.24939539690461965,
+          "n": 328
+        }
+      },
+      "global_density": {
+        "mean": 0.01718306844594734,
+        "median": 0.01396558324524683,
+        "n": 1448
+      },
+      "angular_deviation": {
+        "1.6": {
+          "returned_sample_index": 3,
+          "returned_timestamp_s": 1.2000000000000002,
+          "mean_degrees": 0.0519904938558025,
+          "std_degrees": 6.915539048451258
+        },
+        "2.4": {
+          "returned_sample_index": 5,
+          "returned_timestamp_s": 2.0,
+          "mean_degrees": 0.10012343333476303,
+          "std_degrees": 5.429526418688926
+        },
+        "4.8": {
+          "returned_sample_index": 11,
+          "returned_timestamp_s": 4.4,
+          "mean_degrees": -0.002329056463454368,
+          "std_degrees": 9.193857284381593
+        }
+      },
+      "definitions": "Faithful OpenTraj-compatible analysis values; separate from forecasting statistics."
+    },
+    "constant_velocity": {
+      "n_train_windows": 25318,
+      "n_val_windows": 0,
+      "n_eval_windows": 294,
+      "ade": 0.6634999262769192,
+      "fde": 1.280806316508432,
+      "pred_col_pct": 10.204081632653061,
+      "gt_col_pct": 8.843537414965986,
+      "cv_definition": "last observed displacement extrapolated one canonical timestep at a time"
+    }
+  },
+  {
+    "fold": "HOTEL",
+    "held_out_recordings": [
+      "seq_hotel"
+    ],
+    "held_out_test_data": [
+      "biwi_hotel"
+    ],
+    "canonical": {
+      "hours": 0.20066666666666666,
+      "raw_tracks": 390,
+      "median_track_span_s": 6.0,
+      "occupancy_mean": 3.6214720531267295,
+      "forecast_windows": 975,
+      "type_counts": {
+        "1": 495,
+        "2": 188,
+        "3": 256,
+        "4": 36
+      },
+      "type3_fraction": 0.26256410256410256,
+      "valid_opentraj_trajlets": 484,
+      "retained_opentraj_trajlets": 324
+    },
+    "opentraj": {
+      "dataset": "HOTEL",
+      "recordings": [
+        "seq_hotel"
+      ],
+      "analysis_preprocessing": "opentraj_kalman_smooth",
+      "retained_trajlets": 324,
+      "frames": 1168,
+      "indicators": {
+        "speed_mean": {
+          "mean": 1.3457983593329972,
+          "median": 1.4275205731391907,
+          "n": 324
+        },
+        "speed_range": {
+          "mean": 0.2468923100810728,
+          "median": 0.19768962264060974,
+          "n": 324
+        },
+        "acceleration_mean_abs": {
+          "mean": 0.07693177839614634,
+          "median": 0.06460839882493019,
+          "n": 324
+        },
+        "acceleration_max_abs": {
+          "mean": 0.17024461092588342,
+          "median": 0.1416003704071045,
+          "n": 324
+        },
+        "path_efficiency": {
+          "mean": 0.9938336516971942,
+          "median": 0.9979473948478699,
+          "n": 324
+        },
+        "local_density_max": {
+          "mean": 0.6438625274434397,
+          "median": 0.5260538367208156,
+          "n": 323
+        },
+        "ttc_min": {
+          "mean": 4.720246045052477,
+          "median": 2.197166613502769,
+          "n": 276
+        },
+        "dca_min": {
+          "mean": 0.27285308185010554,
+          "median": 0.1297500349301949,
+          "n": 323
+        },
+        "collision_energy": {
+          "mean": 1.977625347982114,
+          "median": 0.22228201513441626,
+          "n": 168
+        }
+      },
+      "global_density": {
+        "mean": 0.05029831628798175,
+        "median": 0.04488725047704973,
+        "n": 1168
+      },
+      "angular_deviation": {
+        "1.6": {
+          "returned_sample_index": 3,
+          "returned_timestamp_s": 1.2000000000000002,
+          "mean_degrees": 0.15680564555925705,
+          "std_degrees": 2.77424579454342
+        },
+        "2.4": {
+          "returned_sample_index": 5,
+          "returned_timestamp_s": 2.0,
+          "mean_degrees": 0.36508756622073574,
+          "std_degrees": 5.10048856736473
+        },
+        "4.8": {
+          "returned_sample_index": 11,
+          "returned_timestamp_s": 4.4,
+          "mean_degrees": 0.4019566486617546,
+          "std_degrees": 8.496136464401701
+        }
+      },
+      "definitions": "Faithful OpenTraj-compatible analysis values; separate from forecasting statistics."
+    },
+    "constant_velocity": {
+      "n_train_windows": 27215,
+      "n_val_windows": 0,
+      "n_eval_windows": 133,
+      "ade": 0.5032356097521304,
+      "fde": 0.9872193654572181,
+      "pred_col_pct": 13.533834586466165,
+      "gt_col_pct": 9.022556390977442,
+      "cv_definition": "last observed displacement extrapolated one canonical timestep at a time"
+    }
+  },
+  {
+    "fold": "UNIV",
+    "held_out_recordings": [
+      "students001",
+      "students003"
+    ],
+    "held_out_test_data": [
+      "students001",
+      "students003"
+    ],
+    "canonical": {
+      "hours": 0.109,
+      "raw_tracks": 849,
+      "median_track_span_s": 14.8,
+      "occupancy_mean": 39.48423194303154,
+      "forecast_windows": 23522,
+      "type_counts": {
+        "1": 4497,
+        "2": 1879,
+        "3": 16099,
+        "4": 1047
+      },
+      "type3_fraction": 0.6844230932743814,
+      "valid_opentraj_trajlets": 4480,
+      "retained_opentraj_trajlets": 3532
+    },
+    "opentraj": {
+      "dataset": "UNIV",
+      "recordings": [
+        "students001",
+        "students003"
+      ],
+      "analysis_preprocessing": "opentraj_kalman_smooth",
+      "retained_trajlets": 3532,
+      "frames": 983,
+      "indicators": {
+        "speed_mean": {
+          "mean": 0.7199671514171976,
+          "median": 0.684432864189148,
+          "n": 3532
+        },
+        "speed_range": {
+          "mean": 0.3695279504652404,
+          "median": 0.3205403685569763,
+          "n": 3532
+        },
+        "acceleration_mean_abs": {
+          "mean": 0.11056410886961936,
+          "median": 0.0984751358628273,
+          "n": 3532
+        },
+        "acceleration_max_abs": {
+          "mean": 0.2544006926860842,
+          "median": 0.2207096666097641,
+          "n": 3532
+        },
+        "path_efficiency": {
+          "mean": 0.971376748057346,
+          "median": 0.98756143450737,
+          "n": 3532
+        },
+        "local_density_max": {
+          "mean": 2.055753095381164,
+          "median": 1.3542844154129445,
+          "n": 3532
+        },
+        "ttc_min": {
+          "mean": 1.1237198092680194,
+          "median": 0.26998400261241334,
+          "n": 3488
+        },
+        "dca_min": {
+          "mean": 0.06490418374620684,
+          "median": 0.02120452243917683,
+          "n": 3532
+        },
+        "collision_energy": {
+          "mean": 6.716377759044944,
+          "median": 4.678867076411829,
+          "n": 3113
+        }
+      },
+      "global_density": {
+        "mean": 0.18472849881715048,
+        "median": 0.18714153952259185,
+        "n": 983
+      },
+      "angular_deviation": {
+        "1.6": {
+          "returned_sample_index": 3,
+          "returned_timestamp_s": 1.2000000000000002,
+          "mean_degrees": -0.08264472273209304,
+          "std_degrees": 9.806322696049513
+        },
+        "2.4": {
+          "returned_sample_index": 5,
+          "returned_timestamp_s": 2.0,
+          "mean_degrees": -0.1472342002594161,
+          "std_degrees": 10.52863080578173
+        },
+        "4.8": {
+          "returned_sample_index": 11,
+          "returned_timestamp_s": 4.4,
+          "mean_degrees": -0.35742220450608564,
+          "std_degrees": 18.07089541585325
+        }
+      },
+      "definitions": "Faithful OpenTraj-compatible analysis values; separate from forecasting statistics."
+    },
+    "constant_velocity": {
+      "n_train_windows": 8255,
+      "n_val_windows": 0,
+      "n_eval_windows": 1550,
+      "ade": 0.5656231658563645,
+      "fde": 1.2474888147055556,
+      "pred_col_pct": 24.580645161290324,
+      "gt_col_pct": 23.35483870967742,
+      "cv_definition": "last observed displacement extrapolated one canonical timestep at a time"
+    }
+  },
+  {
+    "fold": "ZARA1",
+    "held_out_recordings": [
+      "crowds_zara01"
+    ],
+    "held_out_test_data": [
+      "crowds_zara01"
+    ],
+    "canonical": {
+      "hours": 0.1,
+      "raw_tracks": 148,
+      "median_track_span_s": 12.4,
+      "occupancy_mean": 5.5338512763596,
+      "forecast_windows": 2193,
+      "type_counts": {
+        "1": 123,
+        "2": 379,
+        "3": 1085,
+        "4": 606
+      },
+      "type3_fraction": 0.4947560419516644,
+      "valid_opentraj_trajlets": 520,
+      "retained_opentraj_trajlets": 496
+    },
+    "opentraj": {
+      "dataset": "ZARA1",
+      "recordings": [
+        "crowds_zara01"
+      ],
+      "analysis_preprocessing": "opentraj_kalman_smooth",
+      "retained_trajlets": 496,
+      "frames": 865,
+      "indicators": {
+        "speed_mean": {
+          "mean": 1.3168921713987667,
+          "median": 1.3824548721313477,
+          "n": 496
+        },
+        "speed_range": {
+          "mean": 0.3111795191803286,
+          "median": 0.2320857048034668,
+          "n": 496
+        },
+        "acceleration_mean_abs": {
+          "mean": 0.09190739601692785,
+          "median": 0.07353247329592705,
+          "n": 496
+        },
+        "acceleration_max_abs": {
+          "mean": 0.21405419824464667,
+          "median": 0.165737085044384,
+          "n": 496
+        },
+        "path_efficiency": {
+          "mean": 0.9928938258559473,
+          "median": 0.9983397722244263,
+          "n": 496
+        },
+        "local_density_max": {
+          "mean": 0.6796089135545226,
+          "median": 0.5794139982289552,
+          "n": 496
+        },
+        "ttc_min": {
+          "mean": 4.676892190866141,
+          "median": 1.8839397142890917,
+          "n": 433
+        },
+        "dca_min": {
+          "mean": 0.2682499880268826,
+          "median": 0.11947553531564048,
+          "n": 496
+        },
+        "collision_energy": {
+          "mean": 3.782738973873185,
+          "median": 1.2340919951205418,
+          "n": 269
+        }
+      },
+      "global_density": {
+        "mean": 0.02791353724726554,
+        "median": 0.02421300613606568,
+        "n": 865
+      },
+      "angular_deviation": {
+        "1.6": {
+          "returned_sample_index": 3,
+          "returned_timestamp_s": 1.2000000000000002,
+          "mean_degrees": 0.16098228065975814,
+          "std_degrees": 2.9584611664557525
+        },
+        "2.4": {
+          "returned_sample_index": 5,
+          "returned_timestamp_s": 2.0,
+          "mean_degrees": 0.3318843009048106,
+          "std_degrees": 5.568306075103238
+        },
+        "4.8": {
+          "returned_sample_index": 11,
+          "returned_timestamp_s": 4.4,
+          "mean_degrees": 0.28185362378098705,
+          "std_degrees": 10.391237140713082
+        }
+      },
+      "definitions": "Faithful OpenTraj-compatible analysis values; separate from forecasting statistics."
+    },
+    "constant_velocity": {
+      "n_train_windows": 25640,
+      "n_val_windows": 0,
+      "n_eval_windows": 177,
+      "ade": 0.46230296485162103,
+      "fde": 1.028465607983593,
+      "pred_col_pct": 9.03954802259887,
+      "gt_col_pct": 9.03954802259887,
+      "cv_definition": "last observed displacement extrapolated one canonical timestep at a time"
+    }
+  },
+  {
+    "fold": "ZARA2",
+    "held_out_recordings": [
+      "crowds_zara02"
+    ],
+    "held_out_test_data": [
+      "crowds_zara02"
+    ],
+    "canonical": {
+      "hours": 0.11666666666666667,
+      "raw_tracks": 204,
+      "median_track_span_s": 13.2,
+      "occupancy_mean": 9.030447193149381,
+      "forecast_windows": 5686,
+      "type_counts": {
+        "1": 2739,
+        "2": 369,
+        "3": 2008,
+        "4": 570
+      },
+      "type3_fraction": 0.353148083010904,
+      "valid_opentraj_trajlets": 1091,
+      "retained_opentraj_trajlets": 672
+    },
+    "opentraj": {
+      "dataset": "ZARA2",
+      "recordings": [
+        "crowds_zara02"
+      ],
+      "analysis_preprocessing": "opentraj_kalman_smooth",
+      "retained_trajlets": 672,
+      "frames": 1051,
+      "indicators": {
+        "speed_mean": {
+          "mean": 1.3327261109925097,
+          "median": 1.3696049451828003,
+          "n": 672
+        },
+        "speed_range": {
+          "mean": 0.37390183429011986,
+          "median": 0.2653031349182129,
+          "n": 672
+        },
+        "acceleration_mean_abs": {
+          "mean": 0.10746361890397522,
+          "median": 0.08185948804020882,
+          "n": 672
+        },
+        "acceleration_max_abs": {
+          "mean": 0.23723382059307324,
+          "median": 0.17647892236709595,
+          "n": 672
+        },
+        "path_efficiency": {
+          "mean": 0.9887664275509971,
+          "median": 0.9972396492958069,
+          "n": 672
+        },
+        "local_density_max": {
+          "mean": 1.1378166755863317,
+          "median": 0.8897771634297377,
+          "n": 671
+        },
+        "ttc_min": {
+          "mean": 1.8467722321576474,
+          "median": 0.5026604180429989,
+          "n": 620
+        },
+        "dca_min": {
+          "mean": 0.20771218143777656,
+          "median": 0.0668131496001236,
+          "n": 671
+        },
+        "collision_energy": {
+          "mean": 4.784868033387153,
+          "median": 2.7133846813038596,
+          "n": 510
+        }
+      },
+      "global_density": {
+        "mean": 0.039718808140131054,
+        "median": 0.03958489160230741,
+        "n": 1051
+      },
+      "angular_deviation": {
+        "1.6": {
+          "returned_sample_index": 3,
+          "returned_timestamp_s": 1.2000000000000002,
+          "mean_degrees": -0.057069679932781565,
+          "std_degrees": 11.928169880051284
+        },
+        "2.4": {
+          "returned_sample_index": 5,
+          "returned_timestamp_s": 2.0,
+          "mean_degrees": -0.058847605759524586,
+          "std_degrees": 9.350286202608514
+        },
+        "4.8": {
+          "returned_sample_index": 11,
+          "returned_timestamp_s": 4.4,
+          "mean_degrees": -0.4677352783898237,
+          "std_degrees": 11.82146712003195
+        }
+      },
+      "definitions": "Faithful OpenTraj-compatible analysis values; separate from forecasting statistics."
+    },
+    "constant_velocity": {
+      "n_train_windows": 24488,
+      "n_val_windows": 0,
+      "n_eval_windows": 373,
+      "ade": 0.4059285336792795,
+      "fde": 0.9165845502677299,
+      "pred_col_pct": 11.528150134048257,
+      "gt_col_pct": 10.723860589812332,
+      "cv_definition": "last observed displacement extrapolated one canonical timestep at a time"
+    }
+  }
+]

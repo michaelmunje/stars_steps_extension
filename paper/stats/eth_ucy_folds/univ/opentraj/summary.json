@@ -1,0 +1,83 @@
+{
+  "dataset": "UNIV",
+  "recordings": [
+    "students001",
+    "students003"
+  ],
+  "analysis_preprocessing": "opentraj_kalman_smooth",
+  "retained_trajlets": 3532,
+  "frames": 983,
+  "indicators": {
+    "speed_mean": {
+      "mean": 0.7199671514171976,
+      "median": 0.684432864189148,
+      "n": 3532
+    },
+    "speed_range": {
+      "mean": 0.3695279504652404,
+      "median": 0.3205403685569763,
+      "n": 3532
+    },
+    "acceleration_mean_abs": {
+      "mean": 0.11056410886961936,
+      "median": 0.0984751358628273,
+      "n": 3532
+    },
+    "acceleration_max_abs": {
+      "mean": 0.2544006926860842,
+      "median": 0.2207096666097641,
+      "n": 3532
+    },
+    "path_efficiency": {
+      "mean": 0.971376748057346,
+      "median": 0.98756143450737,
+      "n": 3532
+    },
+    "local_density_max": {
+      "mean": 2.055753095381164,
+      "median": 1.3542844154129445,
+      "n": 3532
+    },
+    "ttc_min": {
+      "mean": 1.1237198092680194,
+      "median": 0.26998400261241334,
+      "n": 3488
+    },
+    "dca_min": {
+      "mean": 0.06490418374620684,
+      "median": 0.02120452243917683,
+      "n": 3532
+    },
+    "collision_energy": {
+      "mean": 6.716377759044944,
+      "median": 4.678867076411829,
+      "n": 3113
+    }
+  },
+  "global_density": {
+    "mean": 0.18472849881715048,
+    "median": 0.18714153952259185,
+    "n": 983
+  },
+  "angular_deviation": {
+    "1.6": {
+      "returned_sample_index": 3,
+      "returned_timestamp_s": 1.2000000000000002,
+      "mean_degrees": -0.08264472273209304,
+      "std_degrees": 9.806322696049513
+    },
+    "2.4": {
+      "returned_sample_index": 5,
+      "returned_timestamp_s": 2.0,
+      "mean_degrees": -0.1472342002594161,
+      "std_degrees": 10.52863080578173
+    },
+    "4.8": {
+      "returned_sample_index": 11,
+      "returned_timestamp_s": 4.4,
+      "mean_degrees": -0.35742220450608564,
+      "std_degrees": 18.07089541585325
+    }
+  },
+  "definitions": "Faithful OpenTraj-compatible analysis values; separate from forecasting statistics."
+}

@@ -1,0 +1,589 @@
+{
+  "dataset": "ETH Hotel",
+  "canonical_dataset": "eth",
+  "artifact_root": "datasets/eth",
+  "scene_sequences": [
+    "seq_hotel"
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    
+  ],
+  "sample_hz": 2.5,
+  "pedestrians": 390,
+  "tracks_with_canonical_gaps": 0,
+  "recording_duration_seconds": 722.4,
+  "total_trajectory_duration_seconds": 2461.6,
+  "trajlets": 484,
+  "non_static_trajlets": 324,
+  "non_static_percent_exact": 66.94214876033058,
+  "opentraj_display_percent_uses_integer_truncation": true,
+  "comparison": {
+    "pedestrians": {
+      "ours": 390,
+      "opentraj": 390,
+      "difference": 0,
+      "status": "matches_table_upstream_postprocess_reports_389"
+    },
+    "recording_duration_minutes": {
+      "ours": 12.04,
+      "opentraj": 12.0,
+      "difference": 0.03999999999999915,
+      "status": "match_at_reported_precision"
+    },
+    "total_trajectory_duration_hours": {
+      "ours": 0.6837777777777777,
+      "opentraj": 0.7,
+      "difference": -0.01622222222222225,
+      "status": "match_at_reported_precision"
+    },
+    "trajlets": {
+      "ours": 484,
+      "opentraj": 484,
+      "difference": 0,
+      "status": "match"
+    },
+    "non_static_percent": {
+      "ours": 66.94214876033058,
+      "opentraj": 66,
+      "difference": 0.942148760330582,
+      "status": "match_at_reported_precision"
+    }
+  },
+  "pinned_opentraj_execution": {
+    "pedestrians_after_postprocess": 389,
+    "pedestrians_in_original_file": 390,
+    "recording_duration_seconds": 722.4000000000001,
+    "total_trajectory_duration_seconds": 2461.6,
+    "trajlets": 484,
+    "non_static_trajlets": 324
+  },
+  "investigation_notes": [
+    "The original obsmat.txt and our lossless canonical file contain 390 unique pedestrian IDs, matching Table 1. Track 314 has only one sample (frame 13161), so OpenTraj postprocess removes it and general_stats reports 389. The paper therefore counts raw IDs while its released statistics function counts postprocessed trajectories. We preserve the source track and flag this one-pedestrian table-vs-code inconsistency.",
+    "OpenTraj's benchmark does not enable Kalman smoothing for ETH-Hotel. Both the original positions and our OpenTraj-smoothed analysis view nevertheless produce the same 324/484 non-static result, so this does not affect Table 1."
+  ]
+}

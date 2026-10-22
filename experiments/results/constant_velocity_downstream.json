@@ -1,0 +1,67 @@
+{
+  "model": "constant_velocity",
+  "definition": "Scholler et al. 2020; last observed displacement extrapolated",
+  "k": 1,
+  "note": "deterministic, so minADE_20 == ADE and minFDE_20 == FDE",
+  "forecast_preprocessing_hash": "sha256:c9468dd7ef44ecfebafc6d3fb2415bc66aec7b1cc3344c1e3988cd33feac06fc",
+  "coordinate_frame": "world",
+  "data_seed": 42,
+  "scopes": {
+    "eth_ucy-eth": {
+      "n_predictions": 294,
+      "ade": 0.6634999262769192,
+      "fde": 1.280806316508432,
+      "ade_stderr": 0.027861413743335502,
+      "fde_stderr": 0.054893900135232744,
+      "scenes_in_split": 294
+    },
+    "eth_ucy-hotel": {
+      "n_predictions": 133,
+      "ade": 0.5032356097521304,
+      "fde": 0.9872193654572181,
+      "ade_stderr": 0.04044974521846068,
+      "fde_stderr": 0.08218925459844827,
+      "scenes_in_split": 133
+    },
+    "eth_ucy-univ": {
+      "n_predictions": 1550,
+      "ade": 0.5656231658563645,
+      "fde": 1.2474888147055556,
+      "ade_stderr": 0.011278643240710871,
+      "fde_stderr": 0.02496909130075116,
+      "scenes_in_split": 1550
+    },
+    "eth_ucy-zara1": {
+      "n_predictions": 177,
+      "ade": 0.46230296485162103,
+      "fde": 1.028465607983593,
+      "ade_stderr": 0.03189013316563888,
+      "fde_stderr": 0.07382793054273591,
+      "scenes_in_split": 177
+    },
+    "eth_ucy-zara2": {
+      "n_predictions": 373,
+      "ade": 0.4059285336792795,
+      "fde": 0.9165845502677299,
+      "ade_stderr": 0.026653672428455535,
+      "fde_stderr": 0.05812438420164897,
+      "scenes_in_split": 373
+    },
+    "grand_central": {
+      "n_predictions": 19036,
+      "ade": 0.69220244797148,
+      "fde": 1.3917175378887572,
+      "ade_stderr": 0.004030193882390442,
+      "fde_stderr": 0.00826386129299171,
+      "scenes_in_split": 19036
+    },
+    "madras": {
+      "n_predictions": 225,
+      "ade": 0.6234148393348838,
+      "fde": 1.1739771137153976,
+      "ade_stderr": 0.02767718466870196,
+      "fde_stderr": 0.05533632331433826,
+      "scenes_in_split": 225
+    }
+  }
+}
