@@ -844,3 +844,15 @@ why, and how to undo it.
       `MAX_NONFINITE_STREAK` (100) in a row. The norm is identical on every DDP rank, so all
       ranks skip together.
     - `cvae_hpo53_scratch_all` stays the all-dataset reference model.
+
+74. **Single-dataset models with the trial-53 recipe** (job 65888). Every per-dataset number so
+    far comes from the all-dataset model, so nothing yet says whether mixing datasets helps or
+    hurts each one. One model each for PTDPES, Madras, Grand Central, UCY and ETH
+    (`experiments/stars_ma/runs/cvae_hpo53_scratch_<dataset>`) is trained with exactly the
+    all-dataset model's settings, then evaluated on its test split (teacher-forced and exec 1).
+    STEPS already has its own (`cvae_hpo53_scratch_seed42`).
+    - **ETH has no validation split** (it is also missing from the all-dataset model's
+      validation metrics), so the ETH model selects its checkpoint on UCY validation, the
+      closest related data.
+    - **Housekeeping.** The two exec-1 run directories from 60 still say `"status": "running"`;
+      they were stopped by hand (65) and are not resumable results.
