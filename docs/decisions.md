@@ -916,3 +916,15 @@ why, and how to undo it.
       dense-flow loops costs safety with this controller. A structural change, such as a
       wait-in-place mode chosen when progress is blocked, is the next step if loops matter
       more than collisions. Stopping navigation tuning here.
+
+78. **Structural fix for loops: penalise turning without progress.** Decision 77 found that the
+    existing cost terms cannot remove dense-flow loops without giving up safety. A loop is an arc
+    that turns while making no net progress. The new policy parameter `idle_turn_weight`
+    (default 0, so existing policies are unchanged; range 0-5) adds
+    `idle_turn_weight * (1 - clamp(progress, 0, 1)) * |w| / w_max` to each candidate's cost.
+    Turning stays free when it buys progress, and waiting (v = 0, w ~ 0) becomes the cheaper
+    option when the way is blocked. Job 66008:
+    - v4 with `idle_turn_weight = 1` and no re-tuning, on the test set
+      (`runs/seanjax/crowd_v8_idle1_untuned`), to see the term's direct effect;
+    - three CMA-ES runs with the term free (`cmaes_crowd_v6.yaml`): from v4 with seeds 42 and 7,
+      and from v4 with the term at 1.
