@@ -237,3 +237,17 @@ why, and how to undo it.
     kl_weight default becomes ~0.1.
     `docs/results/stars_ma_steps_test.md` (written by `baselines.report_stars_ma`) has the test
     table so far.
+
+35. **Low KL confirmed; the default CVAE KL weight is now 0.1.** Validation agent ADE, best of
+    20, early epochs:
+
+    | CVAE, encoder | KL 1.0 | KL 0.1 |
+    | --- | --- | --- |
+    | Fine-tuned | 0.095 | 0.072 |
+    | Frozen | 0.098 | 0.074 |
+    | Search config, from scratch | — | 0.075 |
+
+    That is ~24% lower error. `FORECAST_RECIPE["kl_weight"]` changed 1.0 -> 0.1. Earlier runs are
+    labelled by their run directories and keep their recorded configs. The KL-0.1 runs still
+    peak early (epoch 5-7 so far), so an even lower weight or a longer warm-up is the next
+    thing to try if they stall.

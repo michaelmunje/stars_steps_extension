@@ -76,7 +76,7 @@ FORECAST_RECIPE = {
     "max_epochs": 200,
     "patience": 20,
     "min_delta": 1e-4,
-    "kl_weight": 1.0,
+    "kl_weight": 0.1,  # 1.0 collapses the latent on STEPS (docs/decisions.md 32-35)
     "kl_warmup_epochs": 10,
 }
 # The recipes' learning rates were set for 32 windows of ~19 STEPS pedestrians per step.
