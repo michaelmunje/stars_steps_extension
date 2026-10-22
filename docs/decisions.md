@@ -898,3 +898,21 @@ why, and how to undo it.
     (`runs/seanjax/crowd_v7`, `docs/results/navigation_compare_crowd_v7.png`) are queued with
     `afterok` (job 65987). Node failures are recurring, so every long job here keeps
     resumable checkpoints.
+
+77. **Crowd v5 does not beat v4; v4 stays the reference.** Test results (`runs/seanjax/crowd_v7`,
+    v4 objective):
+
+    | Policy | Objective | Success | Collision | Intimate-zone rate | Loops / episode (dense flow) | Recorded success |
+    | --- | --- | --- | --- | --- | --- | --- |
+    | v4 | 0.388 | 99% | 0.7% | 2.6% | 0.08 (0.17) | 100% |
+    | v5 seed 42 (= v4: the search never improved on its start) | 0.375 | 98% | 1.1% | 2.5% | 0.08 (0.18) | 100% |
+    | v5 seed 7 (`speed_scale` 10.7, `retreat_scale` 6.3) | 0.315 | 96% | 2.6% | 4.7% | 0.04 (0.11) | 87% |
+
+    - The wider range lets seed 7 halve the loops, but collisions rise from 0.7% to 2.6%. Its
+      validation lead (0.383 against 0.374) did not hold on test, which is selection on a noisy
+      validation score.
+    - v4 and its unchanged copy differ by 0.013, inside evaluation noise.
+    - **Conclusion.** The controller's tunable range is now explored. Removing the remaining
+      dense-flow loops costs safety with this controller. A structural change, such as a
+      wait-in-place mode chosen when progress is blocked, is the next step if loops matter
+      more than collisions. Stopping navigation tuning here.
