@@ -40,7 +40,7 @@ PARAMETERS = (
     ParameterSpec("turn_penalty", 0.1, 0.0, 2.0, description="Penalty for turning rate"),
     ParameterSpec("smoothness_weight", 0.2, 0.0, 2.0, description="Penalty for command changes"),
     # Scales on the controller's fixed waiting-related costs (decision 69); 1 keeps the config value.
-    ParameterSpec("speed_scale", 1.0, 0.1, 5.0, log=True, description="Multiplier on speed_cost"),
+    ParameterSpec("speed_scale", 1.0, 0.1, 20.0, log=True, description="Multiplier on speed_cost"),
     ParameterSpec("retreat_scale", 1.0, 0.1, 10.0, log=True, description="Multiplier on retreat_cost"),
     ParameterSpec("alignment_weight", 0.1, 0.0, 1.0, description="Reward for facing the goal at the plan's end"),
 )

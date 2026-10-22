@@ -884,3 +884,12 @@ why, and how to undo it.
     - **Loops.** `navigation_compare_crowd_v6.png`: the narrow-passage loop is gone (11.3 s
       against 16.6 s), but dense flow still loops (0.16 per episode). The circling diagnostic
       still shows turning on 23% of the steps where stopping was allowed. Accepted for now.
+
+76. **Crowd v5: wider `speed_scale` range.** v4 seed 42 ended at the old upper bound (5), so the
+    bound is now 20 and two seeds re-tune from v4 (`cmaes_crowd_v5.yaml`, job 65938). Existing
+    policies are unaffected; their values lie inside the new range. The same job renders v4
+    rollout GIFs (four recorded scenes plus dense flow, narrow passage and group) to
+    `runs/seanjax/crowd_v6/visualize/`.
+    The single-dataset job (74) was lost to a node failure (`NODE_FAIL`, job 65888). UCY, ETH and
+    Madras had finished. PTDPES resumes from `latest.pt` (epoch 14) and the Grand Central test
+    evaluation is rerun (job 65932).
