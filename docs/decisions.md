@@ -982,3 +982,18 @@ why, and how to undo it.
       STEPS fine-tuned `cvae_kl01_finetune` stays the simulator model (its 20 s rollouts are
       validated for realism, 48). Per-dataset models are not worth keeping. This closes the
       "train on individual datasets and on all at once" task.
+
+81. **A controller with memory: side commitment.** Following 79, the controller now keeps a little
+    state across control steps. When the chosen command turns faster than `commit_min_turn`
+    (0.3 rad/s), that turn direction is committed for `commit_steps` (20 steps, 2 s). Candidates
+    that turn the other way within that window cost `side_commit_weight` more (new parameter,
+    default 0, so existing policies are unchanged). The memory resets at the start of every
+    rollout. The aim is to stop successive plans from alternating sides, which is how a dense-flow
+    loop forms. Job 66087:
+    - v4 with the weight at 0.5 and at 2, no re-tuning (`runs/seanjax/crowd_v9_commit*`), plus
+      the waiting diagnostic at 2;
+    - two CMA-ES runs with the weight free (`cmaes_crowd_v7.yaml`, seeds 42 and 7, starting from
+      v4 with the weight at 0.5).
+
+    Tuning runs alongside the untuned check this time because both fit on one node. If the
+    untuned check is clearly harmful, the tuning result is not used.

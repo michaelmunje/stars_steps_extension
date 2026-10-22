@@ -43,6 +43,7 @@ PARAMETERS = (
     ParameterSpec("speed_scale", 1.0, 0.1, 20.0, log=True, description="Multiplier on speed_cost"),
     ParameterSpec("retreat_scale", 1.0, 0.1, 10.0, log=True, description="Multiplier on retreat_cost"),
     ParameterSpec("alignment_weight", 0.1, 0.0, 1.0, description="Reward for facing the goal at the plan's end"),
+    ParameterSpec("side_commit_weight", 0.0, 0.0, 5.0, description="Penalty for reversing turn direction within commit_steps of the last turn (decision 81)"),
     ParameterSpec("idle_turn_weight", 0.0, 0.0, 5.0, description="Penalty for turning away from the goal without progress (loops; decision 78)"),
 )
 
@@ -61,6 +62,8 @@ class ControllerConfig:
     retreat_cost: float = 2.0      # penalty on moving away from the goal (no orbiting instead of waiting)
     retreat_along_path: bool = False  # retreat measured at the worst point of the plan, not only its end
     disruption_lookahead: float = 1.5
+    commit_steps: int = 20         # control steps a chosen turn direction stays committed (2 s at dt 0.1)
+    commit_min_turn: float = 0.3   # |w| (rad/s) that counts as choosing a side
     max_speed: float = 1.0
     max_angular_speed: float = 1.5
     max_acceleration: float = 1.0
@@ -77,10 +80,13 @@ class SocialNavigationPolicy(Policy):
         self.config = config or ControllerConfig()
         self.predictor = predictor or ConstantVelocityPredictor()
         self.last_info: dict[str, torch.Tensor] = {}
+        self._side = self._side_left = None
 
     def reset(self, batch_size: int) -> None:
         if hasattr(self.predictor, "reset"):
             self.predictor.reset()
+        self._side = None          # [B] committed turn direction (-1, 0, +1) and steps left
+        self._side_left = None
 
     def _p(self, params: torch.Tensor, name: str) -> torch.Tensor:
         return params[:, self.parameter_names.index(name)]
@@ -203,9 +209,23 @@ class SocialNavigationPolicy(Policy):
         near = (distance0 < 1.0)[:, None]
         cost = cost + near * (v - distance0[:, None].clamp(max=1.0) * c.max_speed).abs()
 
+        # Memory across control steps: once the robot turns one way to pass, reversing the turn
+        # within commit_steps costs extra, so successive plans do not alternate sides (loops).
+        if self._side is None or self._side.shape[0] != B:
+            self._side = torch.zeros(B, device=device)
+            self._side_left = torch.zeros(B, dtype=torch.long, device=device)
+        turning = w.abs() > c.commit_min_turn
+        reverses = turning & (torch.sign(w) * self._side[:, None] < 0) & (self._side_left > 0)[:, None]
+        cost = cost + self._p(params, "side_commit_weight")[:, None] * reverses.float()
+
         cost = torch.where(valid, cost, torch.full_like(cost, float("inf")))
         best = cost.argmin(dim=1)
         command = commands[best]
+        chosen = command[:, 1]
+        commit = chosen.abs() > c.commit_min_turn
+        self._side = torch.where(commit, torch.sign(chosen), self._side)
+        self._side_left = torch.where(commit, torch.full_like(self._side_left, c.commit_steps),
+                                      (self._side_left - 1).clamp(min=0))
         emergency = ~valid.any(dim=1)
         command = torch.where(emergency[:, None], torch.zeros_like(command), command)
         stop = (commands[:, 0].abs() + (commands[:, 0] != 0) * 1e3 + commands[:, 1].abs()).argmin()[None]  # v = 0, w ~ 0
