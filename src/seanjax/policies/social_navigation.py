@@ -54,6 +54,7 @@ class ControllerConfig:
     obstacle_clearance: float = 0.6
     speed_cost: float = 0.5
     retreat_cost: float = 2.0      # penalty on moving away from the goal (no orbiting instead of waiting)
+    retreat_along_path: bool = False  # retreat measured at the worst point of the plan, not only its end
     disruption_lookahead: float = 1.5
     max_speed: float = 1.0
     max_angular_speed: float = 1.5
@@ -131,7 +132,13 @@ class SocialNavigationPolicy(Policy):
         cost = -self._p(params, "goal_weight")[:, None] * (progress + 0.1 * alignment)
         # Retreating from the goal is only worth it to avoid danger: penalise it outright, so the
         # controller waits rather than circling when pedestrians block the way.
-        cost = cost + c.retreat_cost * torch.relu(-progress)
+        if c.retreat_along_path:
+            # A loop that comes back to the same distance by the horizon is still a retreat.
+            worst = torch.where(in_horizon[:, None] > 0, distance, torch.zeros_like(distance)).amax(-1)
+            retreat = (worst - distance0[:, None]) / (c.max_speed * horizon[:, None])
+            cost = cost + c.retreat_cost * torch.relu(torch.maximum(retreat, -progress))
+        else:
+            cost = cost + c.retreat_cost * torch.relu(-progress)
         crowding = torch.zeros(B, device=device)
         valid = torch.ones(B, M, dtype=torch.bool, device=device)
 

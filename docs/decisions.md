@@ -716,3 +716,14 @@ why, and how to undo it.
       pattern also matched the job's batch script, which carries every command, so it ended the
       whole job, including the healthy exec-4 run. That run was resumed from `latest.pt` as job
       65775. In future, kill by PID after checking with `pgrep -a`.
+
+66. **No-loop controller option.** Tuned policies circle while waiting (65). The retreat cost only
+    compares the distance to the goal at the end of the plan (about 2.2 s for tuned policies)
+    with the current distance. A loop that comes back by then is free, and CMA-ES drove
+    `turn_penalty` to 0. New controller option `retreat_along_path` (default off, so earlier
+    results are unchanged) charges retreat at the worst point along the plan. Job `cma_noloop`:
+    - evaluates `cmaes_crowd_v2` with the option on and no re-tuning
+      (`runs/seanjax/crowd_v4_noloop`), to compare against its 0.303 in 65;
+    - re-tunes from it with the option on (`cmaes_crowd_v3_noloop.yaml`).
+
+    The option becomes the default if it removes the loops without lowering the objective.
