@@ -1092,3 +1092,19 @@ why, and how to undo it.
     - if it is stable and matches seed 42, pooling stands;
     - otherwise the recommendation becomes per-dataset models for large datasets and pooled
       models for small ones.
+
+85. **Why the all-dataset model is seed-sensitive, and pool-then-fine-tune.**
+    Per-dataset validation curves (`metrics.jsonl` of the all-dataset runs):
+    - In every run, the lucky seed 42 included, the training loss flattens by about epoch 5
+      (0.29-0.31) and barely moves after that, even while the LR decays in the 60-epoch runs.
+    - Validation ADE per dataset then fluctuates around its level, by ±0.02 on PTDPES and Madras.
+      Where a run ends up is largely decided early, and seed 42 settled lower.
+
+    So the mixture is not overfitting. The optimiser stalls on the heterogeneous batches, and
+    annealing does not rescue it. The 60-epoch runs are at 0.232-0.249 validation (best so far),
+    against 0.220 for the original seed 42 and 0.247-0.251 for its two replicates.
+    **Next.** Pool, then specialise. Job `fc_pool_ft` fine-tunes all-dataset models on PTDPES and
+    Grand Central: 20 epochs, LR 3e-4 cosine, `--init-checkpoint`. It starts from both the lucky
+    seed 42 and the ordinary seed 1, so the result is not tied to the lucky checkpoint. The
+    question is whether pool-then-fine-tune beats per-dataset training (PTDPES 0.290 / 0.292,
+    Grand Central 0.250 / 0.252) for both starting points.
