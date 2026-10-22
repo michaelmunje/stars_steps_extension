@@ -937,3 +937,26 @@ why, and how to undo it.
     progress: `idle * relu(alignment_now - alignment_end) / 2`. Turning back toward the goal is
     free. The untuned effect at weights 1 and 3 is checked first (job 66013,
     `runs/seanjax/crowd_v8_idle{1,3}`), before any re-tuning.
+
+79. **The idle-turn term does not help; navigation controller work stops here.** Revised term
+    (charging only turning away from the goal without progress) on v4 without re-tuning
+    (`runs/seanjax/crowd_v8_idle{1,3}`):
+
+    | `idle_turn_weight` | Objective | Success | Loops (dense flow) | Recorded success |
+    | --- | --- | --- | --- | --- |
+    | 0 (v4) | 0.388 | 99% | 0.08 (0.17) | 100% |
+    | 1 | 0.256 | 94% | 0.08 (0.30) | 83% |
+    | 3 | -1.560 | 9% | 0.07 (0.38) | 10% |
+
+    - At weight 3 the robot mostly freezes. In dense flow every move turns it away from the goal
+      for a moment, so waiting wins until the episode times out.
+    - At weight 1, dense-flow loops increase. The re-planning at each step does not commit to a
+      side, so penalising part of a loop only stretches it.
+    - Re-tuning would most likely drive the weight back to 0, so it is not run.
+    - The parameter stays in the code at default 0 (no effect) and is documented as not helpful.
+    - **Conclusion across 68-79.** With a one-step trajectory-scoring controller, the remaining
+      dense-flow loops (0.17 per episode) are the price of v4's 99% success and 0.7% collisions.
+      Removing them needs a controller with memory, for example committing to a passing side for
+      a few seconds. That is a new controller, not a cost term, and it is left as a recorded
+      next step rather than started.
+    - **Reference policy:** `checkpoints/seanjax/cmaes_crowd_v4/best_policy.yaml`.
