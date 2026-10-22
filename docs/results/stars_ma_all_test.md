@@ -9,6 +9,10 @@ each dataset's test split (44928 windows in all). CVAE scores are best-of-20, in
   (0.4 s or 1.6 s). The STARS crowd in SEAN-JAX re-forecasts every model step, so exec 1 is the
   setting that matters for simulation.
 
+![Per-dataset test error](stars_ma_all_test.png)
+
+(`python -m baselines.plot_stars_ma_summary --report <eval_test_all.json> --output <png>`)
+
 | Dataset | Constant velocity ADE / FDE | Scratch ADE / FDE | SSL + fine-tune ADE / FDE | Moving ADE, CV / scratch | Rollout ADE, exec 1 / exec 4 |
 | --- | --- | --- | --- | --- | --- |
 | steps | 0.276 / 0.518 | **0.078 / 0.123** | 0.080 / 0.127 | 0.894 / 0.332 | 0.081 / 0.079 |

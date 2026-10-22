@@ -50,6 +50,8 @@ settings, agent ADE / FDE, best-of-20, against constant velocity:
 | UCY | 0.397 / 0.891 | 0.193 / 0.383 |
 | ETH | 0.727 / 1.428 | 0.234 / 0.373 |
 
+![Per-dataset test error](stars_ma_all_test.png)
+
 - SSL pretraining plus fine-tuning is 0.002–0.010 m worse on every dataset.
 - Feeding back its own predictions every step costs little on STEPS but 14–20% elsewhere.
 
