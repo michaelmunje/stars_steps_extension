@@ -391,3 +391,24 @@ why, and how to undo it.
 
     The warm start is rerun under v2 (`cmaes_stars_best_warm_v2`). The 0.707 policy is kept for
     reference but is not the recommended policy.
+
+46. **The forecaster drives the crowd: `stars_crowd` pedestrian model.**
+    - Each pedestrian follows its reference for its first 3.2 s (to build history). After that
+      it moves by joint STARS forecasts every 0.4 s.
+    - CVAE intents are seeded per pedestrian, so the robot-absent counterfactual uses the same
+      draws.
+    - The robot is added to the graph as one more person (STEPS has no robot). Pedestrians cannot
+      interpenetrate it.
+
+    Tested (`tests/test_seanjax.py`). Limitations:
+    - Pedestrians ignore walls: the forecaster has no map, and recorded scenes have only an
+      artificial arena.
+    - Long rollouts make smooth sweeping arcs that drift from the recorded paths (mean deviation
+      0.67 m over 30 s).
+    - The 3.4 m/s maximum speeds seen in these runs come from the recorded tracks during the
+      warm-up (they appear in plain replay too), not from the model.
+
+    `cmaes_crowd.yaml` tunes the navigation policy in this STARS-driven crowd (objective v2, warm
+    start from v1). The same forecaster also supplies the policy's predictions.
+    The git index lock seen again at 02:08 came from search workers started before the lock-free
+    fix (entry after 39); removed as stale (>60 s old, no local git process).
