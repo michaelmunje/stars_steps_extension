@@ -1127,3 +1127,13 @@ why, and how to undo it.
     - UCY and ETH: the pooled model (better on every seed).
     - STEPS, PTDPES, Madras and Grand Central: per-dataset models.
     - The STEPS simulator model is unchanged (`cvae_kl01_finetune`).
+    **Nuance on the stall.** `train_loss` includes the KL term, whose weight ramps up over the first
+    10 epochs. That makes the total look flat, and in the LR sweep even rising (0.30 to 0.31-0.33,
+    epochs 7-11), while the reconstruction still improves. Looking at `train_forecast` alone, the
+    stall is real but milder: in the original seed-42 run it falls 0.479 -> 0.220 by epoch 5, then
+    only to 0.207 by epoch 49. **Test results:**
+    - Pool-then-fine-tune from the ordinary seed 1 is worse than per-dataset training: PTDPES
+      0.303 against 0.290 / 0.292, Grand Central 0.259 against 0.250 / 0.252.
+    - The 60-epoch seed-42 model lands at the typical level, not the lucky one: STEPS 0.087,
+      PTDPES 0.313, Grand Central 0.260, UCY 0.215, ETH 0.256. The original seed 42 was a one-off,
+      not something about the seed number.
