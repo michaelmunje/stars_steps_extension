@@ -1108,3 +1108,22 @@ why, and how to undo it.
     seed 42 and the ordinary seed 1, so the result is not tied to the lucky checkpoint. The
     question is whether pool-then-fine-tune beats per-dataset training (PTDPES 0.290 / 0.292,
     Grand Central 0.250 / 0.252) for both starting points.
+    **Result (validation): pool-then-fine-tune inherits the starting point's luck.**
+
+    | Model | PTDPES val ADE | Grand Central val ADE |
+    | --- | --- | --- |
+    | Single-dataset (2 seeds) | 0.321 / 0.323 | 0.264 / 0.265 |
+    | Fine-tuned from pooled seed 42 | **0.313** (test 0.282) | **0.255** (test 0.240) |
+    | Fine-tuned from pooled seed 1 | 0.340 | 0.273 |
+
+    Fine-tuning from the lucky pooled checkpoint beats per-dataset training by 3-4% on test.
+    From an ordinary one it is worse than training from scratch; 20 epochs at 3e-4 do not recover
+    it. The problem is the pooled training itself. The flat training loss from epoch 5 suggests
+    the LR, 0.96e-3, which was tuned by Optuna on STEPS alone, is too high for mixed six-dataset
+    batches. Job `fc_all_lr` sweeps the pooled LR at 3e-4 and 1.5e-4, seeds 42 and 1, on the
+    60-epoch schedule (`experiments/stars_ma/runs/cvae_all_lr*`).
+
+    **Interim recommendation:**
+    - UCY and ETH: the pooled model (better on every seed).
+    - STEPS, PTDPES, Madras and Grand Central: per-dataset models.
+    - The STEPS simulator model is unchanged (`cvae_kl01_finetune`).
