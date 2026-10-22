@@ -97,6 +97,7 @@ def make_controller(policy: dict | None, name: str | None = None, robot: RobotCo
     controller = dict(policy.get("controller") or {})
     if robot is not None:  # the controller plans with the simulated robot's limits
         controller.setdefault("max_speed", robot.max_speed)
+        controller.setdefault("reverse_speed", max(0.0, -robot.min_speed))
         controller.setdefault("max_angular_speed", robot.max_angular_speed)
         controller.setdefault("max_acceleration", robot.max_acceleration)
         controller.setdefault("max_angular_acceleration", robot.max_angular_acceleration)

@@ -45,6 +45,7 @@ PARAMETERS = (
 @dataclass
 class ControllerConfig:
     num_speeds: int = 6
+    reverse_speed: float = 0.3     # also consider backing off at this speed (0 disables)
     num_turn_rates: int = 11
     plan_dt: float = 0.2
     max_horizon: float = 4.0
@@ -52,6 +53,7 @@ class ControllerConfig:
     safety_margin: float = 0.05
     obstacle_clearance: float = 0.6
     speed_cost: float = 0.5
+    retreat_cost: float = 2.0      # penalty on moving away from the goal (no orbiting instead of waiting)
     disruption_lookahead: float = 1.5
     max_speed: float = 1.0
     max_angular_speed: float = 1.5
@@ -80,6 +82,8 @@ class SocialNavigationPolicy(Policy):
     def candidates(self, device) -> torch.Tensor:
         c = self.config
         v = torch.linspace(0.0, c.max_speed, c.num_speeds, device=device)
+        if c.reverse_speed > 0:
+            v = torch.cat([v.new_tensor([-c.reverse_speed]), v])
         w = torch.linspace(-c.max_angular_speed, c.max_angular_speed, c.num_turn_rates, device=device)
         return torch.cartesian_prod(v, w)                                          # [M, 2]
 
@@ -125,6 +129,10 @@ class SocialNavigationPolicy(Policy):
         alignment = torch.cos(wrap_angle(bearing - final_theta))
         # Arriving: no reward for overshooting; progress saturates at the goal.
         cost = -self._p(params, "goal_weight")[:, None] * (progress + 0.1 * alignment)
+        # Retreating from the goal is only worth it to avoid danger: penalise it outright, so the
+        # controller waits rather than circling when pedestrians block the way.
+        cost = cost + c.retreat_cost * torch.relu(-progress)
+        crowding = torch.zeros(B, device=device)
         valid = torch.ones(B, M, dtype=torch.bool, device=device)
 
         # Static obstacles (hard within the whole horizon, soft clearance cost).
@@ -155,12 +163,17 @@ class SocialNavigationPolicy(Policy):
             moving = (speed > 0.2).float()[:, None, None]
             disruption = (0.5 * (1 + ahead) * torch.relu(1.0 - gap / zone) * moving * (speed[:, None, None] / 1.3)
                           * weight * visible).sum(dim=(-1, -2)) / steps_used[:, None]
+            # How close the nearest visible pedestrian is now, relative to personal space (0 = far).
+            now_gap = torch.where(obs.ped_visible, torch.linalg.norm(obs.ped_pos - obs.robot_pose[:, None, :2], dim=-1)
+                                  - obs.ped_radius - c.robot_radius, torch.full_like(obs.ped_radius, 1e3))
+            crowding = torch.relu(1.0 - now_gap.min(dim=-1).values / (2.0 * personal[:, 0, 0, 0])).clamp(max=1.0)
             cost = (cost + self._p(params, "collision_weight")[:, None] * collision
                     + self._p(params, "pedestrian_weight")[:, None] * proximity
                     + self._p(params, "disruption_weight")[:, None] * disruption)
 
         v, w = commands[None, :, 0], commands[None, :, 1]
-        cost = cost + c.speed_cost * ((v - self._p(params, "preferred_speed")[:, None]) / c.max_speed) ** 2
+        # Speed tracking fades out when a pedestrian is close: slowing down / waiting is then fine.
+        cost = cost + c.speed_cost * (1.0 - crowding)[:, None] * ((v - self._p(params, "preferred_speed")[:, None]) / c.max_speed) ** 2
         cost = cost + self._p(params, "turn_penalty")[:, None] * w.abs() / c.max_angular_speed
         change = ((v - obs.last_command[:, None, 0]).abs() / c.max_speed
                   + (w - obs.last_command[:, None, 1]).abs() / c.max_angular_speed)

@@ -30,7 +30,7 @@ class RobotConfig:
 
     radius: float = 0.3
     max_speed: float = 1.0
-    min_speed: float = 0.0
+    min_speed: float = -0.3          # slow reverse (backing off in narrow spaces)
     max_angular_speed: float = 1.5
     max_acceleration: float = 1.0
     max_angular_acceleration: float = 3.0

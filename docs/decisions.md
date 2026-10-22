@@ -344,3 +344,20 @@ why, and how to undo it.
     are the usual suspects. Workaround: after a successful multi-GPU run every rank synchronises,
     shuts down distributed communication, flushes and `os._exit(0)`s. Single-process runs are
     unchanged.
+
+43. **Controller fix: the tuned policy drove in loops instead of waiting.** The side-by-side
+    figure (`seanjax/scripts/compare_policies.py`, `docs/results/navigation_compare_stars.png`)
+    showed the v1-tuned policy orbiting in `dense_flow` and `narrow_passage`. Three causes:
+    - The speed-tracking cost penalised slowing down.
+    - The tuned weights (pedestrian 17.4, goal 0.76) made circling cheaper than waiting.
+    - The robot could not reverse (minimum speed 0).
+
+    Changes, all fixed controller/robot settings (not tuned):
+    - `retreat_cost: 2.0` penalises negative progress toward the goal.
+    - The speed cost fades to zero when a pedestrian is within 2x personal space.
+    - The robot may reverse at up to 0.3 m/s (`min_speed: -0.3`, a reverse candidate in the
+      controller), as Jackal-class bases can.
+
+    The narrow-passage loop became a short back-off and dense-flow orbits mostly disappeared.
+    Navigation numbers in entries 27-40 used the old controller. The warm-start CMA-ES run (job
+    65638) and all later evaluations use the new one, and re-evaluate the reference policies.
