@@ -116,8 +116,24 @@ def disruption_metrics(run: Rollout, counterfactual: Rollout, batch: ScenarioBat
     }
 
 
+def influence_metrics(run: Rollout, batch: ScenarioBatch, threshold: float = 0.05) -> dict[str, torch.Tensor]:
+    """Robot-attributable change of learned-crowd forecasts (``stars_crowd``): per re-forecast, the
+    mean distance between the 4.8 s forecasts with and without the robot in the graph. Immune to
+    the closed-loop divergence that makes trajectory counterfactuals meaningless for learned crowds."""
+    value = run.ped_influence                                                    # [B, P, K], 0 between re-forecasts
+    record = value > 0
+    seen = run.ped_active.any(-1) & batch.ped_mask
+    per_ped = value.sum(-1) / record.float().sum(-1).clamp(min=1)                # mean over re-forecasts
+    n = seen.float().sum(-1).clamp(min=1)
+    return {"robot_influence": (per_ped * seen).sum(-1) / n,
+            "robot_influence_max": (value.amax(-1) * seen).amax(-1),
+            "peds_influenced": ((value.amax(-1) > threshold) & seen).float().sum(-1)}
+
+
 def all_metrics(run: Rollout, counterfactual: Rollout | None, batch: ScenarioBatch, robot_radius: float) -> dict:
     out = robot_metrics(run, batch, robot_radius)
+    if run.ped_influence is not None:
+        out.update(influence_metrics(run, batch))
     if counterfactual is not None:
         out.update(disruption_metrics(run, counterfactual, batch))
     return out

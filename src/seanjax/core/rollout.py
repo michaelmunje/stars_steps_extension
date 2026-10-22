@@ -25,6 +25,7 @@ class Rollout:
     end_step: torch.Tensor        # [B]
     robot_present: bool
     dt: float
+    ped_influence: torch.Tensor | None = None  # [B, P, K] robot-attributable forecast change (learned crowds)
 
     @property
     def steps(self) -> int:
@@ -43,6 +44,8 @@ def rollout(env, batch: ScenarioBatch, policy=None, params: torch.Tensor | None 
         policy.reset(batch.size)
     poses, vs, ws, commands, emergencies = [state.robot.pose], [state.robot.v], [state.robot.w], [state.command], []
     peds, active = [state.peds.pos], [state.peds.active]
+    influence = [torch.zeros_like(state.peds.active, dtype=state.peds.pos.dtype)]
+    tracks_influence = hasattr(env.pedestrians, "last_influence")
     emergencies.append(torch.zeros(batch.size, dtype=torch.bool, device=state.robot.pose.device))
     with torch.no_grad():
         for _ in range(batch.steps - 1):
@@ -55,6 +58,10 @@ def rollout(env, batch: ScenarioBatch, policy=None, params: torch.Tensor | None 
             poses.append(state.robot.pose), vs.append(state.robot.v), ws.append(state.robot.w)
             commands.append(state.command), peds.append(state.peds.pos), active.append(state.peds.active)
             emergencies.append(emergency if emergency is not None else torch.zeros_like(emergencies[0]))
+            if tracks_influence:
+                value = env.pedestrians.last_influence
+                influence.append(value.clone() if value is not None else torch.zeros_like(influence[0]))
     return Rollout(torch.stack(poses, 1), torch.stack(vs, 1), torch.stack(ws, 1), torch.stack(commands, 1),
                    torch.stack(emergencies, 1), torch.stack(peds, 2), torch.stack(active, 2), state.success,
-                   state.ped_collision, state.obstacle_collision, state.end_step, robot_present, batch.dt)
+                   state.ped_collision, state.obstacle_collision, state.end_step, robot_present, batch.dt,
+                   torch.stack(influence, 2) if tracks_influence else None)

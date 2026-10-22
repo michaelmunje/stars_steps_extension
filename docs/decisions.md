@@ -450,3 +450,122 @@ why, and how to undo it.
     the robot, averaged over pedestrians that came that close. `cmaes_crowd.yaml` now uses it as
     its disruption term and the run restarted. The global metric is still reported. For the
     social-force-type models (damped dynamics) the global metric remains the default.
+
+50. **Objective v2 warm start: natural behaviour, a real trade-off.** Scripted test, best STARS
+    predictor, fixed controller, objective v2:
+
+    | Policy | Objective v2 | Success | Path efficiency | Disruption | Min clearance | Time | Smoothness |
+    | --- | --- | --- | --- | --- | --- | --- | --- |
+    | Default | 0.425 | 100% | 0.98 | 0.206 m | — | 13.6 s | 0.62 |
+    | v1 | 0.354 | 91% | 0.85 | 0.067 m | 0.74 m | 13.5 s | — |
+    | Reward-hacking warm start | 0.173 | — | — | — | — | — | — |
+    | Warm start v2 | 0.449 | 96% | 0.91 | 0.115 m | 0.46 m | 12.4 s | 0.37 |
+
+    The rollout figure (`docs/results/navigation_compare_warm_v2.png`) shows clean narrow-passage
+    and head-on behaviour and no circling around crossing pedestrians. A small loop near a
+    crowded goal in dense flow remains.
+
+    v2 is more efficient and smoother than v1 but less cautious; which is preferable depends on
+    the objective weights, which remain a research choice. Recommended:
+    `checkpoints/seanjax/cmaes_stars_best_warm_v2/best_policy.yaml` for objective v2, v1 for
+    minimum disruption.
+
+    Side fix: the social-force sidestep now applies only to walking pedestrians. Standing-group
+    members orbited in place before; now they settle within ~5 s (0 m/s after 15 s). Results
+    above used the old pedestrian model; the difference is confined to standing pedestrians.
+
+51. **Measuring disruption in the STARS crowd, and a limitation it revealed.**
+    - The local metric (49) still read ~0.85 m: pedestrians that reach the robot have already
+      diverged chaotically.
+    - New `robot_influence`: at each re-forecast the crowd model also forecasts without the robot
+      in the graph, from the same histories. The metric is the mean distance between the two 4.8 s
+      forecasts. It is attributable to the robot and immune to divergence. Also
+      `robot_influence_max` and `peds_influenced` (> 5 cm).
+
+    Finding: the STEPS-trained forecaster barely reacts to the robot node. Mean influence is 7 mm
+    within 2 m of the robot and 1-2 mm beyond. STEPS contains no robot, and most of its
+    interactions are weak (90% of pedestrians stand). In this crowd, avoidance is therefore almost
+    entirely the robot's responsibility, plus the no-interpenetration rule. To make learned crowds
+    reactive, the forecaster would need interaction-rich data or robot-in-the-loop data; this is
+    a limitation to report, not a bug.
+
+    For tuning: `cmaes_crowd.yaml` uses `robot_influence` with weight 10 (it is ~100x smaller than
+    trajectory displacements) and now warm-starts from the objective-v2 policy. Restarted
+    (previous run cancelled at generation 54).
+
+52. **Correction to 51: the influence weight.** I set `disruption: 10` from three recorded scenes,
+    where influence was ~0.005 m. Over the full training mix (scripted encounters included)
+    `robot_influence` averages 0.24 m at the start, the same magnitude as trajectory disruption
+    with the other crowd models. Weight 10 made the influence term dominate the objective
+    (~-1.8), so the run was cancelled at generation 42 and restarted with weight 1.0.
+
+    The "barely reacts" finding in 51 holds for recorded STEPS scenes. In scripted head-on and
+    crossing encounters the forecaster does change its forecasts by tens of centimetres when the
+    robot is present.
+
+53. **Pretraining on all six datasets does not transfer better to STEPS.** A low-KL CVAE
+    fine-tuned on STEPS, STEPS test:
+    - from the all-datasets phase-1 encoder: agent ADE 0.081, moving 0.339, joint 0.096;
+    - from the STEPS-only encoder: 0.080 / 0.336 / 0.097.
+
+    Within seed noise. On STEPS, extra pedestrian datasets in self-supervised pretraining add
+    nothing measurable. A single forecaster trained on all six datasets matches the STEPS-only
+    models on STEPS validation (0.068-0.070) while also covering MADRAS, Grand Central, UCY and
+    PTDPES. Per-dataset test results are pending (job 65718).
+
+54. **Navigation in the STARS-driven crowd (test, scripted + recorded scenes; objective v2 with
+    robot_influence).**
+
+    | Policy | Objective | Success | Collisions | Path efficiency |
+    | --- | --- | --- | --- | --- |
+    | Goal-seeking | -2.326 | 34% | 66% | — |
+    | Default social | -0.239 | 82% | 7.8% | — |
+    | v1 | -0.150 | 83% | 3.3% | — |
+    | Objective-v2 policy | 0.044 | 91% | 3.3% | 0.86 |
+    | Crowd-tuned | 0.043 | 91% | 3.3% | 0.85 |
+
+    - Tuning inside the learned crowd gives nothing over the v2 policy, which transfers as is.
+    - On recorded STEPS scenes only, success is 30-50% for every social policy, against 100% with
+      reactive-replay pedestrians. Collisions are ~0, so the failures are timeouts. The learned
+      crowd barely yields to the robot (51), so in dense recorded crowds the robot rarely finds
+      a gap within 30 s: a freezing-robot outcome.
+
+    This is the main limitation of using the STEPS forecaster as a reactive crowd simulator.
+    Options, not yet done:
+    - longer time limits for recorded scenes;
+    - an interaction-aware forecaster trained on data with robots;
+    - a hybrid crowd (reactive replay near the robot, STARS elsewhere).
+
+    The global `disruption_displacement` column (1.1-1.3 m) is meaningless in this crowd (49).
+
+55. **Two fixes from the STARS-crowd figure (`docs/results/navigation_compare_crowd.png`).**
+    - **Spiralling pedestrians.** A fixed intent draw is read in each pedestrian's re-centred
+      local frame at every 0.4 s re-forecast, so a slight turn repeats into a circle. Intents now
+      follow an AR(1) process (`intent_correlation: 0.8` per re-forecast, ~2 s correlation),
+      still seeded and on a fixed schedule so the counterfactual matches. In `group_toward` with
+      the robot present, mean net turning per pedestrian fell from 1.41 to 0.67 rad (max 2.7 ->
+      1.1 rad).
+    - **Unreachable recorded goals.** Several recorded-scene goals sat next to standing
+      pedestrians, who do not yield in the learned crowd. Recorded scenarios now reject goals
+      within 1 m of any pedestrian position in the window. This changes which recorded scenes are
+      drawn, so recorded-scene numbers before this entry are not directly comparable.
+
+56. **After the fixes in 55, tuning inside the STARS crowd pays off.** Re-evaluated on 90 test
+    scenarios (80 scripted + 10 recorded STEPS scenes) with `stars_crowd` pedestrians
+    (`runs/seanjax/crowd_v2`), the crowd-tuned policy re-tuned on the corrected crowd is now best:
+
+    | Policy | Objective | Success | Collision | Path eff. | Recorded success / objective |
+    | --- | --- | --- | --- | --- | --- |
+    | Goal-seeking | -2.260 | 37% | 63% | 0.37 | 10% / -3.23 |
+    | Default social | -0.187 | 84% | 7.8% | 0.83 | 70% / -0.38 |
+    | v1 | 0.028 | 90% | 1.1% | 0.84 | 70% / -0.26 |
+    | Objective-v2 policy | 0.144 | 96% | 3.3% | 0.91 | 90% / 0.20 |
+    | **Crowd-tuned** (`cmaes_crowd`) | **0.233** | **99%** | **1.1%** | 0.91 | **100% / 0.37** |
+
+    - The freezing-robot failure on recorded scenes from 54 is gone: it came largely from the
+      spiralling pedestrians and goals beside standing people, not from the policy.
+    - The gain over the v2 policy is mostly fewer collisions (3.3% -> 1.1%) at the cost of 0.5 s
+      longer trips. `robot_influence` is about the same for all social policies (0.28-0.30 m).
+    - Figure: `docs/results/navigation_compare_crowd_v2.png`. In `dense_flow` all policies still
+      make a small loop near the goal while waiting for the cross flow; left as is, since it is
+      collision-free and the objective already charges for the detour.

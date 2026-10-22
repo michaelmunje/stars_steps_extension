@@ -69,7 +69,9 @@ def social_forces(state: PedestrianState, desired: torch.Tensor, batch, robot, r
     magnitude = p.ped_strength * torch.exp((reach - dist) / p.ped_range)
     magnitude = magnitude * _anisotropy(heading[:, :, None], away, p.anisotropy) * pair
     unit = heading / torch.linalg.norm(heading, dim=-1, keepdim=True).clamp(min=1e-9)
-    right = torch.stack([unit[..., 1], -unit[..., 0]], dim=-1)                   # walker's right-hand side
+    # Side-stepping is something walkers do; standing pedestrians would otherwise orbit in place.
+    walking = (torch.linalg.norm(desired, dim=-1, keepdim=True) / 0.5).clamp(max=1.0)
+    right = torch.stack([unit[..., 1], -unit[..., 0]], dim=-1) * walking         # walker's right-hand side
     force = force + (magnitude[..., None] * away).sum(dim=2) + p.sidestep * magnitude.sum(dim=2)[..., None] * right
 
     rel_r = pos - robot.pos[:, None]

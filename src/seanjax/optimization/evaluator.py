@@ -58,7 +58,8 @@ def _repeat_rollout(run: Rollout, times: int) -> Rollout:
     rep = lambda t: t.repeat(times, *([1] * (t.dim() - 1)))
     return Rollout(rep(run.robot_pose), rep(run.robot_v), rep(run.robot_w), rep(run.command), rep(run.emergency),
                    rep(run.ped_pos), rep(run.ped_active), rep(run.success), rep(run.ped_collision),
-                   rep(run.obstacle_collision), rep(run.end_step), run.robot_present, run.dt)
+                   rep(run.obstacle_collision), rep(run.end_step), run.robot_present, run.dt,
+                   rep(run.ped_influence) if run.ped_influence is not None else None)
 
 
 class Evaluator:

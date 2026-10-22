@@ -6,9 +6,11 @@ its motion comes from the forecaster:
 
 * every ``replan_every`` simulation steps (0.4 s by default, the model's rate) all model-driven
   pedestrians of every environment are forecast jointly from their histories;
-* the CVAE intent is held per pedestrian: a standard-normal draw ``eps`` made at reset (seeded, so
-  the robot-absent counterfactual uses the same draws) gives ``z = mu + sigma * eps`` under the
-  current prior at every replanning step;
+* the CVAE intent is temporally correlated per pedestrian: standard-normal ``eps`` drawn at reset and
+  updated as an AR(1) process at every re-forecast (``intent_correlation``, default 0.8 per 0.4 s,
+  ~2 s correlation time) gives ``z = mu + sigma * eps`` under the current prior. Draws are seeded and
+  made on a fixed schedule, so the robot-absent counterfactual uses the same ones. (A fully held
+  draw, read in each pedestrian's re-centred local frame, made pedestrians spiral.)
 * between replanning steps pedestrians move along the forecast's first step (its displacement
   spread evenly over the simulation steps, applied incrementally so hand-overs are smooth);
 * the robot joins the graph as one more person, so pedestrians react to it as they react to each
@@ -34,7 +36,7 @@ class StarsCrowdModel(PedestrianModel):
     name = "stars_crowd"
 
     def __init__(self, checkpoint, *, device: str = "cpu", replan_every: int = 4, include_robot: bool = True,
-                 seed: int = 0, amp: bool = True) -> None:
+                 seed: int = 0, amp: bool = True, intent_correlation: float = 0.8) -> None:
         self.device = torch.device(device)
         self.model, payload = load_forecaster(checkpoint, self.device)
         self.model.eval()
@@ -42,6 +44,7 @@ class StarsCrowdModel(PedestrianModel):
         self.history = int(payload["window"]["observation_steps"])
         self.dt_model = float(payload["window"]["dt"])
         self.replan_every, self.include_robot, self.seed, self.amp = int(replan_every), include_robot, seed, amp
+        self.intent_correlation = float(intent_correlation)
 
     def reset(self, batch):
         state = super().reset(batch)
@@ -52,12 +55,13 @@ class StarsCrowdModel(PedestrianModel):
         self.stride = stride
         self.buffer = [(state.pos.clone(), state.active.clone())]
         self.robot_buffer = []
-        generator = torch.Generator(device="cpu").manual_seed(self.seed)
+        self.generator = torch.Generator(device="cpu").manual_seed(self.seed)
         latent = max(1, self.model.latent_dim)
-        self.eps = torch.randn((B, P + 1, latent), generator=generator).to(batch.ped_ref.device)
+        self.eps = torch.randn((B, P + 1, latent), generator=self.generator).to(batch.ped_ref.device)
         self.plan = None                                     # [B, P, steps, 2] positions for the coming steps
         self.plan_start = 0
         self.age = torch.zeros(B, P, dtype=torch.long, device=batch.ped_ref.device)  # steps since spawn
+        self.last_influence = None
         return state
 
     def _history(self, extra_pos=None, extra_active=None):
@@ -73,10 +77,21 @@ class StarsCrowdModel(PedestrianModel):
         return xy, valid
 
     def _forecast(self, batch, robot, robot_present) -> torch.Tensor:
+        """Next-step positions, and (``self.last_influence``) how much the robot changed each forecast."""
+        nxt, full_with = self._forecast_once(batch, robot, robot_present, self.include_robot)
+        self.last_influence = torch.zeros_like(batch.ped_mask, dtype=nxt.dtype)
+        if self.include_robot and bool(robot_present.any()):
+            _, full_without = self._forecast_once(batch, robot, robot_present, False)
+            change = torch.linalg.norm(full_with - full_without, dim=-1).mean(-1)   # [B, P] over 4.8 s
+            self.last_influence = torch.where(robot_present[:, None], change, torch.zeros_like(change)).clamp(min=1e-9) \
+                * self._model_driven
+        return nxt
+
+    def _forecast_once(self, batch, robot, robot_present, include_robot: bool):
         """Next-step positions ``[B, P, 2]`` (scene frame) after one model step for model-driven pedestrians."""
         B, P = batch.ped_mask.shape
         extra_pos = extra_valid = None
-        if self.include_robot:
+        if include_robot:
             frames = [self.robot_buffer[max(0, len(self.robot_buffer) - 1 - self.stride * (self.history - 1 - i))]
                       for i in range(self.history)] if self.robot_buffer else [robot.pos] * self.history
             extra_pos = torch.stack(frames, dim=1)
@@ -88,8 +103,9 @@ class StarsCrowdModel(PedestrianModel):
         gather = lambda value: torch.gather(value, 1, order.view(B, N, *([1] * (value.dim() - 2))).expand_as(value))
         packed_mask = torch.gather(node_mask, 1, order)
         out = xy[:, :, -1].clone()
+        full = out[:, :, None].expand(B, N, self.model.prediction_steps, 2).clone()
         if not bool(packed_mask.any()):
-            return out[:, :P]
+            return out[:, :P], full[:, :P]
         graph = graph_batch_from_padded(gather(xy.to(self.device)), gather(valid.to(self.device)), packed_mask.to(self.device),
                                         dt=self.dt_model, knn=self.knn, radius=self.radius,
                                         prediction_steps=self.model.prediction_steps)
@@ -104,13 +120,15 @@ class StarsCrowdModel(PedestrianModel):
                 eps = eps[graph.node_mask]
                 z = (mu + torch.exp(0.5 * logvar) * eps.to(mu.dtype))[None]
             local = self.model.decode(graph, encoded, z)[0].float()
-        first = to_scene(local[:, :1], graph.origin, graph.heading)[:, 0]          # [Nt, 2]
-        packed = graph.to_padded(first)                                             # [B, N, 2]
-        nxt = torch.zeros_like(packed)
-        nxt.scatter_(1, order.to(self.device)[..., None].expand_as(packed), packed)
+        scene = to_scene(local, graph.origin, graph.heading)                       # [Nt, 12, 2]
+        packed = graph.to_padded(scene)                                             # [B, N, 12, 2]
+        unpacked = torch.zeros_like(packed)
+        unpacked.scatter_(1, order.to(self.device)[..., None, None].expand_as(packed), packed)
         have = node_mask.to(self.device)
-        out = torch.where(have[..., None], nxt, out.to(self.device))
-        return out[:, :P].to(batch.ped_ref.device)
+        full = torch.where(have[..., None, None], unpacked, full.to(self.device))
+        out = torch.where(have[..., None], unpacked[:, :, 0], out.to(self.device))
+        device = batch.ped_ref.device
+        return out[:, :P].to(device), full[:, :P].to(device)
 
     def step(self, state, batch, k, robot, robot_radius, robot_present) -> PedestrianState:
         K = batch.steps
@@ -120,7 +138,15 @@ class StarsCrowdModel(PedestrianModel):
         active = (state.active & ~leave) | spawn
         self.age = torch.where(spawn, torch.zeros_like(self.age), self.age + state.active.long())
         warm = self.age < self.history * self.stride                               # still on its reference
+        self._model_driven = (state.active & ~warm).to(state.pos.dtype)
+        self.last_influence = None
         if (k - 1) % self.replan_every == 0 or self.plan is None:
+            if self.plan is not None and self.intent_correlation < 1.0:
+                # Intents drift (AR(1), correlation time ~ replan / (1 - rho)): a fixed draw is read
+                # in each pedestrian's re-centred local frame every re-forecast and makes them spiral.
+                rho = self.intent_correlation
+                fresh = torch.randn(self.eps.shape, generator=self.generator).to(self.eps.device)
+                self.eps = rho * self.eps + (1.0 - rho * rho) ** 0.5 * fresh
             target = self._forecast(batch, robot, robot_present)
             # Per-step displacement toward the forecast's next model-rate position: applied to the
             # current position each step, so a pedestrian handed over mid-plan does not jump.

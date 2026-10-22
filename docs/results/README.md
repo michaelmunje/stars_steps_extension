@@ -58,7 +58,18 @@ collisions and beats the default under ORCA, social force and replay pedestrians
   reward hacking. Objective v2 adds detour (path efficiency) and smoothness terms; reruns are in
   progress.
 
+**Objective v2** adds detour (1 − path efficiency) and command smoothness terms [50]. Scripted
+test, best STARS predictor:
+
+| Policy | Objective v2 | Success | Path efficiency | Disruption (m) | Time (s) |
+| --- | --- | --- | --- | --- | --- |
+| Default social | 0.425 | 100% | 0.98 | 0.206 | 13.6 |
+| v1 (cautious) | 0.354 | 91% | 0.85 | 0.067 | 13.5 |
+| **Warm start v2** (`cmaes_stars_best_warm_v2`) | **0.449** | 96% | 0.91 | 0.115 | 12.4 |
+
 **Figures:**
+- [`navigation_compare_warm_v2.png`](navigation_compare_warm_v2.png): default vs v1 vs warm start
+  v2, six scenarios.
 - [`navigation_compare_stars.png`](navigation_compare_stars.png): goal-seeking vs default vs tuned,
   five scenarios.
 - [`navigation_compare_warm.png`](navigation_compare_warm.png): the reward-hacking policy.
@@ -67,5 +78,16 @@ collisions and beats the default under ORCA, social force and replay pedestrians
 ## Forecaster as the crowd
 
 `stars_crowd` moves the simulated pedestrians with the forecaster itself, with the robot as one
-more person in the graph [46]. Tuning the navigation policy inside that crowd (`cmaes_crowd.yaml`)
-is the current experiment.
+more person in the graph [46]. Intents follow an AR(1) process and recorded goals keep 1 m from
+pedestrians [55]. 90 test scenarios (80 scripted, 10 recorded STEPS scenes), objective v2 [56]:
+
+| Policy | Objective | Success | Collision | Recorded success |
+| --- | --- | --- | --- | --- |
+| Goal-seeking | -2.260 | 37% | 63% | 10% |
+| Default social | -0.187 | 84% | 7.8% | 70% |
+| v1 | 0.028 | 90% | 1.1% | 70% |
+| Objective-v2 policy | 0.144 | 96% | 3.3% | 90% |
+| **Tuned in the crowd** (`cmaes_crowd`) | **0.233** | **99%** | **1.1%** | **100%** |
+
+Figure: [`navigation_compare_crowd_v2.png`](navigation_compare_crowd_v2.png), default vs v2 vs
+crowd-tuned on recorded, crossing, group and dense-flow scenes.

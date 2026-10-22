@@ -194,6 +194,10 @@ class RecordingPool:
             start, goal = center - reach * direction, center + reach * direction
             if (np.linalg.norm(ref[:, 0] - start, axis=-1)[valid[:, 0]] < 1.0).any():
                 continue
+            # The goal must be reachable: not next to someone (standing pedestrians in a learned
+            # crowd do not yield, and a goal inside a group cannot be reached safely).
+            if (np.linalg.norm(occupied - goal, axis=-1) < 1.0).any():
+                continue
             # Keep the pedestrians nearest to the robot's straight path.
             seg = goal - start
             cross = lambda d: np.abs(seg[0] * d[:, 1] - seg[1] * d[:, 0]) / np.linalg.norm(seg)
