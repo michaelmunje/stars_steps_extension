@@ -336,3 +336,11 @@ why, and how to undo it.
     The best trial (53, val 0.0798 best-of-6) is now trained at full length with seeds 42 and 1
     (`cvae_hpo53_scratch_seed*`). Reports: `docs/results/hpo_steps_cvae_{scratch,ssl}.md` (from
     `baselines.hpo_report`).
+
+42. **Bus error at exit in multi-GPU all-dataset runs.** `ssl_all` (job 65478) finished normally:
+    early stop at epoch 294, best 5.361 at epoch 274, checkpoint saved. Rank 0 then died with a
+    bus error during interpreter teardown, so Slurm reported FAILED. The 4-GPU all-dataset
+    benchmark run showed the same (exit 135). Cause not diagnosed; /dev/shm or CUDA/NCCL teardown
+    are the usual suspects. Workaround: after a successful multi-GPU run every rank synchronises,
+    shuts down distributed communication, flushes and `os._exit(0)`s. Single-process runs are
+    unchanged.

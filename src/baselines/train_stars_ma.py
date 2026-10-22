@@ -705,6 +705,16 @@ def main(argv=None) -> None:
     finally:
         if args.world_size > 1 and dist.is_initialized():
             dist.destroy_process_group()
+    if args.world_size > 1:
+        # Multi-GPU runs on all datasets hit a bus error in interpreter teardown *after* training
+        # finished and saved (docs/decisions.md 42), which marked successful jobs FAILED. Everything
+        # is on disk by now, so skip the teardown.
+        import sys
+
+        if torch.cuda.is_available():
+            torch.cuda.synchronize()
+        sys.stdout.flush(), sys.stderr.flush()
+        os._exit(0)
 
 
 if __name__ == "__main__":
