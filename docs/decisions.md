@@ -654,3 +654,33 @@ why, and how to undo it.
     Instead they are resumed with `--resume` after the timeout; `latest.pt` is saved every epoch.
     The crowd v2 test evaluation and figures are queued behind the tuning job (dependency on
     65742) and written to `runs/seanjax/crowd_v3/` and `docs/results/navigation_compare_crowd_v3.png`.
+
+64. **Crowd tuning v2 results, and a wall bug in the STARS crowd.**
+    Test results under the v2 objective (intimate-zone comfort), from `runs/seanjax/crowd_v3`:
+
+    | Policy | Objective | Success | Collision | Intimate-zone rate | Min gap (m) | Recorded success |
+    | --- | --- | --- | --- | --- | --- | --- |
+    | Goal-seeking | -2.263 | 36% | 64% | 13.3% | 0.16 | 10% |
+    | Default social | -0.208 | 83% | 8.9% | 17.5% | 0.24 | 70% |
+    | v1 (cautious) | 0.198 | 90% | 1.1% | 0.8% | 0.64 | 70% |
+    | Objective-v2 policy | 0.238 | 97% | 2.2% | 14.6% | 0.32 | 90% |
+    | Crowd-tuned, first run (`cmaes_crowd`) | 0.258 | 98% | 2.2% | 12.8% | 0.36 | 100% |
+    | **Crowd v2, seed 42** (`cmaes_crowd_v2`) | **0.281** | 96% | 2.2% | 5.3% | 0.47 | 80% |
+    | Crowd v2, seed 7 | 0.250 | 94% | 2.2% | 3.6% | 0.51 | 70% |
+    | Crowd v2 from v1 | 0.237 | 92% | 3.3% | 2.2% | 0.52 | 60% |
+
+    - The new comfort term works: intimate-zone time fell from 13% to 2-5% and the minimum gap
+      grew. Only seed 42 beats the first crowd-tuned policy overall. The spread between seeds and
+      starts (0.237-0.281) is as large as the gains, so tuning results are reliable to about
+      ±0.02.
+    - Recorded-scene success (10 scenes) varies from 60% to 100% between runs. That is too few
+      scenes to rank policies on.
+    - **Wall bug.** `navigation_compare_crowd_v3.png` shows forecaster-driven pedestrians walking
+      through walls in `narrow_passage` and out of the `dense_flow` corridor: the forecaster has
+      no notion of obstacles. Fix: a model-driven move that would cross a wall now slides along
+      it, or stops at a corner (`geometry.block_wall_crossings`). Recorded scenes' arena box is
+      not a physical wall (recorded people cross it), so it is exempt
+      (`Scenario.meta["pedestrian_walls"] = False`, `ScenarioBatch.ped_walls`).
+    - All STARS-crowd numbers above were simulated with the bug, in the scenes that have walls.
+      They are re-evaluated in the fixed crowd as `runs/seanjax/crowd_v4`, and the v2 tuning is
+      rerun there, warm-started from `cmaes_crowd_v2`.

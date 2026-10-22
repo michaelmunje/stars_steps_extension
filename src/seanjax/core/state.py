@@ -33,6 +33,7 @@ class ScenarioBatch:
     circle_mask: torch.Tensor   # [B, C]
     segments: torch.Tensor      # [B, S, 4] x0, y0, x1, y1 (walls, polygon edges)
     segment_mask: torch.Tensor  # [B, S]
+    ped_walls: torch.Tensor     # [B] bool: walls also block pedestrians (False: robot arena only)
     dt: float
     names: list[str]
 

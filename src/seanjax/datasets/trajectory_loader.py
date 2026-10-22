@@ -215,5 +215,6 @@ class RecordingPool:
                             np.array([*start, heading], np.float32), goal.astype(np.float32), ref, valid,
                             np.full(len(ref), PED_RADIUS, np.float32), np.asarray(speeds, np.float32),
                             np.zeros((0, 3), np.float32), np.asarray(rectangle_segments(x0, y0, x1, y1), np.float32),
-                            {"recording": rec.id, "t0": t0})
+                            # The box bounds the robot's arena; recorded people cross it.
+                            {"recording": rec.id, "t0": t0, "pedestrian_walls": False})
         raise RuntimeError(f"Could not draw a recorded scenario from {split} recordings after {attempts} attempts")

@@ -233,7 +233,9 @@ def collate(scenarios: list[Scenario], device="cpu") -> ScenarioBatch:
         duration=t(np.array([s.duration for s in scenarios], np.float32)),
         ped_ref=t(ped_ref), ped_valid=t(ped_valid), ped_radius=t(ped_radius), ped_speed=t(ped_speed),
         ped_mask=t(ped_mask), circles=t(circles), circle_mask=t(circle_mask), segments=t(segments),
-        segment_mask=t(segment_mask), dt=float(dt), names=[s.name for s in scenarios])
+        segment_mask=t(segment_mask),
+        ped_walls=t(np.array([s.meta.get("pedestrian_walls", True) for s in scenarios], bool)),
+        dt=float(dt), names=[s.name for s in scenarios])
 
 
 def bounds(scenario: Scenario, margin: float = 1.0) -> tuple[float, float, float, float]:

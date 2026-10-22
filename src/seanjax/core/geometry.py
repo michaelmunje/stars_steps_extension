@@ -45,6 +45,42 @@ def obstacle_clearance(points: torch.Tensor, circles: torch.Tensor, circle_mask:
     return best, away
 
 
+def _cross(u: torch.Tensor, v: torch.Tensor) -> torch.Tensor:
+    return u[..., 0] * v[..., 1] - u[..., 1] * v[..., 0]
+
+
+def crosses_segments(old: torch.Tensor, new: torch.Tensor, segments: torch.Tensor,
+                     segment_mask: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+    """Whether each move ``old -> new`` (``[B, Q, 2]``) crosses a wall (``segments [B, S, 4]``):
+    ``crossed [B, Q]`` and the unit normal of the first wall crossed ``[B, Q, 2]``."""
+    a, b = segments[:, None, :, :2], segments[:, None, :, 2:]                  # [B, 1, S, 2]
+    p, r = old[:, :, None], (new - old)[:, :, None]                            # [B, Q, 1, 2]
+    s = b - a
+    denom = _cross(r, s)
+    ok = denom.abs() > 1e-12
+    safe = torch.where(ok, denom, torch.ones_like(denom))
+    t, u = _cross(a - p, s) / safe, _cross(a - p, r) / safe
+    hit = ok & (t >= 0) & (t <= 1) & (u >= 0) & (u <= 1) & segment_mask[:, None]
+    first = torch.where(hit, t, torch.full_like(t, 2.0)).argmin(-1)             # [B, Q]
+    tangent = torch.gather(s.expand(*hit.shape, 2), 2, first[..., None, None].expand(*first.shape, 1, 2))[:, :, 0]
+    tangent = tangent / torch.linalg.norm(tangent, dim=-1, keepdim=True).clamp(min=1e-12)
+    normal = torch.stack([-tangent[..., 1], tangent[..., 0]], -1)
+    return hit.any(-1), normal
+
+
+def block_wall_crossings(old: torch.Tensor, new: torch.Tensor, segments: torch.Tensor,
+                         segment_mask: torch.Tensor) -> torch.Tensor:
+    """Moves that would pass through a wall slide along it instead (or stop at a corner)."""
+    if not segments.shape[1]:
+        return new
+    crossed, normal = crosses_segments(old, new, segments, segment_mask)
+    move = new - old
+    slide = old + move - (move * normal).sum(-1, keepdim=True) * normal
+    out = torch.where(crossed[..., None], slide, new)
+    again, _ = crosses_segments(old, out, segments, segment_mask)
+    return torch.where((crossed & again)[..., None], old, out)
+
+
 def wrap_angle(angle: torch.Tensor) -> torch.Tensor:
     return torch.atan2(torch.sin(angle), torch.cos(angle))
 

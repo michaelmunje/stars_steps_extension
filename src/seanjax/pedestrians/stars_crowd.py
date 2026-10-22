@@ -16,6 +16,8 @@ its motion comes from the forecaster:
 * the robot joins the graph as one more person, so pedestrians react to it as they react to each
   other (STEPS contains no robot), and pedestrians can never interpenetrate it
   (``resolve_robot_contact``);
+* the forecaster has no notion of walls, so a model-driven move that would cross one slides along
+  it (``block_wall_crossings``); recorded scenes' arena box does not block pedestrians;
 * a pedestrian leaves when its reference ends (recorded exits are kept).
 
 This makes the trajectory forecaster the crowd simulator, for recorded or scripted scenes.
@@ -27,6 +29,7 @@ import torch
 from baselines.stars_ma_batch import graph_batch_from_padded
 from baselines.stars_ma_graph import to_scene
 from baselines.train_stars_ma import load_forecaster
+from seanjax.core.geometry import block_wall_crossings
 from seanjax.core.state import PedestrianState
 from seanjax.pedestrians.base import PedestrianModel, reference_velocity
 from seanjax.pedestrians.social_force import resolve_robot_contact
@@ -154,6 +157,10 @@ class StarsCrowdModel(PedestrianModel):
             self.plan_start = k
         model_pos = state.pos + self.plan
         pos = torch.where((warm | spawn)[..., None], batch.ped_ref[:, :, kk], model_pos)
+        # The forecaster knows nothing of walls: model-driven moves that would cross one slide along it.
+        blocked = block_wall_crossings(state.pos, pos, batch.segments,
+                                       batch.segment_mask & batch.ped_walls[:, None])
+        pos = torch.where((~(warm | spawn))[..., None], blocked, pos)
         pos = torch.where(active[..., None], pos, state.pos)
         vel = (pos - state.pos) / batch.dt
         vel = torch.where(spawn[..., None], reference_velocity(batch, kk), vel)

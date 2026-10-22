@@ -266,3 +266,18 @@ def test_stars_crowd_model_runs_reacts_to_the_robot_and_is_deterministic(tmp_pat
     model_driven = present.ped_active.clone()
     model_driven[:, :, :40] = False                                              # after the 3.2 s warm-up
     assert bool(model_driven.any())
+
+
+def test_wall_crossings_slide_along_the_wall_or_stop_at_corners():
+    from seanjax.core.geometry import block_wall_crossings
+
+    wall = torch.tensor([[[0.0, -1.0, 0.0, 1.0], [-1.0, 1.0, 1.0, 1.0]]])     # x = 0 and y = 1
+    mask = torch.tensor([[True, True]])
+    old = torch.tensor([[[-0.1, 0.0], [-0.1, 0.0], [-0.1, 0.9], [-2.0, 0.0]]])
+    new = torch.tensor([[[0.1, 0.1], [-0.2, 0.1], [0.1, 1.1], [-1.9, 0.0]]])
+    out = block_wall_crossings(old, new, wall, mask)
+    assert torch.allclose(out[0, 0], torch.tensor([-0.1, 0.1]))                # slides along x = 0
+    assert torch.allclose(out[0, 1], new[0, 1])                                # no crossing: unchanged
+    assert torch.allclose(out[0, 2], old[0, 2])                                # corner: stays
+    assert torch.allclose(out[0, 3], new[0, 3])
+    assert torch.equal(block_wall_crossings(old, new, wall, torch.zeros_like(mask)), new)
