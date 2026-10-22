@@ -1019,3 +1019,21 @@ why, and how to undo it.
     2-2.5x more (2.2-2.6% against 1.1%), the same trade-off as v5 seed 7 in 77. v4 stays the
     reference. This ends the cost-term and turn-memory line of work (68-81); only the pass-side
     memory design (above) remains, pending review.
+
+82. **Pass-side memory (the corrected design from 81).** New parameter `pass_side_weight`
+    (default 0, so existing policies are unchanged). Each step:
+    - The *blocker* is the nearest visible pedestrian ahead of the robot (toward the goal) within
+      `pass_range` (2 m).
+    - Each candidate plan ends either left or right of the blocker's predicted position, in the
+      goal frame.
+    - When a new blocker appears, the side of the chosen plan is committed for `commit_steps`
+      (2 s). Plans that end on the other side of the same blocker cost `pass_side_weight` more.
+
+    Unlike 81, continuing to turn is free, and only switching sides around the same person is
+    charged. Job `eval_pass` runs v4 with the weight at 1 and at 3, no re-tuning
+    (`runs/seanjax/crowd_v10_pass*`), plus the waiting diagnostic and a comparison figure at 3.
+
+    **Seed replicates** (job 66145). The all-dataset model's lead over single-dataset models is
+    1-3% on STEPS, PTDPES, Madras and Grand Central (80), and seed noise has only been measured on
+    STEPS. Two more seeds of `cvae_hpo53_scratch_all`, plus one more each of the PTDPES and Grand
+    Central single-dataset models, put error bars on those gaps.

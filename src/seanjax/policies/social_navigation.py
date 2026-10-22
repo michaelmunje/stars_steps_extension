@@ -43,6 +43,7 @@ PARAMETERS = (
     ParameterSpec("speed_scale", 1.0, 0.1, 20.0, log=True, description="Multiplier on speed_cost"),
     ParameterSpec("retreat_scale", 1.0, 0.1, 10.0, log=True, description="Multiplier on retreat_cost"),
     ParameterSpec("alignment_weight", 0.1, 0.0, 1.0, description="Reward for facing the goal at the plan's end"),
+    ParameterSpec("pass_side_weight", 0.0, 0.0, 5.0, description="Penalty for switching the side on which the robot passes the blocking pedestrian (decision 82)"),
     ParameterSpec("side_commit_weight", 0.0, 0.0, 5.0, description="Penalty for reversing turn direction within commit_steps of the last turn (decision 81)"),
     ParameterSpec("idle_turn_weight", 0.0, 0.0, 5.0, description="Penalty for turning away from the goal without progress (loops; decision 78)"),
 )
@@ -64,6 +65,7 @@ class ControllerConfig:
     disruption_lookahead: float = 1.5
     commit_steps: int = 20         # control steps a chosen turn direction stays committed (2 s at dt 0.1)
     commit_min_turn: float = 0.3   # |w| (rad/s) that counts as choosing a side
+    pass_range: float = 2.0        # m: the nearest pedestrian ahead within this range is "the blocker"
     max_speed: float = 1.0
     max_angular_speed: float = 1.5
     max_acceleration: float = 1.0
@@ -81,12 +83,14 @@ class SocialNavigationPolicy(Policy):
         self.predictor = predictor or ConstantVelocityPredictor()
         self.last_info: dict[str, torch.Tensor] = {}
         self._side = self._side_left = None
+        self._pass = None          # (blocker index, pass side, steps left), each [B]
 
     def reset(self, batch_size: int) -> None:
         if hasattr(self.predictor, "reset"):
             self.predictor.reset()
         self._side = None          # [B] committed turn direction (-1, 0, +1) and steps left
         self._side_left = None
+        self._pass = None
 
     def _p(self, params: torch.Tensor, name: str) -> torch.Tensor:
         return params[:, self.parameter_names.index(name)]
@@ -153,6 +157,9 @@ class SocialNavigationPolicy(Policy):
             cost = cost + retreat_cost * torch.relu(-progress)
         crowding = torch.zeros(B, device=device)
         valid = torch.ones(B, M, dtype=torch.bool, device=device)
+        pass_side = torch.zeros(B, M, device=device)                              # side of the blocker each plan ends on
+        blocker = torch.zeros(B, dtype=torch.long, device=device)
+        has_blocker = torch.zeros(B, dtype=torch.bool, device=device)
 
         # Static obstacles (hard within the whole horizon, soft clearance cost).
         clearance_o, _ = obstacle_clearance(robot_xy.reshape(B, M * H, 2), obs.circles, obs.circle_mask,
@@ -186,6 +193,21 @@ class SocialNavigationPolicy(Policy):
             now_gap = torch.where(obs.ped_visible, torch.linalg.norm(obs.ped_pos - obs.robot_pose[:, None, :2], dim=-1)
                                   - obs.ped_radius - c.robot_radius, torch.full_like(obs.ped_radius, 1e3))
             crowding = torch.relu(1.0 - now_gap.min(dim=-1).values / (2.0 * personal[:, 0, 0, 0])).clamp(max=1.0)
+            # Pass-side memory: the nearest visible pedestrian ahead (toward the goal, within
+            # pass_range) is the blocker; each plan ends left (+1) or right (-1) of it in the goal
+            # frame. Switching sides on the same blocker within commit_steps costs extra.
+            goal_dir = obs.goal - obs.robot_pose[:, :2]
+            goal_dir = goal_dir / torch.linalg.norm(goal_dir, dim=-1, keepdim=True).clamp(min=1e-6)
+            rel_now = obs.ped_pos - obs.robot_pose[:, None, :2]
+            dist_now = torch.linalg.norm(rel_now, dim=-1)
+            ahead = (rel_now * goal_dir[:, None]).sum(-1) > 0
+            candidate = obs.ped_visible & ahead & (dist_now < c.pass_range)
+            has_blocker = candidate.any(-1)
+            blocker = torch.where(candidate, dist_now, torch.full_like(dist_now, 1e9)).argmin(-1)
+            last_step = (steps_used.long() - 1).clamp(min=0)
+            blocker_end = future[torch.arange(B, device=device), blocker, last_step]          # [B, 2]
+            offset = final_xy - blocker_end[:, None]
+            pass_side = torch.sign(goal_dir[:, None, 0] * offset[..., 1] - goal_dir[:, None, 1] * offset[..., 0])
             cost = (cost + self._p(params, "collision_weight")[:, None] * collision
                     + self._p(params, "pedestrian_weight")[:, None] * proximity
                     + self._p(params, "disruption_weight")[:, None] * disruption)
@@ -217,6 +239,13 @@ class SocialNavigationPolicy(Policy):
         turning = w.abs() > c.commit_min_turn
         reverses = turning & (torch.sign(w) * self._side[:, None] < 0) & (self._side_left > 0)[:, None]
         cost = cost + self._p(params, "side_commit_weight")[:, None] * reverses.float()
+        if self._pass is None or self._pass[0].shape[0] != B:
+            self._pass = (torch.full((B,), -1, dtype=torch.long, device=device), torch.zeros(B, device=device),
+                          torch.zeros(B, dtype=torch.long, device=device))
+        pass_ped, pass_kept, pass_left = self._pass
+        same_blocker = has_blocker & (pass_ped == blocker) & (pass_left > 0)
+        switches = same_blocker[:, None] & (pass_side * pass_kept[:, None] < 0)
+        cost = cost + self._p(params, "pass_side_weight")[:, None] * switches.float()
 
         cost = torch.where(valid, cost, torch.full_like(cost, float("inf")))
         best = cost.argmin(dim=1)
@@ -226,6 +255,11 @@ class SocialNavigationPolicy(Policy):
         self._side = torch.where(commit, torch.sign(chosen), self._side)
         self._side_left = torch.where(commit, torch.full_like(self._side_left, c.commit_steps),
                                       (self._side_left - 1).clamp(min=0))
+        chosen_side = pass_side.gather(1, best[:, None])[:, 0]
+        new_blocker = has_blocker & ~same_blocker
+        self._pass = (torch.where(has_blocker, blocker, pass_ped),
+                      torch.where(new_blocker, chosen_side, pass_kept),
+                      torch.where(new_blocker, torch.full_like(pass_left, c.commit_steps), (pass_left - 1).clamp(min=0)))
         emergency = ~valid.any(dim=1)
         command = torch.where(emergency[:, None], torch.zeros_like(command), command)
         stop = (commands[:, 0].abs() + (commands[:, 0] != 0) * 1e3 + commands[:, 1].abs()).argmin()[None]  # v = 0, w ~ 0
