@@ -361,3 +361,13 @@ why, and how to undo it.
     The narrow-passage loop became a short back-off and dense-flow orbits mostly disappeared.
     Navigation numbers in entries 27-40 used the old controller. The warm-start CMA-ES run (job
     65638) and all later evaluations use the new one, and re-evaluate the reference policies.
+
+44. **Seed variance and the current best forecaster.**
+    - Search configuration 0 (low-KL CVAE from scratch), seeds 42/1/2: validation agent ADE
+      0.0698 / 0.0693 / 0.0707 m (mean 0.0699, sd ~0.0007). Differences between configurations
+      below ~0.002 m are within noise.
+    - Best on the STEPS test split: `cvae_kl01_finetune` (low-KL CVAE, fine-tuned STEPS phase-1
+      encoder). Agent ADE/FDE 0.080/0.126 m, moving 0.336/0.588 m, joint ADE 0.097 m.
+    - Its 20 s simulations move at 0.115 m/s mean speed, equal to the smoothed real tracks.
+    - Pretraining helps slightly once the KL weight is right: fine-tuned 0.336 < scratch 0.342
+      < frozen 0.362 moving ADE.
