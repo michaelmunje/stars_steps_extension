@@ -261,3 +261,18 @@ why, and how to undo it.
     The tuned runs are not paired (different search runs), and the forecaster's latent had
     collapsed. Next: rerun with the best low-KL forecaster, and compare predictors by evaluating
     the *same* parameter sets with each predictor (paired).
+
+37. **Paired predictor comparison: STARS forecasts help the navigation policy.** Same parameters,
+    80 scripted test scenarios, constant velocity -> best low-KL STARS CVAE
+    (`cvae_hpo0_scratch_full`, prior mean):
+
+    | Policy | Constant velocity | STARS |
+    | --- | --- | --- |
+    | Social, default | 0.439 (2.5% collisions) | 0.536 (0 collisions, 100% success) |
+    | Tuned v1 (cautious) | 0.612 | 0.647 (disruption 0.065 -> 0.059 m), best so far |
+    | Tuned v2 (fast) | 0.547 | 0.525 |
+    | Tuned with the old STARS model | 0.560 | 0.542 |
+
+    The two fast policies lose about 0.02. Their weights were tuned around constant velocity's
+    errors. CMA-ES with the best forecaster in the loop (job 65618) tests whether re-tuning
+    recovers that. Tables: `runs/seanjax/paired/{constant_velocity,stars_best}/`.
