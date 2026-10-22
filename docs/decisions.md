@@ -1058,3 +1058,17 @@ why, and how to undo it.
       success rates come only from the 270-scene evaluation. A deterministic crowd (fp32,
       `torch.use_deterministic_algorithms`) would make figures reproducible at some speed cost;
       not done.
+
+84. **The all-dataset recipe is seed-sensitive; a 60-epoch schedule is tested.** Seed replicates
+    of `cvae_hpo53_scratch_all` (job 66145) reach best validation ADE 0.247 (seed 1, epoch 12)
+    and 0.251 (seed 2, epoch 8), against 0.220 for seed 42 (epoch 33). After that, seeds 1 and 2
+    get worse while the LR is still near its peak (seed 1 rises to 0.290, and its KL grows). The
+    cosine schedule is set for 200 epochs, so the LR has barely decayed when early stopping
+    triggers (as in 60). Seed 42 may be the lucky case, so the 1-3% leads of the all-dataset
+    model on the large datasets (80) may not be robust.
+    - For comparison, seed replicates of the single-dataset models are tight: Grand Central
+      0.2501 / 0.2519, PTDPES 0.2899 / 0.2915.
+    - Job `fc_all_e60` trains the same recipe with `--epochs 60`, so the LR anneals within the
+      run, for seeds 42, 1 and 2, each evaluated on test.
+    - Decision 80 will be restated with seed spreads once the test results of both jobs are in.
+      If the 60-epoch recipe is stable, it replaces the 200-epoch one for all-dataset training.
