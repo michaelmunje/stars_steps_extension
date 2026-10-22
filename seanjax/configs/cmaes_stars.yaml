@@ -11,7 +11,7 @@ cmaes:
   seed: 42
   kinds: [crossing, head_on, overtaking, following, group_toward, narrow_passage,
           stationary_group, dense_flow]
-  train_per_kind: 6      # fresh scenarios every generation, shared by all candidates
+  train_per_kind: 12     # fresh scenarios every generation, shared by all candidates
   val_per_kind: 12       # fixed validation set: selects best_policy.yaml
   validate_every: 5
   duration: 30.0

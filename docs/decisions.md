@@ -145,3 +145,18 @@ why, and how to undo it.
     robot and the rest enter from the corridor ends. Defaults then succeed in 48/48 validation
     scenarios. The CMA-ES runs were enlarged (population 32, 150 generations, 6 training and 12
     validation scenarios per kind) since a generation costs ~3 s on a GB200.
+
+27. **CMA-ES v1 results (job 65497)**, on held-out test scenarios:
+    - Scripted only (80 scenarios): the tuned policy reaches objective 0.612, versus 0.439 for
+      the default social controller and -0.572 for goal-seeking. It has 0% collisions (vs 2.5%),
+      3x less disruption (0.065 m vs 0.204 m) and 2x the minimum clearance. The cost is 1.4 s
+      slower trips and 5% timeouts.
+    - With recorded STEPS traffic (90 scenarios): 0.521 vs 0.437, with 100% success, 0
+      collisions and faster trips, but no disruption gain.
+
+    The search did not converge: the step size kept growing and the mean's validation score fell
+    after generation 90. The causes are objective noise (fresh scenarios each generation) and
+    weight parameters sitting at their bounds (pedestrian_weight 17.4 of 20). v2 widens the
+    upper bounds of the five weights (goal 50, collision/pedestrian/disruption/obstacle 200) and
+    doubles the training scenarios per generation (12 per kind). Default parameters are
+    unchanged.

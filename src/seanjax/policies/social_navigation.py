@@ -29,11 +29,11 @@ from seanjax.core.state import Observation
 from seanjax.policies.base import ConstantVelocityPredictor, ParameterSpec, PedestrianPredictor, Policy
 
 PARAMETERS = (
-    ParameterSpec("goal_weight", 2.0, 0.1, 20.0, log=True, description="Weight of progress toward the goal"),
-    ParameterSpec("collision_weight", 5.0, 0.1, 50.0, log=True, description="Penalty for predicted collisions beyond the safety horizon"),
-    ParameterSpec("pedestrian_weight", 1.0, 0.01, 20.0, log=True, description="Penalty for entering pedestrians' personal space"),
-    ParameterSpec("disruption_weight", 1.0, 0.01, 20.0, log=True, description="Penalty for blocking the path ahead of moving pedestrians"),
-    ParameterSpec("obstacle_weight", 1.0, 0.01, 20.0, log=True, description="Penalty for small static-obstacle clearance"),
+    ParameterSpec("goal_weight", 2.0, 0.1, 50.0, log=True, description="Weight of progress toward the goal"),
+    ParameterSpec("collision_weight", 5.0, 0.1, 200.0, log=True, description="Penalty for predicted collisions beyond the safety horizon"),
+    ParameterSpec("pedestrian_weight", 1.0, 0.01, 200.0, log=True, description="Penalty for entering pedestrians' personal space"),
+    ParameterSpec("disruption_weight", 1.0, 0.01, 200.0, log=True, description="Penalty for blocking the path ahead of moving pedestrians"),
+    ParameterSpec("obstacle_weight", 1.0, 0.01, 200.0, log=True, description="Penalty for small static-obstacle clearance"),
     ParameterSpec("preferred_speed", 0.8, 0.3, 1.0, description="Preferred forward speed (m/s)"),
     ParameterSpec("personal_space_radius", 0.8, 0.3, 1.5, description="Desired clearance around pedestrians (m)"),
     ParameterSpec("prediction_horizon", 2.0, 1.0, 4.0, description="Local trajectory prediction duration (s)"),

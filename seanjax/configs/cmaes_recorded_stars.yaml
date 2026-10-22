@@ -18,7 +18,7 @@ cmaes:
   seed: 42
   kinds: [crossing, head_on, overtaking, following, group_toward, narrow_passage,
           stationary_group, dense_flow, recorded]
-  train_per_kind: 6
+  train_per_kind: 12
   val_per_kind: 12
   validate_every: 5
   duration: 30.0
