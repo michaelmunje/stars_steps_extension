@@ -997,3 +997,19 @@ why, and how to undo it.
 
     Tuning runs alongside the untuned check this time because both fit on one node. If the
     untuned check is clearly harmful, the tuning result is not used.
+    **Result: no gain, and the design was wrong.** On v4 without re-tuning
+    (`runs/seanjax/crowd_v9_commit*`):
+
+    | `side_commit_weight` | Objective | Collision | Loops (dense flow / narrow) |
+    | --- | --- | --- | --- |
+    | 0 (v4) | 0.382 | 0.7% | 0.08 (0.17 / 0.14) |
+    | 0.5 | 0.384 | 0.4% | 0.10 (0.18 / 0.21) |
+    | 2 | 0.375 | 0.4% | 0.11 (0.27 / 0.23) |
+
+    The objective is unchanged and loops rise slightly with the weight. In hindsight this
+    follows from the design: a loop *is* a sustained turn in one direction, so committing to the
+    turn direction encourages it. The memory should hold the side on which the robot passes the
+    blocking pedestrian (left or right of them, in the goal frame), not the sign of `w`. The
+    v7 tuning runs already in flight are allowed to finish but are not expected to help.
+    A pass-side memory is the corrected design. It needs the controller to identify the blocking
+    pedestrian, which is a larger change, so it is recorded here and not started without review.
