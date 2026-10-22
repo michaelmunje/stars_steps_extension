@@ -426,3 +426,14 @@ why, and how to undo it.
 
     The teacher-forced model is already stable in closed loop; the multi-step loss costs ~3x
     compute and slightly hurts. It stays available as a flag but is not used by default.
+
+48. **Which forecaster to use.** The best Optuna trial (53) trained at full length:
+    - Test, seeds 42/1: agent ADE 0.079/0.079, moving ADE 0.332/0.334, joint 0.097/0.098.
+    - Low-KL fine-tuned CVAE: 0.080 / 0.336 / 0.097.
+
+    Trial 53 is marginally more accurate (within seed noise), but its 20 s simulations are ~25%
+    too slow (0.084-0.087 m/s vs 0.115 smoothed real). The fine-tuned CVAE matches real speed.
+    Decision: `cvae_kl01_finetune` stays the forecaster for the crowd model and the navigation
+    predictor. Trial 53 is reported as the most accurate pure forecaster
+    (`docs/results/forecasts_cvae_hpo53.png`). Accuracy-only hyperparameter search can trade
+    away simulation realism; a realism term in the search objective is a follow-up.

@@ -17,6 +17,7 @@ speed is above 0.2 m/s; about 90% of STEPS pedestrians are slower. The full tabl
 | CVAE, KL 1.0, fine-tuned (collapsed latent, [32]) | 0.110 / 0.195 | 0.532 / 1.049 | — |
 | **CVAE, KL 0.1, fine-tuned (`cvae_kl01_finetune`)** | **0.080 / 0.126** | **0.336 / 0.588** | **0.097** |
 | CVAE, KL 0.1, from scratch with search settings | 0.081 / 0.129 | 0.342 / 0.600 | 0.097 |
+| CVAE, best Optuna trial 53 at full length (2 seeds) | 0.079 / 0.125 | 0.333 / 0.587 | 0.097 |
 
 - **KL weight is the key setting** [32–35, 41]. At 1.0 the latent collapsed: samples ended about
   9 mm apart. At about 0.1 the samples are diverse (0.16 m apart) and error falls 30–36%. Optuna
@@ -24,6 +25,7 @@ speed is above 0.2 m/s; about 90% of STEPS pedestrians are slower. The full tabl
 - **Seed noise** is about ±0.0007 m of validation ADE [44].
 - **Pretraining helps a little** once the KL weight is right: fine-tuned beats from scratch,
   which beats frozen. Pretraining on all six datasets gives no extra gain on STEPS [46].
+- **Most accurate vs most realistic** [48]: trial 53 is marginally more accurate, but its simulations are 25% too slow, so `cvae_kl01_finetune` drives the crowd and the planner.
 - **Closed-loop (multi-step) training does not help** [47]. Rollouts are stable without it.
 - **Simulation realism:** the best model's 20 s rollouts move at 0.115 m/s, matching smoothed real
   tracks. They are smoother than reality: acceleration is 0.03 vs 0.12 m/s² [38–39].
