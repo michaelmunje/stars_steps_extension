@@ -64,6 +64,19 @@ def _retime(transformer: nn.Module, steps: int) -> nn.Module:
 # Fused attention kernels cap one call at 65,535 sequences (with dropout); a large batch has
 # hundreds of thousands of edge sequences, so the temporal transformers run in chunks.
 TEMPORAL_CHUNK = 32768
+# Attention backend for the 8-step temporal transformers: None = PyTorch's choice (a fused kernel),
+# "math" = plain matmul attention, which can be faster for very short sequences.
+ATTENTION_BACKEND: str | None = None
+
+
+def _attention_context():
+    import contextlib
+
+    if ATTENTION_BACKEND is None:
+        return contextlib.nullcontext()
+    from torch.nn.attention import SDPBackend, sdpa_kernel
+
+    return sdpa_kernel({"math": SDPBackend.MATH, "efficient": SDPBackend.EFFICIENT_ATTENTION}[ATTENTION_BACKEND])
 
 
 def _temporal(transformer: nn.Module, x: torch.Tensor, padding: torch.Tensor, checkpoint: bool = False) -> torch.Tensor:
@@ -76,10 +89,11 @@ def _temporal(transformer: nn.Module, x: torch.Tensor, padding: torch.Tensor, ch
             return recompute(lambda a, b: transformer(a, src_key_padding_mask=b), chunk, mask, use_reentrant=False)
         return transformer(chunk, src_key_padding_mask=mask)
 
-    if x.shape[0] <= TEMPORAL_CHUNK:
-        return run(x, padding)
-    return torch.cat([run(x[i:i + TEMPORAL_CHUNK], padding[i:i + TEMPORAL_CHUNK])
-                      for i in range(0, x.shape[0], TEMPORAL_CHUNK)])
+    with _attention_context():
+        if x.shape[0] <= TEMPORAL_CHUNK:
+            return run(x, padding)
+        return torch.cat([run(x[i:i + TEMPORAL_CHUNK], padding[i:i + TEMPORAL_CHUNK])
+                          for i in range(0, x.shape[0], TEMPORAL_CHUNK)])
 
 
 class StarsMotionEncoder(nn.Module):

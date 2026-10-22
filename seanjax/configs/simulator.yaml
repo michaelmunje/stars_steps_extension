@@ -1,0 +1,15 @@
+# Lightweight 2-D backend (seanjax.environments.lightweight). `backend: isaac_lab` is Phase 3.
+backend: lightweight
+device: auto            # auto = CUDA if available, else CPU
+robot:                  # differential drive, Jackal-like
+  radius: 0.3
+  max_speed: 1.0
+  min_speed: 0.0
+  max_angular_speed: 1.5
+  max_acceleration: 1.0
+  max_angular_acceleration: 3.0
+sim:
+  goal_tolerance: 0.3
+  sensing_radius: 8.0
+  history_steps: 8      # pedestrian history given to learned predictors
+  history_stride: 4     # x dt = 0.4 s (STEPS rate)

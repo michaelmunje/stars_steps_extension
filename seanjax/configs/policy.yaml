@@ -1,0 +1,13 @@
+# Trajectory-scoring navigation controller (seanjax.policies.social_navigation).
+name: social             # social | goal_seeking
+controller:
+  num_speeds: 6
+  num_turn_rates: 11
+  plan_dt: 0.2
+  max_horizon: 4.0
+  safety_horizon: 1.0    # hard pedestrian-collision constraint window (s)
+  safety_margin: 0.05
+  obstacle_clearance: 0.6
+  speed_cost: 0.5
+  disruption_lookahead: 1.5
+parameters: {}           # overrides of the tunable defaults, e.g. {preferred_speed: 0.7}
