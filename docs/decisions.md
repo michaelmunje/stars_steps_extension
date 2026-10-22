@@ -856,3 +856,31 @@ why, and how to undo it.
       closest related data.
     - **Housekeeping.** The two exec-1 run directories from 60 still say `"status": "running"`;
       they were stopped by hand (65) and are not resumable results.
+
+75. **Crowd v4 (tuned waiting costs, loop penalty) is the new reference policy**
+    (`checkpoints/seanjax/cmaes_crowd_v4/best_policy.yaml`).
+    270 test scenes under the v4 objective, which charges 0.2 per loop (`runs/seanjax/crowd_v6`
+    and `crowd_v6_vs_v3`):
+
+    | Policy | Objective | Success | Collision | Intimate-zone rate | Path eff. | Loops / episode | Recorded success (30) |
+    | --- | --- | --- | --- | --- | --- | --- | --- |
+    | Default social | -0.196 | 83% | 7.8% | 16.4% | 0.82 | 0.01 | 77% |
+    | v1 | 0.196 | 91% | 0.7% | 1.3% | 0.85 | 0.09 | 67% |
+    | Crowd v2 | 0.276 | 96% | 1.5% | 5.4% | 0.90 | 0.10 | 87% |
+    | Crowd v3 (previous reference) | 0.321 | 97% | 0.4% | 1.4% | 0.89 | 0.19 | 77% |
+    | v4 seed 3 | 0.340 | 98% | 1.1% | 3.0% | 0.89 | 0.12 | 90% |
+    | v4 seed 7 | 0.367 | 99% | 0.4% | 5.2% | 0.91 | 0.11 | 97% |
+    | **v4 seed 42** | **0.375-0.388** | **98-99%** | 0.7-1.1% | 2.6% | 0.90 | **0.08** | **100%** |
+
+    (Two evaluation runs of v4 seed 42; the spread is evaluation noise, 72.)
+    - **The gain over v3** (+0.07) is mostly recorded-scene success (77% to 100%) and fewer
+      loops (0.19 to 0.08). v3 is slightly more comfortable (1.4% against 2.6% intimate-zone
+      time); with the loop penalty taken out, v4 still leads by about 0.03.
+    - **What the tuner chose.** All three seeds pushed `speed_scale` to 2.7-5 (the upper bound
+      for seed 42) and `alignment_weight` to 0-0.07. A strong pull toward cruising speed and no
+      reward for facing the goal mean fewer slow pivots. This is the opposite direction from
+      the hand experiment in 69. The bound of 5 is hit, so a wider range is a candidate for the
+      next run.
+    - **Loops.** `navigation_compare_crowd_v6.png`: the narrow-passage loop is gone (11.3 s
+      against 16.6 s), but dense flow still loops (0.16 per episode). The circling diagnostic
+      still shows turning on 23% of the steps where stopping was allowed. Accepted for now.
