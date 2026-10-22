@@ -43,7 +43,7 @@ PARAMETERS = (
     ParameterSpec("speed_scale", 1.0, 0.1, 20.0, log=True, description="Multiplier on speed_cost"),
     ParameterSpec("retreat_scale", 1.0, 0.1, 10.0, log=True, description="Multiplier on retreat_cost"),
     ParameterSpec("alignment_weight", 0.1, 0.0, 1.0, description="Reward for facing the goal at the plan's end"),
-    ParameterSpec("idle_turn_weight", 0.0, 0.0, 5.0, description="Penalty for turning while making no progress (loops; decision 78)"),
+    ParameterSpec("idle_turn_weight", 0.0, 0.0, 5.0, description="Penalty for turning away from the goal without progress (loops; decision 78)"),
 )
 
 
@@ -188,10 +188,14 @@ class SocialNavigationPolicy(Policy):
         # Speed tracking fades out when a pedestrian is close: slowing down / waiting is then fine.
         cost = cost + c.speed_cost * self._p(params, "speed_scale")[:, None] * (1.0 - crowding)[:, None] * ((v - self._p(params, "preferred_speed")[:, None]) / c.max_speed) ** 2
         cost = cost + self._p(params, "turn_penalty")[:, None] * w.abs() / c.max_angular_speed
-        # Turning is only worth it when it buys progress: an arc that gets nowhere is a loop, and
-        # waiting (v = 0, w ~ 0) is then the better choice.
+        # Turning away from the goal without making progress starts a loop: penalise the loss of
+        # goal alignment on arcs that get nowhere. Turning back toward the goal stays free (a
+        # penalty on all idle turning blocked that recovery and made loops wider, decision 78).
+        heading_now = torch.cos(wrap_angle(torch.atan2(obs.goal[:, 1] - obs.robot_pose[:, 1],
+                                                       obs.goal[:, 0] - obs.robot_pose[:, 0]) - obs.robot_pose[:, 2]))
         idle = 1.0 - progress.clamp(0.0, 1.0)
-        cost = cost + self._p(params, "idle_turn_weight")[:, None] * idle * w.abs() / c.max_angular_speed
+        turned_away = torch.relu(heading_now[:, None] - alignment) / 2.0
+        cost = cost + self._p(params, "idle_turn_weight")[:, None] * idle * turned_away
         change = ((v - obs.last_command[:, None, 0]).abs() / c.max_speed
                   + (w - obs.last_command[:, None, 1]).abs() / c.max_angular_speed)
         cost = cost + self._p(params, "smoothness_weight")[:, None] * change

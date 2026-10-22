@@ -928,3 +928,12 @@ why, and how to undo it.
       (`runs/seanjax/crowd_v8_idle1_untuned`), to see the term's direct effect;
     - three CMA-ES runs with the term free (`cmaes_crowd_v6.yaml`): from v4 with seeds 42 and 7,
       and from v4 with the term at 1.
+    **Update: first form rejected.** The first version charged
+    `idle * |w|`, any turning on arcs without progress. On v4 with weight 1 and no re-tuning it
+    made loops worse: 0.51 per episode against 0.08, objective -0.145 against 0.380
+    (`runs/seanjax/crowd_v8_idle_turn_all_untuned`). It also charges the turn back toward the
+    goal, which a robot facing away needs, so it blocked recovery and produced wider loops. The
+    tuning job was cancelled. The term now charges only the loss of goal alignment on arcs without
+    progress: `idle * relu(alignment_now - alignment_end) / 2`. Turning back toward the goal is
+    free. The untuned effect at weights 1 and 3 is checked first (job 66013,
+    `runs/seanjax/crowd_v8_idle{1,3}`), before any re-tuning.
