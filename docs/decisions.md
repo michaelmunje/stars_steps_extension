@@ -684,3 +684,35 @@ why, and how to undo it.
     - All STARS-crowd numbers above were simulated with the bug, in the scenes that have walls.
       They are re-evaluated in the fixed crowd as `runs/seanjax/crowd_v4`, and the v2 tuning is
       rerun there, warm-started from `cmaes_crowd_v2`.
+
+65. **Wall-respecting crowd: re-evaluation, and unstable exec-1 closed-loop training.**
+    - **Navigation** (`runs/seanjax/crowd_v4`, 270 test scenarios, 30 per kind, objective of 58):
+
+      | Policy | Objective | Success | Collision | Intimate-zone rate | Min gap (m) | Recorded success (30) |
+      | --- | --- | --- | --- | --- | --- | --- |
+      | Goal-seeking | -2.149 | 38% | 62% | 11.4% | 0.21 | 27% |
+      | Default social | -0.167 | 84% | 7.0% | 16.6% | 0.30 | 77% |
+      | Objective-v2 policy | 0.128 | 93% | 4.4% | 13.6% | 0.37 | 87% |
+      | v1 | 0.209 | 90% | 0.7% | 1.3% | 0.68 | 67% |
+      | Crowd-tuned, first run | 0.251 | 96% | 0.7% | 13.3% | 0.42 | 83% |
+      | Crowd v2, seed 7 | 0.291 | 95% | 1.1% | 3.8% | 0.56 | 73% |
+      | Crowd v2, seed 42 | 0.303 | 96% | 1.5% | 5.4% | 0.51 | 90% |
+      | Crowd v2 from v1 | 0.311 | 95% | 0.7% | 2.3% | 0.57 | 73% |
+
+      With 3x the test scenes, all three v2-tuned policies beat every earlier one by 0.04-0.06.
+      Seed 42 is kept as the reference policy: it is within 0.01 of the best and has the best
+      recorded-scene success. In `navigation_compare_crowd_v4.png` pedestrians now stay in the
+      corridor and out of the walls.
+    - **Known issue.** In `dense_flow` and `narrow_passage` every tuned policy waits by circling
+      instead of stopping. The detour term charges for it, but not enough to remove it. Not yet
+      addressed: a stop-and-wait candidate or a heading-reversal penalty would be the next
+      thing to try.
+    - **Exec-1 closed-loop fine-tuning diverges** (60). At LR 3e-4 the KL term exploded to about
+      1e6 within one epoch (validation ADE 1.27). At 1e-4, validation rollout ADE was 0.68 after
+      one epoch, against about 0.27 before fine-tuning. Backpropagating through 12 re-encoding
+      rounds is unstable here. Both runs were stopped. Exec 4 trains normally (validation 0.2176
+      at epoch 3) and continues.
+    - **Operational mistake.** I stopped the two exec-1 runs with `pkill -f <run-dir>`. The
+      pattern also matched the job's batch script, which carries every command, so it ended the
+      whole job, including the healthy exec-4 run. That run was resumed from `latest.pt` as job
+      65775. In future, kill by PID after checking with `pgrep -a`.

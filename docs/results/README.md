@@ -95,16 +95,21 @@ test, best STARS predictor:
 ## Forecaster as the crowd
 
 `stars_crowd` moves the simulated pedestrians with the forecaster itself, with the robot as one
-more person in the graph [46]. Intents follow an AR(1) process and recorded goals keep 1 m from
-pedestrians [55]. 90 test scenarios (80 scripted, 10 recorded STEPS scenes), objective v2 [56]:
+more person in the graph [46].
+- Intents follow an AR(1) process, and recorded goals keep 1 m from pedestrians [55].
+- Pedestrians cannot walk through walls [64].
+- The comfort term counts time within 0.45 m of a pedestrian [58].
 
-| Policy | Objective | Success | Collision | Recorded success |
-| --- | --- | --- | --- | --- |
-| Goal-seeking | -2.260 | 37% | 63% | 10% |
-| Default social | -0.187 | 84% | 7.8% | 70% |
-| v1 | 0.028 | 90% | 1.1% | 70% |
-| Objective-v2 policy | 0.144 | 96% | 3.3% | 90% |
-| **Tuned in the crowd** (`cmaes_crowd`) | **0.233** | **99%** | **1.1%** | **100%** |
+Results on 270 test scenarios (30 per kind, including 30 recorded STEPS scenes) [65]:
 
-Figure: [`navigation_compare_crowd_v2.png`](navigation_compare_crowd_v2.png), default vs v2 vs
-crowd-tuned on recorded, crossing, group and dense-flow scenes.
+| Policy | Objective | Success | Collision | Time within 0.45 m | Recorded success |
+| --- | --- | --- | --- | --- | --- |
+| Goal-seeking | -2.149 | 38% | 62% | 11.4% | 27% |
+| Default social | -0.167 | 84% | 7.0% | 16.6% | 77% |
+| v1 (tuned against reactive replay) | 0.209 | 90% | 0.7% | 1.3% | 67% |
+| Tuned in the crowd, first run | 0.251 | 96% | 0.7% | 13.3% | 83% |
+| **Tuned in the crowd, v2** (`cmaes_crowd_v2`) | **0.303** | **96%** | 1.5% | 5.4% | **90%** |
+
+Figure: [`navigation_compare_crowd_v4.png`](navigation_compare_crowd_v4.png), v1 vs first crowd
+run vs v2 on recorded, crossing, group, dense-flow and narrow-passage scenes. Remaining artefact:
+tuned policies wait by circling in dense flow and narrow passages.
