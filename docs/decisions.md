@@ -646,3 +646,11 @@ why, and how to undo it.
     The importances repeat the scratch study: KL weight 56%, warmup 18%. Trial 165 is not
     retrained at full length: the expected gain is within seed noise, and the GPUs are better
     spent on the annealing and closed-loop runs (60).
+
+63. **Exec-1 closed-loop fine-tunes overrun their time limit.** Training with the exec-1
+    closed-loop loss takes about 26 min per epoch, against 1.7 min teacher-forced and 6.8 min at
+    exec 4. The 20 epochs (about 9 h) will not fit in job 65758's 6 h limit. The runs are not
+    restarted with fewer epochs, because that would change the cosine schedule mid-experiment.
+    Instead they are resumed with `--resume` after the timeout; `latest.pt` is saved every epoch.
+    The crowd v2 test evaluation and figures are queued behind the tuning job (dependency on
+    65742) and written to `runs/seanjax/crowd_v3/` and `docs/results/navigation_compare_crowd_v3.png`.
