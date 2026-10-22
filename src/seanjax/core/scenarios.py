@@ -160,18 +160,25 @@ def make_scenario(kind: str, seed: int, *, dt: float = DEFAULT_DT, duration: flo
     if kind == "dense_flow":
         half = rng.uniform(2.0, 3.0)
         count = int(rng.integers(10, 21))
+        start[1], goal[1] = rng.uniform(-0.5, 0.5), rng.uniform(-0.5, 0.5)
         walkers, speeds = [], []
         for i in range(count):
             direction = 1.0 if i % 2 == 0 else -1.0
             speed = rng.uniform(0.8, 1.4)
             y = rng.uniform(-half + 0.4, half - 0.4)
-            x_start = rng.uniform(-4.0, length + 4.0)
-            t0 = rng.uniform(0.0, 10.0)
             x_end = length + 6.0 if direction > 0 else -6.0
+            if i < count // 2:
+                # Already in the corridor at t = 0, but never on top of the robot.
+                x_start = rng.uniform(-4.0, length + 4.0)
+                while abs(x_start - start[0]) < 2.5 and abs(y - start[1]) < 2.5:
+                    x_start = rng.uniform(-4.0, length + 4.0)
+                t0 = 0.0
+            else:
+                # Enters later from its end of the corridor (outside the robot's way).
+                x_start, t0 = (-6.0 if direction > 0 else length + 6.0), rng.uniform(0.0, 15.0)
             walkers.append(_walker([x_start, y], [x_end, y], speed, t0, dt, steps))
             speeds.append(speed)
         segments = [[-6.0, half, length + 6.0, half], [-6.0, -half, length + 6.0, -half]]
-        start[1], goal[1] = rng.uniform(-0.5, 0.5), rng.uniform(-0.5, 0.5)
         return _finish(name, kind, seed, dt, duration, start, goal, walkers, speeds, segments=segments)
     if kind == "recorded":
         if pool is None:

@@ -138,3 +138,10 @@ why, and how to undo it.
 
 25. **Never modify `.venv` while jobs are starting**: a job importing during `uv add` saw
     inconsistent package metadata and failed (`A distribution name is required`).
+
+26. **Dense-flow scenario bug fixed**: pedestrians used to spawn at random corridor positions at
+    random times, sometimes inside the robot. That caused unavoidable collisions, which dominated
+    the first CMA-ES run (job 65489, discarded). Now half of them start at t = 0 away from the
+    robot and the rest enter from the corridor ends. Defaults then succeed in 48/48 validation
+    scenarios. The CMA-ES runs were enlarged (population 32, 150 generations, 6 training and 12
+    validation scenarios per kind) since a generation costs ~3 s on a GB200.

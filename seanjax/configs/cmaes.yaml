@@ -5,14 +5,14 @@ policy: policy.yaml
 cmaes:
   optimize: [goal_weight, pedestrian_weight, disruption_weight, preferred_speed,
              personal_space_radius, prediction_horizon, smoothness_weight, turn_penalty]
-  population_size: 24
-  num_generations: 100
+  population_size: 32
+  num_generations: 150
   sigma0: 0.25
   seed: 42
   kinds: [crossing, head_on, overtaking, following, group_toward, narrow_passage,
           stationary_group, dense_flow]
-  train_per_kind: 4      # fresh scenarios every generation, shared by all candidates
-  val_per_kind: 6        # fixed validation set: selects best_policy.yaml
+  train_per_kind: 6      # fresh scenarios every generation, shared by all candidates
+  val_per_kind: 12       # fixed validation set: selects best_policy.yaml
   validate_every: 5
   duration: 30.0
   dt: 0.1
