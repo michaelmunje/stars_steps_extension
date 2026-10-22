@@ -4,6 +4,17 @@ Living summary of the multi-agent STARS forecaster and the SEAN-JAX navigation e
 numbers here are copied from the files linked below. The reasoning behind each choice is in
 [`../decisions.md`](../decisions.md); entry numbers are given in brackets.
 
+## Current references
+
+| Use | Artifact | Headline (test split) |
+| --- | --- | --- |
+| STEPS forecaster, and the SEAN-JAX crowd and predictor | `experiments/stars_ma/runs/cvae_kl01_finetune/checkpoints/best.pt` | ADE / FDE 0.080 / 0.126 (constant velocity 0.276 / 0.518); realistic 20 s rollouts [48] |
+| All-dataset forecaster | `experiments/stars_ma/runs/cvae_hpo53_scratch_all/checkpoints/best.pt` | 2-3.5x better than constant velocity on all six datasets; better than or level with per-dataset models [59, 80] |
+| Navigation policy | `checkpoints/seanjax/cmaes_crowd_v4/best_policy.yaml` | In the STARS crowd: 99% success, 0.7% collisions, 100% on recorded STEPS scenes [75] |
+
+Closed questions: hyperparameter search has converged [61, 62]; closed-loop training does not
+help [47, 65, 73]; controller cost terms cannot remove the remaining dense-flow loops [79].
+
 ## Trajectory forecasting (STEPS test split, 12,500 windows)
 
 Scores are best-of-20 for the CVAE rows, in metres. *Moving* means agents whose true future mean
