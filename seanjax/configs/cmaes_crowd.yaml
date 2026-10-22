@@ -34,5 +34,5 @@ objective:
   comfort: 0.5
   detour: 1.0            # weight on 1 - path_efficiency (penalises loops and long detours)
   smoothness: 0.1        # weight on command_smoothness (jerky commands)
-  disruption_metric: disruption_displacement
+  disruption_metric: disruption_local    # global displacement is dominated by closed-loop divergence in a learned crowd (decisions 49)
   comfort_metric: personal_violation_rate

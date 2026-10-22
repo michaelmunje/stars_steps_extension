@@ -437,3 +437,16 @@ why, and how to undo it.
     predictor. Trial 53 is reported as the most accurate pure forecaster
     (`docs/results/forecasts_cvae_hpo53.png`). Accuracy-only hyperparameter search can trade
     away simulation realism; a realism term in the search objective is a follow-up.
+
+49. **Disruption in a learned crowd must be measured locally.** CMA-ES in the STARS-driven crowd
+    (first attempt, job 65680, cancelled) scored around -0.7 to -0.9:
+    - `disruption_displacement` was ~1.13 m; reactive replay gives ~0.2 m.
+    - The cause is chaos, not the robot: the robot node slightly changes every nearby
+      pedestrian's forecast, and the closed-loop learned dynamics amplify such differences over
+      30 s. Pedestrians that never approached the robot end up elsewhere than in the
+      counterfactual.
+
+    New metric `disruption_local`: matched displacement only while a pedestrian is within 3 m of
+    the robot, averaged over pedestrians that came that close. `cmaes_crowd.yaml` now uses it as
+    its disruption term and the run restarted. The global metric is still reported. For the
+    social-force-type models (damped dynamics) the global metric remains the default.

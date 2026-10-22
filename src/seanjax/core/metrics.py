@@ -14,7 +14,8 @@ and pedestrian model (only meaningful for reactive pedestrians; zero for replay)
 ``disruption_displacement`` (mean distance between matched pedestrian positions while both are in
 the scene, averaged over pedestrians), ``disruption_max_displacement``, ``velocity_deviation``
 (time-integrated |v - v_counterfactual|, mean per pedestrian), ``ped_delay`` (extra seconds in the
-scene, mean per pedestrian), ``peds_affected`` (pedestrians displaced by more than
+scene, mean per pedestrian), ``disruption_local`` (matched displacement only while within 3 m of
+the robot, averaged over pedestrians that came that close), ``peds_affected`` (pedestrians displaced by more than
 ``affected_threshold``) and ``reference_deviation`` (mean distance to the recorded reference).
 Minimising disruption is not the same as being socially appropriate, so these are reported
 separately from comfort and task metrics.
@@ -81,7 +82,7 @@ def robot_metrics(run: Rollout, batch: ScenarioBatch, robot_radius: float) -> di
 
 
 def disruption_metrics(run: Rollout, counterfactual: Rollout, batch: ScenarioBatch,
-                       affected_threshold: float = 0.3) -> dict[str, torch.Tensor]:
+                       affected_threshold: float = 0.3, local_radius: float = 3.0) -> dict[str, torch.Tensor]:
     both = run.ped_active & counterfactual.ped_active                             # [B, P, K]
     displacement = torch.linalg.norm(run.ped_pos - counterfactual.ped_pos, dim=-1) * both
     seen = (run.ped_active | counterfactual.ped_active).any(-1) & batch.ped_mask   # [B, P]
@@ -97,7 +98,15 @@ def disruption_metrics(run: Rollout, counterfactual: Rollout, batch: ScenarioBat
     ref_valid = run.ped_active & batch.ped_valid[:, :, : run.steps]
     reference_deviation = (reference * ref_valid).sum(-1) / ref_valid.float().sum(-1).clamp(min=1)
     mean = lambda value: (value * seen).sum(-1) / n
+    # Displacement only while the pedestrian is within ``local_radius`` of the robot. Learned
+    # closed-loop crowds (stars_crowd) amplify any perturbation everywhere over time, so the
+    # global displacement there mostly measures that divergence rather than the robot's influence.
+    near = torch.linalg.norm(run.ped_pos - run.robot_pose[:, None, :, :2], dim=-1) < local_radius
+    local = both & near
+    local_mean = (displacement * local).sum(-1) / local.float().sum(-1).clamp(min=1)
+    ever_near = local.any(-1) & seen
     return {
+        "disruption_local": (local_mean * ever_near).sum(-1) / ever_near.float().sum(-1).clamp(min=1),
         "disruption_displacement": mean(per_ped_mean),
         "disruption_max_displacement": (per_ped_max * seen).amax(-1),
         "velocity_deviation": mean(velocity_deviation),
