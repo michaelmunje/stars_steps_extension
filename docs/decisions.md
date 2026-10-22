@@ -412,3 +412,17 @@ why, and how to undo it.
     start from v1). The same forecaster also supplies the policy's predictions.
     The git index lock seen again at 02:08 came from search workers started before the lock-free
     fix (entry after 39); removed as stale (>60 s old, no local git process).
+
+47. **Ablation: closed-loop (multi-step) training does not help on STEPS.** Low-KL fine-tuned CVAE
+    with vs without `--rollout-exec-steps 4`, test split:
+
+    | | Teacher-forced only | Plus closed-loop loss |
+    | --- | --- | --- |
+    | Agent ADE | 0.080 m | 0.080 m |
+    | Moving ADE | 0.336 m | 0.345 m |
+    | Joint ADE | 0.097 m | 0.103 m |
+    | Closed-loop ADE at 1 / 4 / 12 executed steps | 0.084 / 0.081 / 0.080 | 0.085 / 0.081 / 0.080 |
+    | 20 s simulated speed (smoothed real 0.115 m/s) | 0.115 m/s | 0.098 m/s |
+
+    The teacher-forced model is already stable in closed loop; the multi-step loss costs ~3x
+    compute and slightly hurts. It stays available as a flag but is not used by default.
