@@ -637,3 +637,12 @@ why, and how to undo it.
     noise (about 0.0007 m, decision 44). KL weight (52%) and encoder dropout (22%) explain most
     of the variance. No further search on STEPS with this search space: remaining gains have to
     come from data, schedule (60) or architecture, not from these hyperparameters.
+
+62. **The SSL fine-tuning Optuna search has ended** (`docs/results/hpo_steps_cvae_ssl.md`). 213 trials
+    ran (82 complete, 131 pruned). The best is trial 165 at 0.0792 m validation ADE: fine-tuned
+    encoder, KL 0.061, LR 2.4e-3, encoder LR ratio 0.19. The top eight trials are all fine-tuned
+    rather than frozen. Against the best scratch trial (0.0798, decision 61) the difference is
+    0.0006 m, about one seed standard deviation, so pretraining on STEPS remains a small effect.
+    The importances repeat the scratch study: KL weight 56%, warmup 18%. Trial 165 is not
+    retrained at full length: the expected gain is within seed noise, and the GPUs are better
+    spent on the annealing and closed-loop runs (60).
