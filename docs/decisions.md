@@ -960,3 +960,25 @@ why, and how to undo it.
       a few seconds. That is a new controller, not a cost term, and it is left as a recorded
       next step rather than started.
     - **Reference policy:** `checkpoints/seanjax/cmaes_crowd_v4/best_policy.yaml`.
+
+80. **One model per dataset vs one model for all** (`docs/results/stars_ma_single_vs_all.png`).
+    Same recipe (trial 53) for every model; test split, best-of-20:
+
+    | Dataset | Training windows | Own model ADE / FDE | All-dataset model ADE / FDE | Exec-1 ADE, own / all | ADE change |
+    | --- | --- | --- | --- | --- | --- |
+    | STEPS | 76,675 | 0.079 / 0.125 | 0.078 / 0.123 | 0.083 / 0.081 | -1% |
+    | PTDPES | 90,972 | 0.290 / 0.421 | 0.284 / 0.413 | 0.335 / 0.325 | -2% |
+    | Grand Central | 4,781 | 0.250 / 0.412 | 0.244 / 0.403 | 0.297 / 0.261 | -3% |
+    | Madras | 3,110 | 0.211 / 0.318 | 0.209 / 0.315 | 0.245 / 0.245 | -1% |
+    | UCY | 1,097 | 0.262 / 0.521 | 0.193 / 0.383 | 0.310 / 0.239 | -26% |
+    | ETH | 272 | 0.393 / 0.706 | 0.234 / 0.373 | 0.468 / 0.280 | -40% |
+
+    - **Pooling never hurts.** The all-dataset model is better than or level with each dataset's
+      own model on every dataset. The gain grows as the dataset shrinks: 1-3% for the large ones,
+      26% for UCY and 40% for ETH (272 windows, validated on UCY).
+    - **Closed loop gains more than teacher forcing on Grand Central:** exec-1 ADE 0.261 against
+      0.297 (-12%). Training on other datasets makes rollouts more stable there.
+    - **Recommendation.** Use `cvae_hpo53_scratch_all` for every dataset except STEPS, where the
+      STEPS fine-tuned `cvae_kl01_finetune` stays the simulator model (its 20 s rollouts are
+      validated for realism, 48). Per-dataset models are not worth keeping. This closes the
+      "train on individual datasets and on all at once" task.

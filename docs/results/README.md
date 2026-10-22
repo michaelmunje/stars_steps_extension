@@ -64,6 +64,11 @@ settings, agent ADE / FDE, best-of-20, against constant velocity:
 ![Per-dataset test error](stars_ma_all_test.png)
 
 - SSL pretraining plus fine-tuning is 0.002–0.010 m worse on every dataset.
+- **One model per dataset vs one for all** [80]: the all-dataset model is better than or level
+  with each dataset's own model everywhere: -1 to -3% ADE on STEPS, PTDPES, Madras and Grand
+  Central, -26% on UCY and -40% on ETH, the two smallest.
+
+![One model per dataset vs one for all](stars_ma_single_vs_all.png)
 - Feeding back its own predictions every step costs little on STEPS but 14–20% elsewhere.
 
 ## Navigation (SEAN-JAX lightweight backend, 80 scripted test scenarios)
