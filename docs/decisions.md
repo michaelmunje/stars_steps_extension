@@ -251,3 +251,13 @@ why, and how to undo it.
     labelled by their run directories and keep their recorded configs. The KL-0.1 runs still
     peak early (epoch 5-7 so far), so an even lower weight or a longer warm-up is the next
     thing to try if they stall.
+
+36. **STARS forecasts in the navigation policy (first run, KL-1.0 fine-tuned CVAE, prior mean).**
+    Scripted test scenarios:
+    - Default parameters: objective 0.460 with STARS vs 0.439 with constant velocity;
+      collisions 1.3% vs 2.5%.
+    - After CMA-ES: 0.543 with STARS. Constant velocity: v2 0.547, v1 0.612.
+
+    The tuned runs are not paired (different search runs), and the forecaster's latent had
+    collapsed. Next: rerun with the best low-KL forecaster, and compare predictors by evaluating
+    the *same* parameter sets with each predictor (paired).
