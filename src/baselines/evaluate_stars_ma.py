@@ -57,6 +57,7 @@ def simulation_report(model, store, batches, args, *, seconds: float, exec_steps
     rounds = math.ceil(seconds / model.dt / exec_steps)
     simulated = {"speed": [], "acceleration": []}
     real = {"speed": [], "acceleration": []}
+    smoothed = {"speed": [], "acceleration": []}  # tracker jitter removed (one 1-2-1 pass)
     accumulator = MetricAccumulator()
     for windows in batches:
         batch = _batch(store, windows, args)
@@ -69,6 +70,10 @@ def simulation_report(model, store, batches, args, *, seconds: float, exec_steps
         truth = torch.cat([batch.obs_xy[complete, -1:], batch.future[complete]], dim=1)
         for key, value in motion_statistics(truth, model.dt).items():
             real[key].append(value)
+        soft = truth.clone()
+        soft[:, 1:-1] = 0.25 * truth[:, :-2] + 0.5 * truth[:, 1:-1] + 0.25 * truth[:, 2:]
+        for key, value in motion_statistics(soft, model.dt).items():
+            smoothed[key].append(value)
         speed = torch.linalg.norm(path[:, 1:] - path[:, :-1], dim=-1) / model.dt
         accumulator.add("implausible_agent_rate", (speed > max_speed).any(dim=-1).sum(), speed.shape[0])
         padded = batch.to_padded(path)                                         # [B, N, T, 2]
@@ -87,6 +92,9 @@ def simulation_report(model, store, batches, args, *, seconds: float, exec_steps
         report[f"sim_{key}_mean"] = float(sim.mean()) if len(sim) else float("nan")
         report[f"real_{key}_mean"] = float(gt.mean()) if len(gt) else float("nan")
         report[f"sim_{key}_wasserstein"] = wasserstein_1d(sim, gt)
+        soft = _gather_arrays(smoothed[key], args)
+        report[f"real_smoothed_{key}_mean"] = float(soft.mean()) if len(soft) else float("nan")
+        report[f"sim_{key}_wasserstein_smoothed"] = wasserstein_1d(sim, soft)
     report.update({"sim_seconds": rounds * exec_steps * model.dt, "sim_exec_steps": exec_steps})
     return report
 

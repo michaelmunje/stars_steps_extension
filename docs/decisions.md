@@ -294,3 +294,16 @@ why, and how to undo it.
       treating it as a model deficiency.
 
     Seeds 1-2 of this configuration (job for `cvae_hpo0_scratch_seed{1,2}`) measure the spread.
+
+39. **Most of the real data's acceleration is tracking jitter.** STEPS test futures:
+
+    | | Mean speed | Mean acceleration |
+    | --- | --- | --- |
+    | Raw 2.5 Hz positions | 0.141 m/s | 0.31 m/s^2 |
+    | After one 1-2-1 smoothing pass | 0.115 m/s | 0.12 m/s^2 |
+    | Raw, standing pedestrians only | — | 0.21 m/s^2 (pure jitter) |
+
+    Against smoothed data the best forecaster's simulated speed (0.102 m/s) is close to real.
+    Its acceleration (0.03 m/s^2) is still ~3x too low, so simulations are smoother and slightly
+    more passive than reality. The evaluator now also reports `real_smoothed_*` statistics and
+    Wasserstein distances against them.
