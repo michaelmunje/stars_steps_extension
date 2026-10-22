@@ -125,6 +125,7 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--max-batches", type=int, help="Integration diagnostic: cap batches per epoch and evaluation")
     parser.add_argument("--benchmark", type=int, help="Time this many training steps, report throughput, and exit")
     parser.add_argument("--epochs", type=int)
+    parser.add_argument("--patience", type=int, help="Early-stopping patience in validations (0 disables)")
     parser.add_argument("--max-nodes", type=int, default=16384, help="Pedestrians per batch on each GPU")
     parser.add_argument("--max-graphs", type=int, help="Cap windows per batch")
     parser.add_argument("--learning-rate", type=float, help="Peak LR (default: the recipe LR scaled by --lr-scaling)")
@@ -163,6 +164,12 @@ def _parser() -> argparse.ArgumentParser:
                           help="> 0 adds the closed-loop multi-step loss, executing this many steps per round")
     forecast.add_argument("--rollout-weight", type=float, default=1.0)
     forecast.add_argument("--samples", type=int, default=20, help="K for best-of-K validation (CVAE)")
+    forecast.add_argument("--decoder-hidden-dim", type=int)
+    forecast.add_argument("--decoder-dropout", type=float)
+    forecast.add_argument("--encoder-lr-ratio", type=float,
+                          help="Fine-tuning: encoder LR / decoder LR (default: the recipe's 0.1)")
+    parser.add_argument("--weight-decay", type=float)
+    parser.add_argument("--dropout", type=float, help="Encoder dropout (scratch encoders / phase 1)")
     return parser
 
 
@@ -477,7 +484,7 @@ def _build_model(args, payload):
             parameter.requires_grad_(False)
         groups = lambda lr: [{"params": model.decoder.parameters(), "lr": lr}]
     elif args.encoder_mode == "finetune":
-        ratio = FORECAST_RECIPE["encoder_learning_rate"] / FORECAST_RECIPE["learning_rate"]
+        ratio = args.encoder_lr_ratio or FORECAST_RECIPE["encoder_learning_rate"] / FORECAST_RECIPE["learning_rate"]
         groups = lambda lr: [{"params": model.decoder.parameters(), "lr": lr},
                              {"params": model.encoder.parameters(), "lr": lr * ratio}]
     else:
@@ -499,7 +506,7 @@ def train(args) -> None:
     args.obs, args.pred = forecasting.window.observation_steps, forecasting.window.prediction_steps
     payload = None
     encoder_overrides = {"hidden_dim": args.hidden_dim, "latent_dim": args.latent_dim,
-                         "use_node_features": False if args.edge_only else None}
+                         "use_node_features": False if args.edge_only else None, "dropout": args.dropout}
     args.encoder_recipe = {**ENCODER_RECIPE, **{k: v for k, v in encoder_overrides.items() if v is not None}}
     if args.encoder_checkpoint:
         payload = torch.load(args.encoder_checkpoint, map_location="cpu", weights_only=False)
@@ -513,10 +520,15 @@ def train(args) -> None:
         "latent_dim": args.cvae_latent_dim if args.decoder == "cvae" else 0,
         "social_layer": not args.no_social_layer,
         "representation": args.representation,
+        **({"hidden_dim": args.decoder_hidden_dim} if args.decoder_hidden_dim else {}),
+        **({"dropout": args.decoder_dropout} if args.decoder_dropout is not None else {}),
     }
     base_recipe = SSL_RECIPE if args.phase == "ssl" else FORECAST_RECIPE
-    args.recipe = {**base_recipe, **({"max_epochs": args.epochs} if args.epochs else {})}
+    args.recipe = {**base_recipe, **({"max_epochs": args.epochs} if args.epochs else {}),
+                   **({"patience": args.patience} if args.patience is not None else {})}
     args.recipe["learning_rate"] = _scaled_lr(base_recipe["learning_rate"], args)
+    if args.weight_decay is not None:
+        args.recipe["weight_decay"] = args.weight_decay
     if args.phase == "forecast":
         args.recipe["kl_weight"] = args.kl_weight
 
@@ -526,7 +538,7 @@ def train(args) -> None:
         torch.cuda.manual_seed_all(args.seed)
         torch.backends.cuda.matmul.allow_tf32 = True
         torch.backends.cudnn.allow_tf32 = True
-    skip = {"device_realized", "run_config", "run", "main"}
+    skip = {"device_realized", "run_config", "run", "main", "epoch_callback"}
     args.run_config = {
         **{key: (str(value) if isinstance(value, Path) else value) for key, value in vars(args).items() if key not in skip},
         "model": "stars_ma",
@@ -653,6 +665,8 @@ def train(args) -> None:
             run.metric({"stage": args.phase, "epoch": epoch, "beta" if args.phase == "ssl" else "kl_weight": weight,
                         "selection": selection, **train_metrics, **throughput,
                         **{f"val_{k}": v for k, v in metrics.items()}})
+            if getattr(args, "epoch_callback", None) is not None:
+                args.epoch_callback(epoch, selection, metrics)  # e.g. Optuna reporting / pruning
             improved, stopped = stopper.update(selection)
             if improved:
                 best_epoch = epoch
@@ -676,6 +690,7 @@ def train(args) -> None:
         if best_epoch is None:
             raise RuntimeError("No finite validation metric was observed")
         run.update(status="complete", stage="training", best_validation_metric=stopper.best, best_epoch=best_epoch)
+        return {"best": stopper.best, "best_epoch": best_epoch}
     except Exception as error:
         run.log("run failed", error=repr(error), traceback=traceback.format_exc())
         run.update(status="failed", error=repr(error))
