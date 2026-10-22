@@ -893,3 +893,8 @@ why, and how to undo it.
     The single-dataset job (74) was lost to a node failure (`NODE_FAIL`, job 65888). UCY, ETH and
     Madras had finished. PTDPES resumes from `latest.pt` (epoch 14) and the Grand Central test
     evaluation is rerun (job 65932).
+    Update: job 65938 was also lost to `NODE_FAIL` at generation 88-89. Both v5 searches were
+    resumed from `checkpoint.pkl` (job 65986). The test evaluation and comparison figure
+    (`runs/seanjax/crowd_v7`, `docs/results/navigation_compare_crowd_v7.png`) are queued with
+    `afterok` (job 65987). Node failures are recurring, so every long job here keeps
+    resumable checkpoints.
