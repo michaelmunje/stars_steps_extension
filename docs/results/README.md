@@ -4,6 +4,8 @@ Living summary of the multi-agent STARS forecaster and the SEAN-JAX navigation e
 numbers here are copied from the files linked below. The reasoning behind each choice is in
 [`../decisions.md`](../decisions.md); entry numbers are given in brackets.
 
+**Latest navigation policy, with animations:** [`../latest_policy/`](../latest_policy/README.md).
+
 ## Current references
 
 | Use | Artifact | Headline (test split) |

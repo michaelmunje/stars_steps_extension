@@ -36,6 +36,15 @@ All scripts take `--device` (`cuda`, `cpu`; default: CUDA if available) and `--p
 (`replay`, `social_force`, `reactive_replay`, `orca`, `stars_crowd`). `seanjax/configs/cmaes_recorded.yaml`
 adds recorded STEPS traffic to the scenario mix.
 
+**Latest policy, its test results and animations:** [`docs/latest_policy/`](../docs/latest_policy/README.md).
+To publish a new version (the folder is deleted and rebuilt, so it always holds exactly one):
+
+```bash
+python seanjax/scripts/publish_latest_policy.py --name "Crowd vN" --policy <best_policy.yaml> \
+  --config <cmaes config> --evaluation <evaluate.py evaluation_test.json> --compare <compare_policies.py png> \
+  --visuals <dir> --render --run-dir <CMA-ES run dir> --device cuda   # --render needs a GPU
+```
+
 **Current reference setup (STARS crowd, STARS predictor, recorded + scripted scenes):**
 
 ```bash
