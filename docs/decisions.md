@@ -1353,3 +1353,11 @@ why, and how to undo it.
     and walls over 1 s, and the robot stops only if none is safe (tested). Job `learned2` trains
     with it from the same BC weights (`checkpoints/seanjax/learned_v2*`). Job `learned` keeps
     running as the stop-only comparison.
+    **Progress at about generation 40-80.**
+    - Stop-only shield (`learned_v1`): it plateaus at validation -0.5 with 75% success and 10-15%
+      collisions by generation 80. Cancelled (job 67097).
+    - Fallback shield (`learned_v2`): -0.16 / -0.17 at generation 40, with 88-89% success, 7-8%
+      collisions and 0.19-0.23 loops. Far better, but still well short of v4 (about 0.39, 99%
+      success, 1% collisions).
+    - **Next:** ES with 48 perturbations is noisy for 8.4k weights. Job `learned3` uses 96 (same BC
+      start, fallback shield, seeds 0 and 1, `checkpoints/seanjax/learned_v3*`), alongside v2.
