@@ -1399,3 +1399,22 @@ why, and how to undo it.
     The first runs are kept as `contextual_v1*_lr01`. `learned_v3` (steering network,
     population 96) was cancelled at generation 48: validation -0.13 to -0.20, 86-89% success,
     8-9% collisions, a plateau like v2's.
+    **Restart: still drifts; the learned-policy work concludes (91-92).** Even at lr 0.001-0.002
+    with population 96 and 8 scenes per kind, all four runs decline. Validation falls from
+    0.36-0.38 to 0.33-0.37 by generation 10, the training-set mean from 0.33-0.35 to 0.29-0.31,
+    and collisions rise from 0 to 0.5-0.9%. The ES gradient signal is weaker than its noise. From
+    an optimum of the very objective being optimised (v4 is CMA-ES-tuned on it), every step size
+    random-walks away. Cancelled (job 67219).
+
+    **Conclusions:**
+    - A network that steers (91) plateaus at about -0.15 validation, with 87-90% success and
+      7-10% collisions, even with a fallback shield and population 96. It is far below v4.
+    - Context-dependent settings around v4 (92) start at v4 but ES cannot find adjustments that
+      beat it at this budget.
+    - v4 (`checkpoints/seanjax/cmaes_crowd_v4/best_policy.yaml`) remains the reference. On the
+      evidence of 68-92 it is close to the best this controller and objective allow in the STARS
+      crowd. Its remaining weakness, about 0.16 collision-free loops per dense-flow episode, is
+      documented.
+    - Further gains would need either much more compute (gradient-based RL, which needs a
+      differentiable or model-based surrogate, or ES with thousands of members) or a different
+      objective or crowd (for example robot-interaction data, 87). That is the user's call.

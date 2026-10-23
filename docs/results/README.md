@@ -144,3 +144,17 @@ Figures:
   the narrow passage is gone; dense flow still loops.
 - [`navigation_compare_crowd_v4.png`](navigation_compare_crowd_v4.png): v1, the first crowd run
   and v2 in the wall-respecting crowd.
+
+### What did not beat v4 [68-92]
+
+All on the same 270 test scenes and objective, judged on the worst-case rule [88]:
+- **Controller cost terms and memory** (speed, retreat, idle turning, turn commitment, pass-side
+  memory, progress along the plan) [68-89] and **wait-then-go plans** [90]: none removes the
+  dense-flow loops without losing safety.
+- **Tuning in the less reactive pooled crowd** [88]: policies that cut closer to people and
+  collide 5-6x more in the STEPS crowd.
+- **A learned steering network** (behaviour cloning from v4, then evolution strategies, with a
+  safety shield) [91]: plateaus at 87-90% success and 7-10% collisions.
+- **A network that adjusts v4's settings per step** [92]: starts at v4 but ES only drifts away
+  from it.
+
