@@ -1219,3 +1219,20 @@ why, and how to undo it.
       recorded success, loops) and each crowd's own objective, never objectives across crowds.
       v4 stays the reference unless a new policy is at least as good in the STEPS crowd and better
       in the pooled one.
+    **Result: v4 stays the reference; tuning in the less reactive crowd makes policies aggressive.**
+    (`runs/seanjax/cross_{steps,pooled}`, 270 test scenes each.)
+
+    | Policy | STEPS crowd: success / collision / < 0.45 m / recorded / objective | Pooled crowd: success / collision / < 0.45 m / recorded / objective |
+    | --- | --- | --- |
+    | **v4** (tuned in STEPS crowd) | 98.5% / 0.7% / 2.6% / 100% / 0.388 | 97.4% / 0.4% / 2.1% / 93% / 0.558 |
+    | pooled-tuned, seed 42 | 94.1% / 4.4% / 5.6% / 87% / 0.209 | 97.8% / 0.4% / 4.1% / 87% / 0.608 |
+    | pooled-tuned, seed 7 | 94.8% / 3.7% / 6.6% / 80% / 0.246 | 97.0% / 1.9% / 5.7% / 87% / 0.551 |
+
+    - Policies tuned in the pooled crowd, where pedestrians react about 3x less to the robot,
+      learn to cut close. Intimate-zone time doubles, and in the more reactive STEPS crowd their
+      collisions rise to 3.7-4.4%, five to six times v4's.
+    - v4 is the best worst case. It is first in the STEPS crowd and, in the pooled crowd, level on
+      collisions with half the intimate-zone time. The pooled-tuned seed 42 has the higher
+      pooled-crowd objective only by trading comfort for fewer loops.
+    - **Practical rule:** tune in the more responsive crowd. A crowd that barely yields teaches the
+      policy that people will move, and that does not transfer.
