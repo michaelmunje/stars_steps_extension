@@ -1307,3 +1307,13 @@ why, and how to undo it.
     new candidates are essentially never chosen: with v4's weights, an arc round the flow still
     scores better than waiting and then going. A re-tune (two seeds, job `twostage_tune`) can
     rebalance that; its test evaluation is queued behind it (`runs/seanjax/twostage_tuned`).
+    **Re-tuned: no gain; closed.** 270 test scenes (`runs/seanjax/twostage_tuned`):
+    - v4: 0.367 objective, 97.8% success, 1.1% collisions, 2.6% intimate, 0.08 loops (0.16 dense flow).
+    - Wait-then-go re-tune, seed 7: the same metrics, 0.12 dense-flow loops. Its search essentially
+      kept v4's weights, and the difference is within noise.
+    - Seed 42: 0.303, collisions 2.2%, intimate-zone time 4.6%.
+
+    Even with the weights free, CMA-ES does not make use of waiting to cut loops. v4 stays the
+    reference. With 90, the planner-structure route on the current controller (wait-then-go,
+    one-stage grid) is also exhausted. The dense-flow loops (about 0.16 per episode, collision-free)
+    are accepted as a known limitation, documented on the latest-policy page.
