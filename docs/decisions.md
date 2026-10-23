@@ -1165,3 +1165,21 @@ why, and how to undo it.
     - **STEPS simulator model unchanged** (`cvae_kl01_finetune`, 0.080 ADE, with 20 s rollouts
       validated for realism). The pooled model is level with it on STEPS (0.079), but its
       simulation realism has not been checked, so it does not replace it in SEAN-JAX.
+
+87. **The pooled forecaster is as realistic in simulation; testing it as the SEAN-JAX crowd.**
+    20 s STEPS test rollouts of `cvae_all_lr3e-4_seed42` against `cvae_kl01_finetune`:
+    - mean speed 0.116 against 0.115 m/s (smoothed real 0.115);
+    - speed Wasserstein to smoothed real 0.060 against 0.059;
+    - acceleration Wasserstein 0.080 against 0.089;
+    - collision rate 0.15% against 0.17%.
+
+    So the pooled model passes the realism check of 48.
+
+    Job `eval_pooled` evaluates v4 (and crowd v2) on the 270 test scenes in three setups:
+    - the pooled model as both crowd and predictor (`cmaes_crowd_v4_pooled.yaml`);
+    - the pooled model as the crowd, with the STEPS model as the predictor
+      (`cmaes_crowd_v4_pooledcrowd.yaml`), to see whether v4 transfers to a crowd it was not tuned in;
+    - the current STEPS setup, as a same-run reference.
+
+    If v4 scores the same, the pooled model becomes the simulator default, so one model serves
+    forecasting on every dataset and the crowd.
