@@ -1302,3 +1302,8 @@ why, and how to undo it.
     (`runs/seanjax/twostage_untuned_v1`). The re-tunes were cancelled. Revised: only *waiting*
     gets a second stage, one wait-then-go candidate per hold time in `stage1_times` (0.5, 1.0,
     1.5 s), so there are 69 candidates instead of 66. The untuned check comes first this time.
+    **Revised form, untuned: no effect.** v4 with wait-then-go candidates scores the same as v4:
+    0.381 against 0.387, success 98.1%, collisions 0.7%, loops 0.08 (0.17 in dense flow). The three
+    new candidates are essentially never chosen: with v4's weights, an arc round the flow still
+    scores better than waiting and then going. A re-tune (two seeds, job `twostage_tune`) can
+    rebalance that; its test evaluation is queued behind it (`runs/seanjax/twostage_tuned`).
