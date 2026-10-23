@@ -1254,3 +1254,24 @@ why, and how to undo it.
       - a re-tune from v4 with it on (`checkpoints/seanjax/cmaes_crowd_meanprog`).
     - Unlike 78-82, this changes how the goal term is computed rather than adding a penalty; the
       untuned check comes first.
+    **Result: not adopted; the controller-tweak line of work ends here.** 270 test scenes, same
+    objective:
+
+    | Policy | Objective | Success | Collision | < 0.45 m | Loops (dense flow) | Recorded | Time |
+    | --- | --- | --- | --- | --- | --- | --- | --- |
+    | v4 | 0.387 | 98.5% | 0.7% | 2.6% | 0.08 (0.17) | 100% | 12.4 s |
+    | v4 + option, untuned | 0.344 | 97.8% | 0.4% | 2.6% | 0.13 (0.35) | 90% | 12.5 s |
+    | Re-tuned with option (`cmaes_crowd_meanprog`) | 0.357 | 97.8% | 1.9% | 4.8% | 0.07 (0.26) | 100% | 11.6 s |
+
+    - Untuned, the option lowers *net* turning (2.08 to 1.15 rad in the waiting diagnostic) but
+      raises total heading change: left and right turns cancel in the net figure, so it trades
+      circles for zig-zags. The diagnostic's `net_turn_rad` is a poor proxy for loops; use the
+      `loops` metric.
+    - Re-tuned, it is 0.8 s faster but cuts closer: collisions nearly triple and intimate-zone time
+      almost doubles. Dense-flow loops are worse (0.26 against 0.17).
+    - **Across 68-89,** cost terms and memory (speed, retreat, idle turning, turn commitment,
+      pass-side memory, progress along the plan) all fail to remove the dense-flow loops without
+      giving up safety. They are a property of this one-step, re-planned trajectory-scoring
+      controller in a crowd that does not yield. v4 stays the reference. A real fix needs a
+      different planner, for example a short-horizon search over sequences of manoeuvres or a
+      learned policy. That is recorded as future work, not started.
