@@ -1344,3 +1344,12 @@ why, and how to undo it.
       adopted only if it beats v4 on the decision-88 worst-case rule.
     - Tested: a CPU smoke run of the whole pipeline; evaluate and visualise with a learned policy;
       a unit test of shapes, weights and the shield.
+    **First 30 ES generations; shield v2.** Behaviour cloning alone gives 50% success and 20%
+    collisions on validation (objective -1.30 / -1.35). ES lifts that to about -0.6 within 30
+    generations: success about 70%, loops 0.05-0.08 (v4: 0.08). Collisions stay at 9-14%, against
+    v4's 1%. The shield only *stops*, and in this crowd people walk into a stopped robot. v4
+    instead picks another safe command. New `shield_fallback`: an unsafe command is replaced by
+    the nearest safe command on a 7 x 11 `(v, w)` grid, checked against the pedestrian forecast
+    and walls over 1 s, and the robot stops only if none is safe (tested). Job `learned2` trains
+    with it from the same BC weights (`checkpoints/seanjax/learned_v2*`). Job `learned` keeps
+    running as the stop-only comparison.

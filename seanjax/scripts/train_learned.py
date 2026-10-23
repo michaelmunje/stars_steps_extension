@@ -123,6 +123,7 @@ def main() -> None:
     parser.add_argument("--out-dir", type=Path, required=True)
     parser.add_argument("--device")
     parser.add_argument("--hidden", type=int, default=64)
+    parser.add_argument("--shield-fallback", action="store_true", help="Unsafe command -> nearest safe grid command")
     parser.add_argument("--bc-per-kind", type=int, default=40)
     parser.add_argument("--bc-epochs", type=int, default=40)
     parser.add_argument("--generations", type=int, default=300)
@@ -149,7 +150,7 @@ def main() -> None:
                                           max_angular_speed=robot.max_angular_speed,
                                           max_acceleration=robot.max_acceleration,
                                           max_angular_acceleration=robot.max_angular_acceleration,
-                                          robot_radius=robot.radius),
+                                          robot_radius=robot.radius, shield_fallback=args.shield_fallback),
                             make_predictor((config.get("policy") or {}).get("predictor"), device))
     objective, max_envs = evaluator.objective, int(config.get("max_envs", 4096))
     scen = lambda split, per_kind, start: scenario_set(split, kinds, per_kind, start=start, dt=dt, duration=duration,

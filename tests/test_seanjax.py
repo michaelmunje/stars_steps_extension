@@ -307,3 +307,21 @@ def test_learned_policy_shapes_weights_and_shield():
     full_speed = torch.tensor([[1.0, 0.0]] * B)
     assert policy._shield(obs, full_speed, None).all()
     assert torch.allclose(policy.to_command(policy.from_command(full_speed * 0.5)), full_speed * 0.5, atol=1e-4)
+
+
+def test_learned_shield_fallback_avoids_instead_of_stopping():
+    from seanjax.core.state import Observation
+    from seanjax.policies.learned import LearnedConfig, LearnedPolicy
+
+    policy = LearnedPolicy(LearnedConfig(shield_fallback=True))
+    obs = Observation(robot_pose=torch.zeros(1, 3), robot_v=torch.ones(1), robot_w=torch.zeros(1),
+                      goal=torch.tensor([[5.0, 0.0]]), ped_pos=torch.tensor([[[1.2, 0.0]]]),
+                      ped_vel=torch.zeros(1, 1, 2), ped_visible=torch.ones(1, 1, dtype=torch.bool),
+                      ped_radius=torch.full((1, 1), 0.25), circles=torch.zeros(1, 0, 3),
+                      circle_mask=torch.zeros(1, 0, dtype=torch.bool), segments=torch.zeros(1, 0, 4),
+                      segment_mask=torch.zeros(1, 0, dtype=torch.bool), last_command=torch.zeros(1, 2))
+    future = obs.ped_pos[:, :, None].expand(1, 1, 10, 2)
+    straight = torch.tensor([[1.0, 0.0]])
+    assert policy._shield(obs, straight, future).all()
+    safe, none_safe = policy._fallback(obs, straight, future)
+    assert not none_safe.any() and not policy._shield(obs, safe, future).any()

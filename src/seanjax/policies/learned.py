@@ -43,6 +43,9 @@ class LearnedConfig:
     shield: bool = True
     shield_horizon: float = 1.0
     safety_margin: float = 0.05
+    shield_fallback: bool = False  # unsafe command -> nearest safe command on a (v, w) grid, not a stop (decision 91)
+    fallback_speeds: int = 7
+    fallback_turns: int = 11
 
 
 def _rotate(vec: torch.Tensor, cos: torch.Tensor, sin: torch.Tensor) -> torch.Tensor:
@@ -152,33 +155,61 @@ class LearnedPolicy(Policy):
 
     # --------------------------------------------------------------- acting
     def _shield(self, obs: Observation, command: torch.Tensor, future: torch.Tensor | None) -> torch.Tensor:
-        """``[B]`` bool: holding ``command`` for ``shield_horizon`` comes too close to someone or a wall."""
+        """``[B]`` bool: holding ``command`` (``[B, 2]``, or ``[B, M, 2]`` for M candidates -> ``[B, M]``)
+        for ``shield_horizon`` comes too close to someone or a wall."""
         c = self.config
+        single = command.dim() == 2
+        command = command[:, None] if single else command
+        B, M = command.shape[:2]
         steps = max(1, int(round(c.shield_horizon / c.plan_dt)))
-        x, y, th = obs.robot_pose[:, 0].clone(), obs.robot_pose[:, 1].clone(), obs.robot_pose[:, 2].clone()
-        v, w = obs.robot_v.clone(), obs.robot_w.clone()
-        unsafe = torch.zeros_like(v, dtype=torch.bool)
+        x = obs.robot_pose[:, None, 0].expand(B, M).clone()
+        y = obs.robot_pose[:, None, 1].expand(B, M).clone()
+        th = obs.robot_pose[:, None, 2].expand(B, M).clone()
+        v, w = obs.robot_v[:, None].expand(B, M).clone(), obs.robot_w[:, None].expand(B, M).clone()
+        unsafe = torch.zeros(B, M, dtype=torch.bool, device=command.device)
         for step in range(steps):
-            v = v + (command[:, 0] - v).clamp(-c.max_acceleration * c.plan_dt, c.max_acceleration * c.plan_dt)
-            w = w + (command[:, 1] - w).clamp(-c.max_angular_acceleration * c.plan_dt, c.max_angular_acceleration * c.plan_dt)
+            v = v + (command[..., 0] - v).clamp(-c.max_acceleration * c.plan_dt, c.max_acceleration * c.plan_dt)
+            w = w + (command[..., 1] - w).clamp(-c.max_angular_acceleration * c.plan_dt, c.max_angular_acceleration * c.plan_dt)
             mid = th + 0.5 * w * c.plan_dt
             x, y, th = x + v * torch.cos(mid) * c.plan_dt, y + v * torch.sin(mid) * c.plan_dt, th + w * c.plan_dt
-            point = torch.stack([x, y], -1)
+            point = torch.stack([x, y], -1)                                         # [B, M, 2]
             if future is not None:
-                gap = torch.linalg.norm(future[:, :, min(step, future.shape[2] - 1)] - point[:, None], dim=-1) \
-                    - obs.ped_radius - c.robot_radius
-                unsafe |= ((gap < c.safety_margin) & obs.ped_visible).any(-1)
-            clearance, _ = obstacle_clearance(point[:, None], obs.circles, obs.circle_mask, obs.segments, obs.segment_mask)
-            unsafe |= clearance[:, 0] - c.robot_radius < c.safety_margin
-        return unsafe
+                peds = future[:, :, min(step, future.shape[2] - 1)]                  # [B, P, 2]
+                gap = torch.linalg.norm(peds[:, None] - point[:, :, None], dim=-1) - obs.ped_radius[:, None] - c.robot_radius
+                unsafe |= ((gap < c.safety_margin) & obs.ped_visible[:, None]).any(-1)
+            clearance, _ = obstacle_clearance(point, obs.circles, obs.circle_mask, obs.segments, obs.segment_mask)
+            unsafe |= clearance - c.robot_radius < c.safety_margin
+        return unsafe[:, 0] if single else unsafe
+
+    def _fallback(self, obs: Observation, command: torch.Tensor, future: torch.Tensor | None):
+        """Nearest safe command on a ``(v, w)`` grid to the unsafe ``command``; ``(0, 0)`` if none is safe."""
+        c = self.config
+        v = torch.linspace(c.min_speed, c.max_speed, c.fallback_speeds, device=command.device)
+        w = torch.linspace(-c.max_angular_speed, c.max_angular_speed, c.fallback_turns, device=command.device)
+        grid = torch.cartesian_prod(v, w)                                            # [M, 2]
+        candidates = grid[None].expand(command.shape[0], -1, -1)
+        unsafe = self._shield(obs, candidates, future)                               # [B, M]
+        scale = torch.tensor([c.max_speed - c.min_speed, 2 * c.max_angular_speed], device=command.device)
+        distance = (((candidates - command[:, None]) / scale) ** 2).sum(-1)
+        distance = torch.where(unsafe, torch.full_like(distance, float("inf")), distance)
+        best = distance.argmin(-1)
+        chosen = grid[best]
+        none_safe = unsafe.all(-1)
+        return torch.where(none_safe[:, None], torch.zeros_like(chosen), chosen), none_safe
 
     def act(self, obs: Observation, params: torch.Tensor) -> torch.Tensor:
         features, future = self.features(obs)
         command = self.to_command(self.forward(features, params.to(features.dtype)))
         emergency = torch.zeros(command.shape[0], dtype=torch.bool, device=command.device)
         if self.config.shield:
-            emergency = self._shield(obs, command, future)
-            command = torch.where(emergency[:, None], torch.zeros_like(command), command)
+            unsafe = self._shield(obs, command, future)
+            if self.config.shield_fallback and bool(unsafe.any()):
+                safe, emergency = self._fallback(obs, command, future)
+                command = torch.where(unsafe[:, None], safe, command)
+                emergency = emergency & unsafe
+            else:
+                emergency = unsafe
+                command = torch.where(emergency[:, None], torch.zeros_like(command), command)
         self.last_info = {"emergency_stop": emergency, "features": features}
         return command
 
