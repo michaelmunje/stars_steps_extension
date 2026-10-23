@@ -1385,3 +1385,17 @@ why, and how to undo it.
     - **Job `contextual`:** ES with population 48 for 200 generations, sigma 0.02 and 0.05, seeds
       0 and 1 (`checkpoints/seanjax/contextual_v1*`). Adopted only if it beats v4 on the
       worst-case rule of 88.
+    **First run: ES drifts away from v4 instead of improving.** Within 30 generations validation
+    falls from 0.36-0.38 to 0.30-0.33, and collisions rise from 0 to 0.5-1.4%. The training-set
+    mean is flat (0.28-0.34), and the best member of a generation beats the mean by about 0.125.
+    v4 sits at an optimum of this very objective, so most perturbations of its settings hurt, and
+    Adam at lr 0.01 moves every weight by about lr per step whatever the gradient's
+    signal-to-noise. With noise-dominated ES gradients that is a random walk away from v4.
+    Restarted (job `contextual2`, `checkpoints/seanjax/contextual_v2*`):
+    - lr 0.002 (sigma 0.02) and lr 0.001 (sigma 0.05);
+    - population 96 and 8 scenes per kind per generation, for less noisy gradients;
+    - 150 generations.
+
+    The first runs are kept as `contextual_v1*_lr01`. `learned_v3` (steering network,
+    population 96) was cancelled at generation 48: validation -0.13 to -0.20, 86-89% success,
+    8-9% collisions, a plateau like v2's.
