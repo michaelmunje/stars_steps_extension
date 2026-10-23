@@ -1317,3 +1317,30 @@ why, and how to undo it.
     reference. With 90, the planner-structure route on the current controller (wait-then-go,
     one-stage grid) is also exhausted. The dense-flow loops (about 0.16 per episode, collision-free)
     are accepted as a known limitation, documented on the latest-policy page.
+
+91. **A learned navigation policy, trained in the STARS crowd.** After 68-90, the remaining
+    dense-flow loops look like a limit of re-planned one-step scoring. A learned policy can
+    represent context-dependent behaviour, such as holding still while a cross flow passes, which
+    a per-step cost rule cannot.
+    - **Policy** (`seanjax/policies/learned.py`): an MLP with inputs 64 -> 64 -> 64 -> 2 (8.4k
+      weights), outputs squashed to the robot's limits. Inputs, in the robot frame:
+      - the goal;
+      - the robot's own motion;
+      - the 6 nearest visible pedestrians, with relative position and velocity and the STARS
+        forecast 1 s and 2 s ahead;
+      - the nearest obstacle.
+    - **Safety shield**, mirroring v4's hard constraint: stop if the command, held for 1 s, would
+      come within 0.05 m of a predicted pedestrian or a wall. The policy runs batched with one
+      weight vector per environment. It loads in `build()` from
+      `{policy: learned, weights: <.npy>}`, so `evaluate.py`, `compare_policies.py` and
+      `visualize_rollout.py` work unchanged.
+    - **Training** (`seanjax/scripts/train_learned.py`):
+      1. behaviour cloning from v4 on 40 training scenes per kind (disjoint seeds), by MSE;
+      2. OpenAI-ES: 48 antithetic perturbations, sigma 0.02, centred ranks, Adam lr 0.01,
+         6 fresh training scenes per kind per generation, 300 generations. The objective is v4's
+         (`cmaes_crowd_v4.yaml`), the validation set is fixed, and the best checkpoint is kept.
+    - **Job `learned`:** seeds 0 and 1 (`checkpoints/seanjax/learned_v1*`). Afterwards: the
+      270-scene test against v4, cross-crowd robustness (88), and loops in dense flow. It is
+      adopted only if it beats v4 on the decision-88 worst-case rule.
+    - Tested: a CPU smoke run of the whole pipeline; evaluate and visualise with a learned policy;
+      a unit test of shapes, weights and the shield.

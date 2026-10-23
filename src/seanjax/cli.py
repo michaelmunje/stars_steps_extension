@@ -64,11 +64,36 @@ def build(config_path=None, *, policy: str | None = None, pedestrian_model: str 
         name = policy
     from seanjax.core.config import make_predictor
 
-    controller = make_controller(policy_config, name, env.robot, make_predictor(policy_config.get("predictor"), device))
+    predictor = make_predictor(policy_config.get("predictor"), device)
+    if name == "learned":
+        # A learned policy file names its weights (.npy); it uses the config's predictor and robot limits.
+        controller = load_learned_policy(policy, env.robot, predictor)
+        values = {}
+    else:
+        controller = make_controller(policy_config, name, env.robot, predictor)
     config["policy_parameters"] = {**controller.default_parameters(), **values}
     objective = Objective(**(config.get("objective") or {}))
     evaluator = Evaluator(env, controller, objective, device=device, max_envs=config.get("max_envs", 4096))
     return config, env, controller, evaluator, recording_pool(config), device
+
+
+def load_learned_policy(path, robot, predictor):
+    """``LearnedPolicy`` from a YAML ``{policy: learned, weights: <.npy>, learned: {LearnedConfig fields}}``."""
+    import numpy as np
+    import yaml
+
+    from seanjax.policies.learned import LearnedConfig, LearnedPolicy
+
+    data = yaml.safe_load(Path(path).read_text())
+    options = dict(data.get("learned") or {})
+    for key in ("max_speed", "max_angular_speed", "max_acceleration", "max_angular_acceleration"):
+        options.setdefault(key, getattr(robot, key))
+    options.setdefault("min_speed", robot.min_speed)
+    options.setdefault("robot_radius", robot.radius)
+    policy = LearnedPolicy(LearnedConfig(**options), predictor)
+    weights = Path(data["weights"])
+    policy.weights = np.load(weights if weights.is_absolute() else Path(path).parent / weights)
+    return policy
 
 
 def cmaes_config(config: dict, **overrides) -> CMAESConfig:

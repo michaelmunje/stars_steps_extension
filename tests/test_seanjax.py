@@ -281,3 +281,29 @@ def test_wall_crossings_slide_along_the_wall_or_stop_at_corners():
     assert torch.allclose(out[0, 2], old[0, 2])                                # corner: stays
     assert torch.allclose(out[0, 3], new[0, 3])
     assert torch.equal(block_wall_crossings(old, new, wall, torch.zeros_like(mask)), new)
+
+
+def test_learned_policy_shapes_weights_and_shield():
+    from seanjax.core.state import Observation
+    from seanjax.policies.learned import OBS_DIM, LearnedPolicy
+
+    policy = LearnedPolicy()
+    theta = policy.init_weights(0)
+    assert theta.size == policy.dim
+    B = 3
+    obs = Observation(robot_pose=torch.zeros(B, 3), robot_v=torch.zeros(B), robot_w=torch.zeros(B),
+                      goal=torch.tensor([[5.0, 0.0]] * B), ped_pos=torch.tensor([[[2.0, 0.0]]] * B),
+                      ped_vel=torch.zeros(B, 1, 2), ped_visible=torch.ones(B, 1, dtype=torch.bool),
+                      ped_radius=torch.full((B, 1), 0.25), circles=torch.zeros(B, 0, 3),
+                      circle_mask=torch.zeros(B, 0, dtype=torch.bool),
+                      segments=torch.tensor([[[0.5, -1.0, 0.5, 1.0]]] * B), segment_mask=torch.ones(B, 1, dtype=torch.bool),
+                      last_command=torch.zeros(B, 2))
+    features, _ = policy.features(obs)
+    assert features.shape == (B, OBS_DIM) and torch.isfinite(features).all()
+    params = policy.parameter_tensor([theta, theta * 0, theta], B)
+    command = policy.act(obs, params)
+    assert command.shape == (B, 2)
+    # Zero weights -> raw output 0 -> v = midpoint (0.35 m/s) straight ahead, into the wall 0.5 m away.
+    full_speed = torch.tensor([[1.0, 0.0]] * B)
+    assert policy._shield(obs, full_speed, None).all()
+    assert torch.allclose(policy.to_command(policy.from_command(full_speed * 0.5)), full_speed * 0.5, atol=1e-4)
