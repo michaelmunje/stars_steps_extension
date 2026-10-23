@@ -1183,3 +1183,26 @@ why, and how to undo it.
 
     If v4 scores the same, the pooled model becomes the simulator default, so one model serves
     forecasting on every dataset and the crowd.
+    **Result: the pooled crowd reacts about 3x less to the robot; the STEPS crowd stays the default.**
+    v4 on 270 test scenes (`runs/seanjax/crowd_{steps_ref,pooled,pooledcrowd}`):
+
+    | v4 | STEPS crowd + predictor | Pooled crowd + predictor | Pooled crowd, STEPS predictor |
+    | --- | --- | --- | --- |
+    | Success | 99% | 97% | 97% |
+    | Collision | 0.7% | 0.4% | 0.4% |
+    | Intimate-zone time | 2.6% | 2.2% | 1.9% |
+    | Recorded success (30) | 100% | 93% | 90% |
+    | `robot_influence` | 0.28 m | 0.11 m | — |
+    | Objective | 0.387 | 0.554 | 0.559 |
+
+    - Every policy scores higher in the pooled crowd (the default controller goes from -0.20 to
+      +0.22). That is because `robot_influence`, the disruption term, falls to about a third: the
+      pooled model's pedestrians change course much less for the robot. Objectives are therefore not
+      comparable across crowds; behaviour metrics are.
+    - v4 transfers to the pooled crowd without re-tuning (97% success, 0.4% collisions). That is
+      useful robustness evidence.
+    - **Decision.** The STEPS crowd stays the SEAN-JAX default. v4 was tuned in it, its realism was
+      validated (48), and it is the more responsive, harder crowd. Neither model has seen a robot (the
+      data has none), so which reaction strength is right is not something these data can settle.
+      The pooled configs stay as a robustness check: `cmaes_crowd_v4_pooled.yaml` and
+      `cmaes_crowd_v4_pooledcrowd.yaml`.
