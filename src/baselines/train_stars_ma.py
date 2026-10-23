@@ -62,7 +62,8 @@ DATASETS = {
     "madras": {"path": "datasets/madras"},
     "grand_central": {"path": "datasets/grand_central", "split_strategy": "temporal"},
     "ptdpes": {"path": "datasets/PTDPES"},
-    "atc": {"path": "datasets/atc"},
+    # Two-day converted subset: 2013-09-29 is the test split, 2013-05-22 is train/val (decision 93).
+    "atc": {"path": "datasets/atc_subset", "split_strategy": "held_out_recording"},
 }
 # STARS's phase-1 optimisation recipe (stars.VAE_RECIPE), at STARS's batch of 32 windows.
 SSL_RECIPE = {key: VAE_RECIPE[key] for key in

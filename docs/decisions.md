@@ -1418,3 +1418,19 @@ why, and how to undo it.
     - Further gains would need either much more compute (gradient-based RL, which needs a
       differentiable or model-based surrogate, or ES with thousands of members) or a different
       objective or crowd (for example robot-interaction data, 87). That is the user's call.
+
+93. **Adding ATC to pooled forecaster training.** The pooled configs left ATC out "until its scene
+    index is built". `datasets/atc` is empty, but `datasets/atc_subset` holds the converted
+    two-day subset: 2013-05-22 and 2013-09-29, about 77k tracks. It has a defined split:
+    `held_out_recording`, with 29 September as the entire test split and 22 May divided 90/10
+    into train and val along its timeline. Only the forecast scene index was missing.
+    - The registry entry `atc` now points at the subset with that split strategy.
+      `configs/stars_ma/all7.yaml` is the six-dataset mix plus ATC, at the robust pooled LR of
+      3e-4.
+    - **Job `fc_atc`**, in order:
+      1. `preprocess.py` builds the ATC scene index;
+      2. zero-shot test of the reference pooled model on ATC (no ATC in training);
+      3. a seven-dataset pooled model, `cvae_all7_lr3e-4_seed42`;
+      4. its per-dataset test evaluation.
+    - **Question:** does adding ATC (a large, dense, different environment) keep the
+      six-dataset results, and how much does ATC gain over zero-shot?
