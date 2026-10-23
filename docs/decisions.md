@@ -1361,3 +1361,27 @@ why, and how to undo it.
       success, 1% collisions).
     - **Next:** ES with 48 perturbations is noisy for 8.4k weights. Job `learned3` uses 96 (same BC
       start, fallback shield, seeds 0 and 1, `checkpoints/seanjax/learned_v3*`), alongside v2.
+    **The steering network plateaus.** `learned_v2` holds at -0.08 to -0.22 validation from
+    generation 40 to 90 (88-91% success, 6-10% collisions). `learned_v3` (population 96) reaches
+    the same level faster but no higher. Both are far below v4 (about 0.39). v2 is cancelled; v3
+    runs to completion for the record.
+
+92. **Context-dependent controller settings instead of a steering network.** A network that
+    steers has to relearn everything v4 already does well, above all keeping clear of people. New
+    `seanjax/policies/contextual.py`: the social controller still plans, with its hard safety
+    constraint, and a small MLP adjusts 10 of v4's tuned settings at every step from the
+    observation. Inputs are 64 -> 32 -> 10, about 2.4k weights, and each setting moves at most
+    ±0.5 of its CMA-ES range in unit scale. The tuned settings are:
+    `goal_weight`, `pedestrian_weight`, `disruption_weight`, `preferred_speed`,
+    `personal_space_radius`, `prediction_horizon`, `smoothness_weight`, `speed_scale`,
+    `retreat_scale` and `alignment_weight`.
+    - The output layer starts at zero, so **training starts exactly at v4** (unit-tested); no
+      behaviour cloning is needed. For example, the network can raise the retreat cost or lower
+      the preferred speed only in dense cross flow.
+    - Context features use constant-velocity pedestrian extrapolation, so v4's STARS predictor
+      and its forecast schedule are unchanged.
+    - `train_learned.py --kind contextual` writes
+      `{policy: contextual, base: <v4 yaml>, weights: <.npy>}`, which `build()` loads.
+    - **Job `contextual`:** ES with population 48 for 200 generations, sigma 0.02 and 0.05, seeds
+      0 and 1 (`checkpoints/seanjax/contextual_v1*`). Adopted only if it beats v4 on the
+      worst-case rule of 88.

@@ -69,6 +69,9 @@ def build(config_path=None, *, policy: str | None = None, pedestrian_model: str 
         # A learned policy file names its weights (.npy); it uses the config's predictor and robot limits.
         controller = load_learned_policy(policy, env.robot, predictor)
         values = {}
+    elif name == "contextual":
+        controller = load_contextual_policy(policy, make_controller(policy_config, "social", env.robot, predictor))
+        values = {}
     else:
         controller = make_controller(policy_config, name, env.robot, predictor)
     config["policy_parameters"] = {**controller.default_parameters(), **values}
@@ -93,6 +96,22 @@ def load_learned_policy(path, robot, predictor):
     policy = LearnedPolicy(LearnedConfig(**options), predictor)
     weights = Path(data["weights"])
     policy.weights = np.load(weights if weights.is_absolute() else Path(path).parent / weights)
+    return policy
+
+
+def load_contextual_policy(path, controller):
+    """``ContextualPolicy`` from ``{policy: contextual, base: <policy YAML>, weights: <.npy>, contextual: {...}}``."""
+    import numpy as np
+    import yaml
+
+    from seanjax.policies.contextual import ContextualPolicy
+
+    path = Path(path)
+    data = yaml.safe_load(path.read_text())
+    resolve = lambda p: Path(p) if Path(p).is_absolute() else (path.parent / p if (path.parent / p).exists() else Path(p))
+    _, base = load_policy_file(resolve(data["base"]))
+    policy = ContextualPolicy(controller, base, **(data.get("contextual") or {}))
+    policy.weights = np.load(resolve(data["weights"]))
     return policy
 
 

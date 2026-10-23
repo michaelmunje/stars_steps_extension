@@ -325,3 +325,27 @@ def test_learned_shield_fallback_avoids_instead_of_stopping():
     assert policy._shield(obs, straight, future).all()
     safe, none_safe = policy._fallback(obs, straight, future)
     assert not none_safe.any() and not policy._shield(obs, safe, future).any()
+
+
+def test_contextual_policy_starts_exactly_at_its_base_controller():
+    from seanjax.core.state import Observation
+    from seanjax.policies.contextual import ContextualPolicy
+    from seanjax.policies.social_navigation import SocialNavigationPolicy
+
+    controller = SocialNavigationPolicy()
+    base = {"goal_weight": 3.0, "pedestrian_weight": 5.0, "preferred_speed": 0.9}
+    policy = ContextualPolicy(controller, base)
+    B = 2
+    obs = Observation(robot_pose=torch.zeros(B, 3), robot_v=torch.full((B,), 0.5), robot_w=torch.zeros(B),
+                      goal=torch.tensor([[6.0, 1.0], [4.0, -2.0]]), ped_pos=torch.tensor([[[2.0, 0.3]], [[1.5, -0.5]]]),
+                      ped_vel=torch.tensor([[[-1.0, 0.0]], [[0.0, 1.0]]]), ped_visible=torch.ones(B, 1, dtype=torch.bool),
+                      ped_radius=torch.full((B, 1), 0.25), circles=torch.zeros(B, 0, 3),
+                      circle_mask=torch.zeros(B, 0, dtype=torch.bool), segments=torch.zeros(B, 0, 4),
+                      segment_mask=torch.zeros(B, 0, dtype=torch.bool), last_command=torch.zeros(B, 2))
+    theta = policy.parameter_tensor(policy.init_weights(0), B)
+    expected = controller.act(obs, controller.parameter_tensor({**controller.default_parameters(), **base}, B))
+    assert torch.allclose(policy.act(obs, theta), expected)
+    nudged = theta.clone()
+    nudged[:, -len(policy.tuned):] = 3.0                      # output biases: every tuned setting shifted up
+    params = policy.controller_parameters(obs, nudged)
+    assert (params[:, controller.parameter_names.index("goal_weight")] > 3.0).all()

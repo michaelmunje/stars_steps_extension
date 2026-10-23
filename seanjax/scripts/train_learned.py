@@ -34,15 +34,19 @@ from seanjax.core.metrics import all_metrics, summarize
 from seanjax.core.rollout import rollout
 from seanjax.core.scenarios import collate, scenario_set
 from seanjax.optimization.evaluator import _repeat_rollout
+from seanjax.policies.contextual import ContextualPolicy
 from seanjax.policies.learned import LearnedConfig, LearnedPolicy
 
 
-def _write_policy(out: Path, name: str, weights: np.ndarray, policy: LearnedPolicy, **extra) -> Path:
+def _write_policy(out: Path, name: str, weights: np.ndarray, policy, base=None, **extra) -> Path:
     np.save(out / f"{name}.npy", weights)
-    config = {k: v for k, v in vars(policy.config).items()}
     path = out / f"{name}_policy.yaml"
-    path.write_text(yaml.safe_dump({"policy": "learned", "weights": f"{name}.npy", "learned": config, **extra},
-                                   sort_keys=False))
+    if isinstance(policy, ContextualPolicy):
+        body = {"policy": "contextual", "base": str(Path(base).resolve()), "weights": f"{name}.npy",
+                "contextual": {"hidden": policy.hidden, "max_shift": policy.max_shift, "tuned": list(policy.tuned)}}
+    else:
+        body = {"policy": "learned", "weights": f"{name}.npy", "learned": dict(vars(policy.config))}
+    path.write_text(yaml.safe_dump({**body, **extra}, sort_keys=False))
     return path
 
 
@@ -122,6 +126,10 @@ def main() -> None:
     parser.add_argument("--init", type=Path, help="Start ES from these weights (.npy) instead of cloning")
     parser.add_argument("--out-dir", type=Path, required=True)
     parser.add_argument("--device")
+    parser.add_argument("--kind", choices=("mlp", "contextual"), default="mlp",
+                        help="mlp: the network steers (decision 91); contextual: it adjusts the teacher's "
+                             "controller settings per step, starting exactly at the teacher (decision 92)")
+    parser.add_argument("--max-shift", type=float, default=0.5, help="contextual: max change per setting (unit range)")
     parser.add_argument("--hidden", type=int, default=64)
     parser.add_argument("--shield-fallback", action="store_true", help="Unsafe command -> nearest safe grid command")
     parser.add_argument("--bc-per-kind", type=int, default=40)
@@ -152,6 +160,9 @@ def main() -> None:
                                           max_angular_acceleration=robot.max_angular_acceleration,
                                           robot_radius=robot.radius, shield_fallback=args.shield_fallback),
                             make_predictor((config.get("policy") or {}).get("predictor"), device))
+    if args.kind == "contextual":
+        student = ContextualPolicy(teacher, config["policy_parameters"], hidden=args.hidden, max_shift=args.max_shift,
+                                   learned_config=student.config)
     objective, max_envs = evaluator.objective, int(config.get("max_envs", 4096))
     scen = lambda split, per_kind, start: scenario_set(split, kinds, per_kind, start=start, dt=dt, duration=duration,
                                                        pool=pool)
@@ -166,6 +177,8 @@ def main() -> None:
     else:
         if args.init:
             theta = np.load(args.init)
+        elif args.kind == "contextual":
+            theta = student.init_weights(args.seed)                              # equals the teacher
         else:
             started = time.time()
             x, y = collect(env, teacher, config["policy_parameters"], student,
@@ -177,7 +190,7 @@ def main() -> None:
         score, metrics = evaluate(env, student, objective, theta[None], val, cf_cache, device, max_envs)
         best = {"objective": float(score[0]), "generation": 0, "metrics": metrics}
         np.save(out / "best.npy", theta)
-        _write_policy(out, "best", theta, student, validation_objective=best["objective"], generation=0)
+        _write_policy(out, "best", theta, student, args.teacher, validation_objective=best["objective"], generation=0)
         log(f"start: validation objective {best['objective']:.3f}")
         history.write(json.dumps({"generation": 0, "kind": "val", "objective": best["objective"], **metrics}) + "\n")
 
@@ -206,7 +219,7 @@ def main() -> None:
             if score[0] > best["objective"]:
                 best = {"objective": float(score[0]), "generation": g, "metrics": metrics}
                 np.save(out / "best.npy", theta)
-                _write_policy(out, "best", theta, student, validation_objective=best["objective"], generation=g)
+                _write_policy(out, "best", theta, student, args.teacher, validation_objective=best["objective"], generation=g)
             log(f"gen {g}: train mean {scores.mean():.3f}, val {score[0]:.3f} (best {best['objective']:.3f} @ {best['generation']})")
             torch.save({"theta": theta, "m": m, "v": v, "generation": g, "best": best}, state_path)
         history.write(json.dumps(record) + "\n")
