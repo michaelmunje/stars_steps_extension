@@ -273,6 +273,14 @@ def load_stores(entries: list[dict], split: str, args, forecasting, *, windows: 
         source = SceneDataset(DatasetSpec(entry["name"], path), split, cfg)
         if not len(source):
             continue
+        cap = entry.get("max_windows")
+        cap = cap.get(split) if isinstance(cap, dict) else cap
+        if cap and len(source.rows) > int(cap):
+            # Seeded subset of the index rows, before window extraction (ATC has millions of heavily
+            # overlapping windows; decision 93). The cache key includes the row count.
+            keep = np.sort(np.random.default_rng(args.data_seed).choice(len(source.rows), int(cap), replace=False))
+            source.rows = [source.rows[i] for i in keep]
+            args.run.log(f"{entry['name']}/{split}: capped to {int(cap)} windows")
         options = dict(windows=windows, forecasting=config_as_dict(forecasting), cache_dir=args.cache_dir,
                        workers=args.cache_workers, log=lambda message: args.run.log(message))
         if args.main:

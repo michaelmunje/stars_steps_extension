@@ -1445,3 +1445,14 @@ why, and how to undo it.
     seven-dataset training follow as separate jobs. **Fallback** if it still stalls: index only
     2013-05-22, split along its own timeline, and record that ATC's test day is then a different
     part of the same day.
+    **Index built; ATC is capped.** The ATC scene index has 8.08M windows: train 2.67M, val 0.24M,
+    test 5.18M. Each person present at each step starts a window, so they overlap heavily. At
+    that size ATC would make every pooled epoch about 15x longer and swamp the other six datasets:
+    dataset weights only change sampling, not epoch length. New per-dataset option `max_windows`
+    (a number, or a per-split mapping) draws a seeded subset of index rows *before* window
+    extraction; the cache key includes the row count. `all7.yaml` caps ATC at 80k train, 10k val
+    and 50k test windows, the scale of STEPS and PTDPES. Smoke-tested on CPU.
+    **Jobs:**
+    - `atc_zeroshot`: the six-dataset reference on all seven test sets
+      (`eval_test_all7_zeroshot.json`);
+    - `fc_all7`: seven-dataset models, seeds 42 and 1, each followed by a seven-dataset test.
