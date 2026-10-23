@@ -20,18 +20,13 @@ INK, MUTED, GRID = "#1f1f1e", "#6b6a64", "#e4e3dd"
 REFERENCE, SERIES = "#a9a89f", ("#2a78d6", "#eb6834")          # neutral, categorical slots 1-2
 
 
-def main() -> None:
+def plot(report: dict, output: Path, title: str | None = None) -> Path:
+    """Draw the per-dataset summary for an ``evaluate_stars_ma`` report to ``output``."""
     import matplotlib
 
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--report", type=Path, required=True)
-    parser.add_argument("--output", type=Path, required=True)
-    parser.add_argument("--title")
-    args = parser.parse_args()
-    report = json.loads(args.report.read_text())
     names = report["datasets"]
     tf, cv = report["teacher_forced"], report["constant_velocity"]
     closed = report.get("closed_loop", {}).get("exec_1")
@@ -61,12 +56,22 @@ def main() -> None:
     axes[0].invert_yaxis()                      # shared y: invert once, first dataset on top
     handles, labels = axes[0].get_legend_handles_labels()
     fig.legend(handles, labels, loc="lower center", ncol=len(labels), frameon=False, fontsize=8.5)
-    if args.title:
-        fig.suptitle(args.title, fontsize=11, color=INK, x=0.01, ha="left")
-    fig.tight_layout(rect=(0, 0.07, 1, 0.95 if args.title else 1))
-    args.output.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(args.output, dpi=150)
-    print(args.output)
+    if title:
+        fig.suptitle(title, fontsize=11, color=INK, x=0.01, ha="left")
+    fig.tight_layout(rect=(0, 0.07, 1, 0.95 if title else 1))
+    output.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(output, dpi=150)
+    plt.close(fig)
+    return output
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("--report", type=Path, required=True)
+    parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--title")
+    args = parser.parse_args()
+    print(plot(json.loads(args.report.read_text()), args.output, args.title))
 
 
 if __name__ == "__main__":

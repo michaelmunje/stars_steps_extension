@@ -5,6 +5,7 @@ numbers here are copied from the files linked below. The reasoning behind each c
 [`../decisions.md`](../decisions.md); entry numbers are given in brackets.
 
 **Latest navigation policy, with animations:** [`../latest_policy/`](../latest_policy/README.md).
+**Latest forecaster, with per-dataset results:** [`../latest_forecaster/`](../latest_forecaster/README.md).
 
 ## Current references
 
