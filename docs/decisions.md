@@ -1206,3 +1206,16 @@ why, and how to undo it.
       data has none), so which reaction strength is right is not something these data can settle.
       The pooled configs stay as a robustness check: `cmaes_crowd_v4_pooled.yaml` and
       `cmaes_crowd_v4_pooledcrowd.yaml`.
+
+88. **Tuning for robustness across crowd models.** Decision 87 left open how strongly real people
+    react to the robot: the STEPS crowd reacts about 3x more than the pooled one, and no data here
+    can settle it. Rather than pick one, the reference policy should do well in both.
+    - Job `cma_pooled` tunes in the pooled crowd (`cmaes_crowd_v4_pooled.yaml`), warm-started from
+      v4, seeds 42 and 7.
+    - Job `eval_cross` then evaluates both new policies and v4 in both crowds on the 270 test
+      scenes (`runs/seanjax/cross_{steps,pooled}`).
+    - **Selection rule:** the reference is the policy with the best *worse* result of the two
+      crowds. The comparison uses behaviour metrics (success, collision, intimate-zone time,
+      recorded success, loops) and each crowd's own objective, never objectives across crowds.
+      v4 stays the reference unless a new policy is at least as good in the STEPS crowd and better
+      in the pooled one.
