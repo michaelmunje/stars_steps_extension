@@ -8,3 +8,6 @@ datasets:
   - grand_central      # temporal split (registered default)
   - ucy
   - eth
+# Mixed six-dataset batches need a lower peak LR than STEPS alone: the Optuna LR (9.6e-4, tuned on
+# STEPS) made pooled training seed-sensitive; 3e-4 is robust across seeds (decisions 84-86).
+learning_rate: 3.0e-4

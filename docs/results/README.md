@@ -11,10 +11,11 @@ numbers here are copied from the files linked below. The reasoning behind each c
 | Use | Artifact | Headline (test split) |
 | --- | --- | --- |
 | STEPS forecaster, and the SEAN-JAX crowd and predictor | `experiments/stars_ma/runs/cvae_kl01_finetune/checkpoints/best.pt` | ADE / FDE 0.080 / 0.126 (constant velocity 0.276 / 0.518); realistic 20 s rollouts [48] |
-| All-dataset forecaster | `experiments/stars_ma/runs/cvae_hpo53_scratch_all/checkpoints/best.pt` | 2-3.5x better than constant velocity on all six datasets. Seed-sensitive: this seed is the best of three, and averaged over seeds pooling beats per-dataset models only on UCY and ETH [80, 84] |
+| All-dataset forecaster | `experiments/stars_ma/runs/cvae_all_lr3e-4_seed42/checkpoints/best.pt` | 2-3.5x better than constant velocity on all six datasets. Better than or level with a per-dataset model on every dataset, robust across seeds (pooled LR 3e-4) [86] |
 | Navigation policy | `checkpoints/seanjax/cmaes_crowd_v4/best_policy.yaml` | In the STARS crowd: 99% success, 0.7% collisions, 100% on recorded STEPS scenes [75] |
 
-Closed questions: hyperparameter search has converged [61, 62]; closed-loop training does not
+Closed questions: pooled training beats per-dataset training once its LR is lowered to 3e-4 [86];
+hyperparameter search has converged [61, 62]; closed-loop training does not
 help [47, 65, 73]; controller cost terms cannot remove the remaining dense-flow loops [79].
 
 ## Trajectory forecasting (STEPS test split, 12,500 windows)
@@ -49,27 +50,29 @@ speed is above 0.2 m/s; about 90% of STEPS pedestrians are slower. The full tabl
 - **Searches:** [`hpo_steps_cvae_scratch.md`](hpo_steps_cvae_scratch.md) and
   [`hpo_steps_cvae_ssl.md`](hpo_steps_cvae_ssl.md).
 
-### All six datasets (test split) [59]
+### All six datasets (test split) [59, 86]
 
-Full table: [`stars_ma_all_test.md`](stars_ma_all_test.md). From-scratch model with trial-53
-settings, agent ADE / FDE, best-of-20, against constant velocity:
+Reference pooled model `cvae_all_lr3e-4_seed42` (trial-53 architecture, pooled LR 3e-4), agent
+ADE / FDE, best-of-20, against constant velocity. The earlier pooled model and its rollout
+analysis are in [`stars_ma_all_test.md`](stars_ma_all_test.md).
 
-| Dataset | Constant velocity | STARS (`cvae_hpo53_scratch_all`) |
+| Dataset | Constant velocity | STARS (`cvae_all_lr3e-4_seed42`) |
 | --- | --- | --- |
-| STEPS | 0.276 / 0.518 | 0.078 / 0.123 |
-| PTDPES | 0.963 / 1.800 | 0.284 / 0.413 |
+| STEPS | 0.276 / 0.518 | 0.079 / 0.124 |
+| PTDPES | 0.963 / 1.800 | 0.282 / 0.408 |
 | Madras | 0.627 / 1.180 | 0.209 / 0.315 |
-| Grand Central | 0.703 / 1.427 | 0.244 / 0.403 |
-| UCY | 0.397 / 0.891 | 0.193 / 0.383 |
-| ETH | 0.727 / 1.428 | 0.234 / 0.373 |
+| Grand Central | 0.703 / 1.427 | 0.243 / 0.403 |
+| UCY | 0.397 / 0.891 | 0.203 / 0.406 |
+| ETH | 0.727 / 1.428 | 0.235 / 0.377 |
 
 ![Per-dataset test error](stars_ma_all_test.png)
 
 - SSL pretraining plus fine-tuning is 0.002–0.010 m worse on every dataset.
-- **One model per dataset vs one for all** [80, 84]: seed 42 of the all-dataset model (charted) is
-  better than or level with each dataset's own model everywhere. Over three seeds, though, the
-  all-dataset model averages 2-6% *worse* on STEPS, PTDPES, Madras and Grand Central, and 18-35%
-  better on UCY and ETH. A 60-epoch schedule is being tested to remove the seed sensitivity.
+- **One model per dataset vs one for all** [86]: with the pooled LR lowered to 3e-4, the pooled
+  model is better than or level with each dataset's own model on every dataset, across four runs:
+  STEPS within ±1%, PTDPES, Madras and Grand Central 1-3% better, UCY 22-24% and ETH 40-42%
+  better. (At the STEPS-tuned LR of 9.6e-4 pooling was seed-sensitive and on average worse on the
+  large datasets [84, 85].)
 
 ![One model per dataset vs one for all](stars_ma_single_vs_all.png)
 - Feeding back its own predictions every step costs little on STEPS but 14–20% elsewhere.

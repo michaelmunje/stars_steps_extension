@@ -1,5 +1,9 @@
 # Multi-agent STARS on all six datasets: test split
 
+> **Superseded reference (decision 86).** These models were trained at the STEPS-tuned LR of 9.6e-4,
+> where pooled training turned out to be seed-sensitive (84). The reference pooled model is now
+> `cvae_all_lr3e-4_seed42`; see `README.md`. The rollout (compounding-error) analysis below still applies.
+
 Two models, both trained on the mixture in `configs/stars_ma/all.yaml` and evaluated on
 each dataset's test split (44928 windows in all). CVAE scores are best-of-20, in metres.
 

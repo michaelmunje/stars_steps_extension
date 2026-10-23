@@ -1137,3 +1137,31 @@ why, and how to undo it.
     - The 60-epoch seed-42 model lands at the typical level, not the lucky one: STEPS 0.087,
       PTDPES 0.313, Grand Central 0.260, UCY 0.215, ETH 0.256. The original seed 42 was a one-off,
       not something about the seed number.
+
+86. **A lower pooled learning rate fixes the seed sensitivity; pooling beats per-dataset models.**
+    Pooled six-dataset training at peak LR 3e-4 and 1.5e-4 (60-epoch cosine, two seeds each, job
+    66434). All four runs reach validation 0.219-0.220, against 0.220-0.251 at 9.6e-4. Test
+    agent ADE:
+
+    | Dataset | LR 3e-4, seeds 42 / 1 | LR 1.5e-4, seeds 42 / 1 | Single-dataset | Pooled vs single |
+    | --- | --- | --- | --- | --- |
+    | STEPS | 0.0787 / 0.0783 | 0.0802 / 0.0791 | 0.0791 | -1 to +1% |
+    | PTDPES | 0.282 / 0.282 | 0.283 / 0.284 | 0.290 | -2 to -3% |
+    | Madras | 0.210 / 0.210 | 0.209 / 0.209 | 0.211 | -1% |
+    | Grand Central | 0.243 / 0.243 | 0.242 / 0.244 | 0.250 | -2 to -3% |
+    | UCY | 0.203 / 0.199 | 0.203 / 0.201 | 0.262 | -22 to -24% |
+    | ETH | 0.235 / 0.235 | 0.229 / 0.238 | 0.393 | -40 to -42% |
+
+    - **Cause.** The Optuna LR (9.6e-4) was tuned on STEPS alone and is too high for mixed
+      batches. Seed 42 of the original recipe had been a lucky run at that LR.
+    - **Conclusion, replacing the suspended recommendations of 80, 84 and 85.** With LR 3e-4, one
+      pooled model is better than or level with a per-dataset model on every dataset, robustly
+      across seeds. Per-dataset models are not needed.
+    - **New all-dataset reference model:** `experiments/stars_ma/runs/cvae_all_lr3e-4_seed42`,
+      chosen by validation (0.2193), not test. `configs/stars_ma/all.yaml` now sets
+      `learning_rate: 3.0e-4`.
+    - **Figures.** `docs/results/stars_ma_single_vs_all.png` shows the four runs as mean and
+      range; `docs/results/stars_ma_all_test.png` shows the new reference model.
+    - **STEPS simulator model unchanged** (`cvae_kl01_finetune`, 0.080 ADE, with 20 s rollouts
+      validated for realism). The pooled model is level with it on STEPS (0.079), but its
+      simulation realism has not been checked, so it does not replace it in SEAN-JAX.
