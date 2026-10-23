@@ -1236,3 +1236,21 @@ why, and how to undo it.
       pooled-crowd objective only by trading comfort for fewer loops.
     - **Practical rule:** tune in the more responsive crowd. A crowd that barely yields teaches the
       policy that people will move, and that does not transfer.
+
+89. **Score progress along the whole plan (another try at the dense-flow loops).** Correction
+    first: in a progress note I proposed pass-side memory as "next". That was already built and
+    found to have no effect (82); I should have checked this log first.
+    - **New observation from the legible GIFs** (`docs/latest_policy/`): the dense-flow loops
+      happen *near the goal*, which sits inside the cross flow. The controller's progress term
+      compares only the goal distance at the plan's end. Near the goal, a plan that curls round
+      and ends about as close scores the same as one that drives straight in, so the loop costs
+      nothing.
+    - **New option `progress_along_path`** (default off, so existing policies are unchanged):
+      progress comes from the mean goal distance over the plan, normalised by half the distance a
+      straight plan at full speed would cover. That rewards arriving sooner.
+    - **Job 66878:**
+      - v4 with the option on and no re-tuning, plus the waiting diagnostic and a dense-flow GIF
+        (`runs/seanjax/meanprog_untuned`);
+      - a re-tune from v4 with it on (`checkpoints/seanjax/cmaes_crowd_meanprog`).
+    - Unlike 78-82, this changes how the goal term is computed rather than adding a penalty; the
+      untuned check comes first.

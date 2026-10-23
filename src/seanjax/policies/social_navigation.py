@@ -62,6 +62,7 @@ class ControllerConfig:
     speed_cost: float = 0.5
     retreat_cost: float = 2.0      # penalty on moving away from the goal (no orbiting instead of waiting)
     retreat_along_path: bool = False  # retreat measured at the worst point of the plan, not only its end
+    progress_along_path: bool = False # progress from the mean goal distance over the plan, not its end (decision 89)
     disruption_lookahead: float = 1.5
     commit_steps: int = 20         # control steps a chosen turn direction stays committed (2 s at dt 0.1)
     commit_min_turn: float = 0.3   # |w| (rad/s) that counts as choosing a side
@@ -139,6 +140,11 @@ class SocialNavigationPolicy(Policy):
         last = (steps_used.long() - 1)[:, None, None].expand(B, M, 1)
         final_distance = torch.gather(distance, 2, last)[..., 0]
         progress = (distance0[:, None] - final_distance) / (c.max_speed * horizon[:, None])
+        if c.progress_along_path:
+            # Near the goal, a plan that curls round and ends close scores like one that drives in:
+            # averaging the goal distance over the plan rewards getting there sooner (decision 89).
+            mean_distance = (distance * in_horizon[:, None]).sum(-1) / steps_used[:, None]
+            progress = (distance0[:, None] - mean_distance) / (0.5 * c.max_speed * horizon[:, None])
         final_theta = torch.gather(robot_theta, 2, last)[..., 0]
         final_xy = torch.gather(robot_xy, 2, last[..., None].expand(B, M, 1, 2))[:, :, 0]
         bearing = torch.atan2(obs.goal[:, None, 1] - final_xy[..., 1], obs.goal[:, None, 0] - final_xy[..., 0])
