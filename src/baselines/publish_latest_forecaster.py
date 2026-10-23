@@ -55,7 +55,9 @@ def main() -> None:
     plot(report, args.out / "figures" / "per_dataset.png")
     if args.comparison:
         shutil.copy(args.comparison, args.out / "figures" / "single_vs_pooled.png")
-    forecasts = sorted(args.figures.glob("*.png")) if args.figures else []
+    order = {n: i for i, n in enumerate(report["datasets"])}           # same order as the results table
+    forecasts = sorted(args.figures.glob("*.png"), key=lambda p: order.get(p.stem.removeprefix("forecasts_"), 99)) \
+        if args.figures else []
     animations = sorted(args.figures.glob("*.gif")) if args.figures else []
     for path in [*forecasts, *animations]:
         shutil.copy(path, args.out / "figures" / path.name)
