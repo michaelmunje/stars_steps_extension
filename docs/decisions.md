@@ -1434,3 +1434,14 @@ why, and how to undo it.
       4. its per-dataset test evaluation.
     - **Question:** does adding ATC (a large, dense, different environment) keep the
       six-dataset results, and how much does ATC gain over zero-shot?
+    **Preprocessing stall.** The first pass ran at about 765 windows/s while the earlier
+    categorisation cache covered the data (22 May, and 29 September up to about 3.8M of 5.18M
+    windows), then fell to about 7 windows/s at the first uncached windows. The node has 144 cores
+    but a load average of about 2.4: the 16 workers mostly wait. The pipeline keeps 4 tasks per
+    worker in flight and resolves the oldest first, so a few very slow windows (the densest ATC
+    crowds) stall everything. This is likely why the ATC index was never built: the earlier
+    cache stops at the same point. Job 67265 was cancelled. `atc_index` reruns only the
+    preprocessing with 128 workers (512 tasks in flight). The zero-shot evaluation and the
+    seven-dataset training follow as separate jobs. **Fallback** if it still stalls: index only
+    2013-05-22, split along its own timeline, and record that ATC's test day is then a different
+    part of the same day.
