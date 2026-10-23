@@ -63,8 +63,8 @@ class ControllerConfig:
     retreat_cost: float = 2.0      # penalty on moving away from the goal (no orbiting instead of waiting)
     retreat_along_path: bool = False  # retreat measured at the worst point of the plan, not only its end
     progress_along_path: bool = False # progress from the mean goal distance over the plan, not its end (decision 89)
-    two_stage: bool = False        # also score "hold the command for stage1_time, then steer to the goal" (decision 90)
-    stage1_time: float = 1.0
+    two_stage: bool = False        # also score "wait for t, then steer to the goal", t in stage1_times (decision 90)
+    stage1_times: tuple = (0.5, 1.0, 1.5)
     stage2_gain: float = 2.5       # heading-error gain (1/s) of the goal-steering second stage
     disruption_lookahead: float = 1.5
     commit_steps: int = 20         # control steps a chosen turn direction stays committed (2 s at dt 0.1)
@@ -108,10 +108,12 @@ class SocialNavigationPolicy(Policy):
         grid = torch.cartesian_prod(v, w)                                          # [M, 2]
         if not c.two_stage:
             return grid
-        # Third column: 1 = after stage1_time the plan steers straight for the goal (only the first
-        # command is ever executed; the second stage lets "wait, then go" be scored as such).
-        flag = lambda value: torch.full((grid.shape[0], 1), value, device=device)
-        return torch.cat([torch.cat([grid, flag(0.0)], 1), torch.cat([grid, flag(1.0)], 1)])
+        # Third column: 1 = after a stage-1 hold the plan steers straight for the goal. Only *waiting*
+        # gets a second stage: giving every command one let any first move (even spinning) be
+        # "rescued" by the goal-steering stage, so the robot spun (decision 90). One wait-then-go
+        # candidate per hold time in stage1_times.
+        waits = torch.tensor([[0.0, 0.0, t] for t in c.stage1_times], device=device)
+        return torch.cat([torch.cat([grid, torch.zeros(grid.shape[0], 1, device=device)], 1), waits])
 
     def rollout_robot(self, obs: Observation, commands: torch.Tensor, steps: int) -> torch.Tensor:
         """Predicted robot positions ``[B, M, H, 2]`` and headings ``[B, M, H]`` for commands ``[M, 2]``."""
@@ -123,9 +125,10 @@ class SocialNavigationPolicy(Policy):
         v, w = obs.robot_v[:, None].expand(B, M).clone(), obs.robot_w[:, None].expand(B, M).clone()
         positions, headings = [], []
         target_v, target_w = commands[None, :, 0].expand(B, M), commands[None, :, 1].expand(B, M)
-        staged = commands[None, :, 2] > 0.5 if commands.shape[1] > 2 else None
+        hold = commands[None, :, 2] if commands.shape[1] > 2 else None             # 0 = single-stage
         for step in range(steps):
-            if staged is not None and (step + 1) * dt > c.stage1_time + 1e-6:
+            staged = None if hold is None else (hold > 0) & ((step + 1) * dt > hold + 1e-6)
+            if staged is not None and bool(staged.any()):
                 bearing = torch.atan2(obs.goal[:, None, 1] - y, obs.goal[:, None, 0] - x)
                 error = wrap_angle(bearing - theta)
                 to_goal_w = (c.stage2_gain * error).clamp(-c.max_angular_speed, c.max_angular_speed)

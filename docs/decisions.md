@@ -1295,3 +1295,10 @@ why, and how to undo it.
       The time limit is 4 h, after 89's 1 h limit cut a job short.
     - **Judged on the `loops` metric,** not net turning (89), alongside success, collisions,
       intimate-zone time and recorded success, all against v4.
+    **First form failed badly; revised.** Giving *every* command a goal-steering second stage
+    meant any first move, spinning in place included, was "rescued" by stage 2. All staged plans
+    then scored nearly alike, and the robot executed whatever first command won by a hair. v4
+    untuned: 42% success and 2.20 loops per episode, against 98.5% and 0.08
+    (`runs/seanjax/twostage_untuned_v1`). The re-tunes were cancelled. Revised: only *waiting*
+    gets a second stage, one wait-then-go candidate per hold time in `stage1_times` (0.5, 1.0,
+    1.5 s), so there are 69 candidates instead of 66. The untuned check comes first this time.
