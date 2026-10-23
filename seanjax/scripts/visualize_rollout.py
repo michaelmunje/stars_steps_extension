@@ -34,12 +34,25 @@ def main() -> None:
                                                          pedestrian_model=args.pedestrians, device=args.device)
     scenario = make_scenario(args.scenario, SPLIT_OFFSETS[args.split] + args.seed, pool=pool, split=args.split)
     batch = collate([scenario], device)
+    # Record what the controller planned and predicted at every control step (for the animation).
+    plans, act = [], getattr(policy, "act", None)
+    if act is not None:
+        def recording_act(obs, params):
+            command = act(obs, params)
+            info = getattr(policy, "last_info", {})
+            if "plan" in info:
+                predicted = info.get("predicted")
+                plans.append({"plan": info["plan"][0].float().cpu().numpy(), "plan_steps": int(info["plan_steps"][0]),
+                              "predicted": None if predicted is None else predicted[0].float().cpu().numpy()})
+            return command
+
+        policy.act = recording_act
     run = rollout(env, batch, policy, policy.parameter_tensor(config["policy_parameters"], 1, device))
     counterfactual = rollout(env, batch, robot_present=False)
     args.out_dir.mkdir(parents=True, exist_ok=True)
     stem = args.out_dir / f"{scenario.name}-{Path(args.checkpoint).stem}"
     plot_rollout(batch, run, counterfactual=counterfactual, path=f"{stem}.png")
-    animate_rollout(batch, run, counterfactual=counterfactual, path=f"{stem}.gif")
+    animate_rollout(batch, run, counterfactual=counterfactual, plans=plans or None, path=f"{stem}.gif")
     print(f"saved {stem}.png, {stem}.gif")
     if args.run_dir:
         plot_convergence(args.run_dir / "generations.jsonl", args.out_dir / "convergence.png")

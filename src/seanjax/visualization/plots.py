@@ -83,8 +83,101 @@ def plot_rollout(batch, run, b: int = 0, *, counterfactual=None, path=None, titl
     return fig
 
 
-def animate_rollout(batch, run, b: int = 0, *, path, counterfactual=None, every: int = 2, fps: int = 15):
-    """GIF of one environment: robot and pedestrian discs with short trails."""
+def animate_rollout(batch, run, b: int = 0, *, path, counterfactual=None, plans=None, every: int = 3, fps: int = 6,
+                    trail_s: float = 2.0, view_margin: float = 3.5, hold_s: float = 1.5, show_ghosts: bool = False):
+    """GIF of one environment, made to be read: what the robot sees, plans and does.
+
+    * the view follows the robot's path (plus ``view_margin`` m) instead of the whole arena;
+    * pedestrians are discs with fading ``trail_s`` trails; anyone inside the robot's intimate zone
+      (0.45 m gap) is outlined in red;
+    * with ``plans`` (per control step, ``policy.last_info`` recorded during the rollout) the robot's
+      chosen plan (blue, dashed) and its forecasts for pedestrians within 4 m (thin, colour of the
+      pedestrian) are drawn;
+    * a status line gives time, speed, nearest gap and driving / waiting / emergency stop;
+    * the animation stops at the end of the episode and holds the outcome for ``hold_s``;
+    * ``show_ghosts`` adds the robot-absent counterfactual pedestrians as dashed outlines.
+    """
+    from matplotlib.collections import LineCollection
+
+    end = int(run.end_step[b])
+    robot_pose = _np(run.robot_pose[b])
+    pos, active = _np(run.ped_pos[b]), _np(run.ped_active[b])
+    peds = np.flatnonzero(_np(batch.ped_mask[b]))
+    radius = _np(batch.ped_radius[b])
+    path_xy = np.concatenate([robot_pose[: end + 1, :2], _np(batch.robot_goal[b])[None]])
+    lo, hi = path_xy.min(0) - view_margin, path_xy.max(0) + view_margin
+    span = np.maximum(hi - lo, 8.0)                       # at least 8 m in each direction
+    centre = (lo + hi) / 2
+    lo, hi = centre - span / 2, centre + span / 2
+    width, margins = 7.5, dict(left=0.08, right=0.98, bottom=0.07, top=0.93)
+    height = width * (margins["right"] - margins["left"]) / (margins["top"] - margins["bottom"]) * span[1] / span[0]
+    fig, ax = plt.subplots(figsize=(width, float(np.clip(height, 3.5, 10.0))))
+    fig.subplots_adjust(**margins)
+    colors = plt.cm.tab20(np.linspace(0, 1, 20))
+    trail_steps = max(1, int(round(trail_s / run.dt)))
+    outcome = "reached the goal" if bool(run.success[b]) else (
+        "COLLISION" if bool(run.ped_collision[b] | run.obstacle_collision[b]) else "timed out")
+    frames = list(range(0, end + 1, every)) + [end] * int(hold_s * fps)
+
+    def update(k):
+        ax.clear()
+        _static(ax, batch, b)
+        ax.set_xlim(lo[0], hi[0]), ax.set_ylim(lo[1], hi[1]), ax.set_aspect("equal"), ax.grid(alpha=0.25)
+        x, y, th = robot_pose[k]
+        gaps = []
+        info = plans[min(k, len(plans) - 1)] if plans else None
+        for p in peds:
+            if not active[p, k]:
+                continue
+            c = colors[p % 20]
+            k0 = max(0, k - trail_steps)
+            seg = pos[p, k0:k + 1][active[p, k0:k + 1]]
+            if len(seg) > 1:
+                pts = np.stack([seg[:-1], seg[1:]], 1)
+                alpha = np.linspace(0.05, 0.6, len(pts))
+                ax.add_collection(LineCollection(pts, colors=[(*c[:3], a) for a in alpha], linewidths=1.5))
+            gap = float(np.hypot(*(pos[p, k] - (x, y)))) - radius[p] - 0.3
+            gaps.append(gap)
+            close = gap < 0.45
+            ax.add_patch(Circle(pos[p, k], radius[p], facecolor=c, alpha=0.85, edgecolor="red" if close else "none",
+                                lw=2 if close else 0))
+            if info is not None and info.get("predicted") is not None and gap < 4.0:
+                steps = int(info["plan_steps"])
+                ax.plot(*np.concatenate([pos[p, k][None], info["predicted"][p, :steps]]).T, color=c, lw=0.9,
+                        alpha=0.8, ls="-")
+            if show_ghosts and counterfactual is not None and bool(counterfactual.ped_active[b, p, k]):
+                ax.add_patch(Circle(_np(counterfactual.ped_pos[b, p, k]), radius[p], fill=False, ls="--", color=c))
+        ax.plot(robot_pose[: k + 1, 0], robot_pose[: k + 1, 1], color=ROBOT, lw=2, alpha=0.6)
+        if info is not None:
+            plan = info["plan"][: int(info["plan_steps"])]
+            ax.plot(*np.concatenate([[[x, y]], plan]).T, color=ROBOT, lw=2, ls="--")
+        ax.add_patch(Circle((x, y), 0.3, color=ROBOT, alpha=0.9))
+        ax.add_patch(Circle((x, y), 0.3 + 0.45, fill=False, ls=":", color=ROBOT, lw=1))
+        ax.plot([x, x + 0.45 * np.cos(th)], [y, y + 0.45 * np.sin(th)], color="white", lw=2.5)
+        v = float(run.robot_v[b, k])
+        nearest = f"{min(gaps):.2f} m" if gaps else "none"
+        emergency = bool(run.emergency[b, k])
+        state = "emergency stop" if emergency else ("waiting" if abs(v) < 0.05 else ("backing off" if v < 0 else "driving"))
+        status = f"t = {k * run.dt:4.1f} s   v = {v:+.2f} m/s   nearest gap {nearest}   {state}"
+        if k == end and frames[-1] == end:
+            status += f"\n{outcome} at {end * run.dt:.1f} s"
+        ax.set_title(f"{batch.names[b]}", fontsize=10)
+        ax.text(0.01, 0.99, status, transform=ax.transAxes, va="top", fontsize=8,
+                bbox=dict(facecolor="white", alpha=0.85, edgecolor="none"))
+        handles = [plt.Line2D([], [], color=ROBOT, lw=2, alpha=0.6, label="robot path"),
+                   plt.Line2D([], [], color=ROBOT, lw=2, ls="--", label="robot plan")]
+        if plans:
+            handles.append(plt.Line2D([], [], color="0.4", lw=0.9, label="its forecast of a pedestrian"))
+        handles += [plt.Line2D([], [], color="0.4", lw=1.5, alpha=0.5, label=f"pedestrian, last {trail_s:.0f} s"),
+                    plt.Line2D([], [], marker="o", ls="none", mfc="none", mec="red", label="within 0.45 m")]
+        ax.legend(handles=handles, loc="lower right", fontsize=7, framealpha=0.85)
+
+    FuncAnimation(fig, update, frames=frames, blit=False).save(path, writer=PillowWriter(fps=fps))
+    plt.close(fig)
+
+
+def animate_rollout_basic(batch, run, b: int = 0, *, path, counterfactual=None, every: int = 2, fps: int = 15):
+    """GIF of one environment: robot and pedestrian discs (the original, whole-scene animation)."""
     fig, ax = plt.subplots(figsize=(6.5, 5.5))
     _static(ax, batch, b)
     lo, hi = _extent(batch, run, b)

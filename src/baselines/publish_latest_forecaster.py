@@ -56,7 +56,8 @@ def main() -> None:
     if args.comparison:
         shutil.copy(args.comparison, args.out / "figures" / "single_vs_pooled.png")
     forecasts = sorted(args.figures.glob("*.png")) if args.figures else []
-    for path in forecasts:
+    animations = sorted(args.figures.glob("*.gif")) if args.figures else []
+    for path in [*forecasts, *animations]:
         shutil.copy(path, args.out / "figures" / path.name)
 
     tf, cv = report["teacher_forced"], report["constant_velocity"]
@@ -94,11 +95,15 @@ def main() -> None:
         lines += ["## Against one model per dataset", "", "![single vs pooled](figures/single_vs_pooled.png)", ""]
     if forecasts:
         lines += ["## Forecasts", "",
-                  "Test windows with the most moving pedestrians. Thick: observed 3.2 s; dashed: ground truth 4.8 s; "
-                  "thin: STARS samples; dotted grey: constant velocity.", ""]
+                  "Test windows with the most moving pedestrians (at most 10 people, for legibility). Thick: observed "
+                  "3.2 s; dashed: ground truth 4.8 s; thin: STARS samples; dotted grey: constant velocity. The "
+                  "animations first build up the observed history, then unroll the 4.8 s forecast step by step "
+                  "(one frame per 0.4 s step).", ""]
         for path in forecasts:
             dataset = path.stem.removeprefix("forecasts_")
-            lines += [f"### {LABELS.get(dataset, dataset)}", "", f"![{path.stem}](figures/{path.name})", ""]
+            lines += [f"### {LABELS.get(dataset, dataset)}", ""]
+            lines += [f"![{gif.stem}](figures/{gif.name})" for gif in animations if gif.stem.startswith(path.stem + "_")]
+            lines += ["", f"![{path.stem}](figures/{path.name})", ""]
     datasets = config.get("datasets") or [e["name"] for e in config.get("train_entries", [])]
     lines += ["## Recipe", "", "```yaml", *(f"{k}: {config.get(k)}" for k in
               ("config", "decoder", "cvae_latent_dim", "encoder_mode", "knn", "radius", "kl_weight", "learning_rate",

@@ -157,6 +157,7 @@ class SocialNavigationPolicy(Policy):
             cost = cost + retreat_cost * torch.relu(-progress)
         crowding = torch.zeros(B, device=device)
         valid = torch.ones(B, M, dtype=torch.bool, device=device)
+        future = None
         pass_side = torch.zeros(B, M, device=device)                              # side of the blocker each plan ends on
         blocker = torch.zeros(B, dtype=torch.long, device=device)
         has_blocker = torch.zeros(B, dtype=torch.bool, device=device)
@@ -264,5 +265,9 @@ class SocialNavigationPolicy(Policy):
         command = torch.where(emergency[:, None], torch.zeros_like(command), command)
         stop = (commands[:, 0].abs() + (commands[:, 0] != 0) * 1e3 + commands[:, 1].abs()).argmin()[None]  # v = 0, w ~ 0
         self.last_info = {"emergency_stop": emergency, "valid_fraction": valid.float().mean(1),
-                          "stop_valid": valid[:, stop].any(1)}
+                          "stop_valid": valid[:, stop].any(1),
+                          # For visualisation: the chosen plan [B, H, 2] (planning horizon only) and the
+                          # pedestrian forecasts it was scored against [B, P, H, 2] (None without pedestrians).
+                          "plan": robot_xy[torch.arange(B, device=device), best], "plan_steps": steps_used,
+                          "predicted": future}
         return command

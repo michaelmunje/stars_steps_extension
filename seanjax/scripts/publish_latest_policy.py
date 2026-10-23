@@ -117,9 +117,14 @@ def main() -> None:
               "| --- |" + " ---: |" * len(COLUMNS)]
     lines += [_row(kind, ours["per_kind"][kind]) for kind in kinds]
     lines += ["", "## Rollouts", "",
-              "Thick blue: the robot (square: start, star: goal). Solid lines: pedestrians with the robot present; "
-              "dashed: the same pedestrians with the robot absent. Single episodes show behaviour, not rates: the "
-              "outcome of a close encounter can change between runs (decision 83).", ""]
+              "The view follows the robot (blue disc, white tick = heading; square: start, star: goal). "
+              "**Blue line**: where it has been. **Blue dashed**: the plan it just chose. **Thin coloured lines**: "
+              "what it predicts each nearby pedestrian (within 4 m) will do; that forecast is what the plan is "
+              "scored against. Pedestrians have fading 2 s trails and turn red-outlined inside the 0.45 m intimate "
+              "zone (the dotted ring). The status line gives time, speed, the nearest gap and whether the robot is "
+              "driving, waiting or stopping; the final frame states the outcome. Playback is about 1.8x real time. "
+              "Single episodes show behaviour, not rates: the outcome of a close encounter can change between runs "
+              "(decision 83).", ""]
     for gif in gifs:
         kind = gif.stem.split("-")[0]
         lines += [f"### {CAPTIONS.get(kind, kind)} (`{gif.stem.rsplit('-', 1)[0]}`)", "",
