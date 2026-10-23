@@ -1275,3 +1275,23 @@ why, and how to undo it.
       controller in a crowd that does not yield. v4 stays the reference. A real fix needs a
       different planner, for example a short-horizon search over sequences of manoeuvres or a
       learned policy. That is recorded as future work, not started.
+
+90. **Two-stage candidate plans: let "wait, then go" be scored.** Decisions 68-89 changed cost
+    terms. The likely root cause is the plan structure. Every candidate is one constant `(v, w)`
+    held for the whole plan, about 2 s, so "wait for the gap, then go" cannot be represented. A
+    waiting plan ends no closer to the goal and scores badly, while an arc that curves round the
+    flow scores better, and repeated every 0.1 s that becomes a loop.
+    - **New option `two_stage`** (default off). Each `(v, w)` also appears as a two-stage plan:
+      hold it for `stage1_time` (1 s), then steer for the goal, with turn rate set by the heading
+      error at gain 2.5/s and speed slowed while turning. The safety and comfort costs apply to
+      the whole plan. Only the first command is executed, as before.
+    - Candidates double (132 instead of 66), so compute roughly doubles. That is the reason for
+      this design over a full grid of command pairs (about 4,000 candidates).
+    - **Job `twostage`:**
+      - v4 untuned with the option (`runs/seanjax/twostage_untuned`, with the waiting
+        diagnostic and a dense-flow GIF);
+      - two re-tunes, seeds 42 and 7 (`checkpoints/seanjax/cmaes_crowd_twostage*`).
+
+      The time limit is 4 h, after 89's 1 h limit cut a job short.
+    - **Judged on the `loops` metric,** not net turning (89), alongside success, collisions,
+      intimate-zone time and recorded success, all against v4.
