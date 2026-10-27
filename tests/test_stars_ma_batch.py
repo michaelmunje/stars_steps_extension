@@ -1,4 +1,4 @@
-"""Scaled multi-agent STARS path: batched graphs, vectorised metrics, node budgets, configs."""
+"""Multi-agent STARS training path: batched graphs, vectorised metrics, configs."""
 from __future__ import annotations
 
 import numpy as np
@@ -7,16 +7,9 @@ import torch
 
 pytest.importorskip("torch_geometric")
 
-from baselines.stars_ma_batch import (
-    WindowStore,
-    build_batch,
-    concat_stores,
-    node_budget_batches,
-    window_weights,
-)
+from baselines.stars_ma_batch import WindowStore, build_batch
 from baselines.stars_ma_graph import build_graph
-from baselines.stars_ma_metrics import MetricAccumulator, batch_metrics, forecasting_metrics
-from baselines.stars_ma_model import StarsMultiAgentForecaster, rollout
+from baselines.stars_ma_metrics import MetricAccumulator, batch_metrics
 from baselines.train_stars_ma import dataset_entries, parse_args
 
 DT = 0.4
@@ -54,66 +47,27 @@ def test_batched_graphs_equal_per_window_graphs(knn, radius):
         reference = build_graph(xy.transpose(0, 1), store.obs_valid[s:e].T, dt=DT, knn=knn, radius=radius)
         for key in ("node_attr", "origin", "heading", "valid_mask"):
             torch.testing.assert_close(getattr(batch, key)[s:e], reference[key])
-        mine = batch.edge_index[:, (batch.edge_index[1] >= s) & (batch.edge_index[1] < e)] - s
-        torch.testing.assert_close(mine, reference["edge_index"])
         chosen = (batch.edge_index[1] >= s) & (batch.edge_index[1] < e)
+        torch.testing.assert_close(batch.edge_index[:, chosen] - s, reference["edge_index"])
         torch.testing.assert_close(batch.edge_attr[chosen], reference["edge_attr"])
     assert bool(batch.is_target[batch.ptr[:-1]].all()) and int(batch.is_target.sum()) == len(store)
 
 
-def test_vectorised_metrics_equal_per_graph_metrics():
+def test_metrics_on_known_predictions():
     store = _store(1)
     batch = build_batch(store, torch.arange(len(store)), dt=DT, knn=16, radius=10.0)
-    torch.manual_seed(0)
-    for k in (1, 4):
-        prediction = batch.future[None] + 0.4 * torch.randn(k, *batch.future.shape)
-        reference, vectorised = MetricAccumulator(), MetricAccumulator()
-        forecasting_metrics(prediction, batch, reference)
-        batch_metrics(prediction, batch, vectorised, dataset_names=store.names)
-        expected, actual = reference.result(), vectorised.result()
-        for key, value in expected.items():
-            assert actual[key] == pytest.approx(value, rel=1e-5, abs=1e-6), key
-        assert actual["synthetic/agent_ade"] == pytest.approx(expected["agent_ade"], rel=1e-6)
-
-
-def test_batched_rollout_equals_graph_by_graph_rollout():
-    from torch_geometric.data import Batch, Data
-
-    store = _store(2, windows=5)
-    batch = build_batch(store, torch.arange(len(store)), dt=DT, knn=4, radius=8.0)
-    torch.manual_seed(0)
-    model = StarsMultiAgentForecaster(8, 12, dt=DT, encoder_recipe={"hidden_dim": 32, "latent_dim": 16,
-                                      "edge_transformer_layers": 1, "node_transformer_layers": 1, "dropout": 0.0},
-                                      decoder_recipe={"hidden_dim": 32, "dropout": 0.0}).eval()
-    fields = ("node_type", "node_attr", "valid_mask", "edge_index", "edge_attr", "origin", "heading", "obs_xy")
-    graphs = []
-    for w in range(len(store)):
-        s, e = int(batch.ptr[w]), int(batch.ptr[w + 1])
-        edges = (batch.edge_index[1] >= s) & (batch.edge_index[1] < e)
-        graphs.append(Data(num_nodes=e - s, **{key: getattr(batch, key)[s:e] for key in fields if "edge" not in key},
-                           edge_index=batch.edge_index[:, edges] - s, edge_attr=batch.edge_attr[edges]))
-    reference = rollout(model, Batch.from_data_list(graphs), rounds=3, exec_steps=4, knn=4, radius=8.0)
-    torch.testing.assert_close(rollout(model, batch, rounds=3, exec_steps=4, knn=4, radius=8.0), reference,
-                               atol=1e-5, rtol=1e-4)
-
-
-def test_node_budget_batches_cover_every_window_once_within_budget():
-    sizes = torch.tensor([3, 50, 7, 1, 20, 20, 300, 9, 4, 12])
-    batches = node_budget_batches(sizes, 40, generator=torch.Generator().manual_seed(0))
-    flat = torch.cat(batches).sort().values
-    assert torch.equal(flat, torch.arange(len(sizes)))
-    assert all(int(sizes[b].sum()) <= 40 or len(b) == 1 for b in batches)
-    ordered = node_budget_batches(sizes, 40, shuffle=False)
-    assert torch.equal(torch.cat(ordered), torch.arange(len(sizes)))
-
-
-def test_store_concat_select_and_weights():
-    a, b = _store(0, 4, "a"), _store(1, 3, "b")
-    both = concat_stores([a, b])
-    assert both.names == ["a", "b"] and len(both) == 7 and both.dataset.tolist() == [0] * 4 + [1] * 3
-    torch.testing.assert_close(both.select(torch.tensor([5])).obs_xy, b.select(torch.tensor([1])).obs_xy)
-    assert window_weights(both, {"a": 1.0, "b": 1.0}) is None
-    assert window_weights(both, {"a": 1.0, "b": 0.5}).tolist() == [1.0] * 4 + [0.5] * 3
+    perfect = torch.nan_to_num(batch.future)[None]
+    shifted = perfect + torch.tensor([0.3, 0.4])  # 0.5 m everywhere
+    accumulator = MetricAccumulator()
+    batch_metrics(torch.cat([shifted, perfect]), batch, accumulator, dataset_names=store.names)
+    result = accumulator.result()
+    complete = batch.future_valid.all(dim=-1)
+    assert result["agent_ade"] == pytest.approx(0.0, abs=1e-6) and result["target_fde"] == pytest.approx(0.0, abs=1e-6)
+    assert result["n_agent_ade"] == int(complete.sum()) and result["n_target_ade"] == int(complete[batch.ptr[:-1]].sum())
+    accumulator = MetricAccumulator()
+    batch_metrics(shifted, batch, accumulator, dataset_names=store.names)
+    assert accumulator.result()["joint_ade"] == pytest.approx(0.5, abs=1e-5)
+    assert accumulator.result()["synthetic/agent_ade"] == pytest.approx(0.5, abs=1e-5)
 
 
 def test_config_datasets_and_flag_precedence(tmp_path):

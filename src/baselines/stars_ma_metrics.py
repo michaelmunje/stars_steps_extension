@@ -1,7 +1,7 @@
 """Forecasting, social-interaction and simulation metrics for multi-agent predictions.
 
-All functions take scene-frame predictions ``[K, N, P, 2]`` for a PyG batch and return sums and
-counts, so a ``MetricAccumulator`` can average over a split. Distances are in metres (the scene
+``batch_metrics`` takes scene-frame predictions ``[K, N, P, 2]`` for a ``stars_ma_batch.GraphBatch``
+and adds sums and counts to a ``MetricAccumulator``, which averages over a split. Distances are in metres (the scene
 frame is a rigid transform of the world frame, so they equal world-frame distances).
 
 * ``target_*``: the benchmark target node of each graph, min over K -- the same population and
@@ -63,81 +63,12 @@ class MetricAccumulator:
         return out
 
 
-def _graph_slices(batch):
-    pointer = batch.ptr.tolist()
-    return list(zip(pointer[:-1], pointer[1:]))
-
-
-def pairwise_stats(xy: torch.Tensor, collision_distance: float) -> tuple[float, float, int]:
-    """Collided pairs, summed closest approach and number of pairs for ``[N, T, 2]`` agents."""
-    n = xy.shape[0]
-    if n < 2:
-        return 0.0, 0.0, 0
-    distance = torch.linalg.norm(xy[:, None] - xy[None], dim=-1)  # [N, N, T]
-    pairs = torch.triu_indices(n, n, offset=1, device=xy.device)
-    closest = distance[pairs[0], pairs[1]].min(dim=-1).values
-    return float((closest < collision_distance).sum()), float(closest.sum()), int(closest.numel())
-
-
-def forecasting_metrics(prediction: torch.Tensor, batch, accumulator: MetricAccumulator, *,
-                        collision_distance: float = 0.2, interaction_radius: float = 2.0) -> None:
-    """Add one batch's metrics; ``prediction`` is scene-frame ``[K, N, P, 2]``."""
-    future, valid = batch.future, batch.future_valid
-    error = torch.linalg.norm(prediction - torch.nan_to_num(future)[None], dim=-1)  # [K, N, P]
-    complete = valid.all(dim=-1)
-    ade, fde = error.mean(dim=-1), error[..., -1]  # [K, N]; only read for complete agents
-    min_ade, min_fde = ade.min(dim=0).values, fde.min(dim=0).values
-
-    target = batch.is_target & complete
-    accumulator.add("target_ade", min_ade[target].sum(), target.sum())
-    accumulator.add("target_fde", min_fde[target].sum(), target.sum())
-    accumulator.add("agent_ade", min_ade[complete].sum(), complete.sum())
-    accumulator.add("agent_fde", min_fde[complete].sum(), complete.sum())
-
-    for start, stop in _graph_slices(batch):
-        nodes = torch.arange(start, stop, device=prediction.device)[complete[start:stop]]
-        if not len(nodes):
-            continue
-        best = ade[:, nodes].mean(dim=-1).argmin()
-        accumulator.add("joint_ade", ade[best, nodes].mean(), 1)
-        accumulator.add("joint_fde", fde[best, nodes].mean(), 1)
-
-        truth = future[nodes]
-        if len(nodes) > 1:
-            gap = torch.linalg.norm(truth[:, None] - truth[None], dim=-1).min(dim=-1).values
-            gap.fill_diagonal_(float("inf"))
-            interacting = (gap < interaction_radius).any(dim=-1)
-        else:
-            interacting = torch.zeros(1, dtype=torch.bool, device=prediction.device)
-        for name, mask in (("interacting", interacting), ("isolated", ~interacting)):
-            accumulator.add(f"{name}_ade", min_ade[nodes][mask].sum(), mask.sum())
-            accumulator.add(f"{name}_fde", min_fde[nodes][mask].sum(), mask.sum())
-        size = stop - start
-        label = next(name for low, high, name in DENSITY_BINS if low <= size < high)
-        accumulator.add(f"density_{label}_ade", min_ade[nodes].sum(), len(nodes))
-
-        collided, closest, pairs = pairwise_stats(truth, collision_distance)
-        accumulator.add("collision_rate_gt", collided, pairs)
-        accumulator.add("min_distance_gt", closest, pairs)
-        for sample in prediction[:, nodes]:
-            collided, closest, pairs = pairwise_stats(sample, collision_distance)
-            accumulator.add("collision_rate_pred", collided, pairs)
-            accumulator.add("min_distance_pred", closest, pairs)
-
-    if prediction.shape[0] > 1:
-        final = prediction[:, complete, -1]  # [K, M, 2]
-        k = final.shape[0]
-        spread = torch.linalg.norm(final[:, None] - final[None], dim=-1).sum(dim=(0, 1)) / (k * (k - 1))
-        accumulator.add("diversity_final", spread.sum(), spread.numel())
-
-
 def batch_metrics(prediction: torch.Tensor, batch, accumulator: MetricAccumulator, *,
                   collision_distance: float = 0.2, interaction_radius: float = 2.0,
                   dataset_names: list[str] | None = None, moving_speed: float = 0.2) -> None:
-    """``forecasting_metrics`` vectorised over the graphs of a ``stars_ma_batch.GraphBatch``.
+    """Add one batch's metrics (module docstring), vectorised over graphs without host syncs.
 
-    Same definitions and totals (checked in the tests), without a per-graph Python loop or host
-    syncs. With ``dataset_names`` the headline metrics are also reported per source dataset as
+    With ``dataset_names`` the headline metrics are also reported per source dataset as
     ``<dataset>/<metric>``.
     """
     K = prediction.shape[0]

@@ -69,6 +69,15 @@ def make_pedestrian_model(config: dict | None):
         path = Path(spec.pop("checkpoint"))
         path = path if path.is_absolute() else CONFIG_DIR.parents[1] / path
         return StarsCrowdModel(path, **spec)
+    if name == "stars_social":
+        from simplenavsim.pedestrians.stars_crowd import StarsSocialModel
+
+        # Shares the crowd's checkpoint and seeds; the robot acts through forces, not the graph.
+        spec = {k: v for k, v in (config.pop("stars_crowd", None) or {}).items() if k != "include_robot"}
+        spec.update(config.pop("stars_social", None) or {})
+        path = Path(spec.pop("checkpoint"))
+        path = path if path.is_absolute() else CONFIG_DIR.parents[1] / path
+        return StarsSocialModel(path, forces=forces, **spec)
     if name == "orca":
         from simplenavsim.pedestrians.orca import OrcaModel  # Phase 2
         return OrcaModel(**(config.pop("orca", None) or {}))

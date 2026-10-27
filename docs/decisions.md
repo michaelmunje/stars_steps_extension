@@ -1484,3 +1484,43 @@ why, and how to undo it.
       1. v4 as tuned (coarse grid), under the v8 objective;
       2. v4 with the dense grid, untuned (the effect of the arcs alone);
       3. CMA-ES v8 warm-started from v4, seeds 42 and 7, then tested.
+
+95. **Simplification (requested): about 2,200 lines of code removed.** Features the log shows did
+    not help are deleted, not kept behind flags:
+    - Simulator: the controller's memory and staged-plan options (pass side, side commitment,
+      idle turning, progress along the plan, retreat along the path, wait-then-go; 78-90), the
+      learned and contextual policies with their trainer (91-92), the loop diagnostic, and 20
+      configs of those experiments. Policy files that saved the retired terms as 0 still load.
+      The v4 controller computes exactly what it did before.
+    - Forecaster: closed-loop *training* (47, 63, 65, 73; the evaluation rollout stays),
+      benchmark-only options (`--compile`, `--attention`, activation checkpointing, `--benchmark`,
+      the profiling scripts; 24), flags never changed in any run, and dead helpers. Both
+      reference checkpoints give bit-identical predictions and rollouts.
+    - Tests: 33 simulator tests down to 13, and 17 forecaster tests down to 7. They keep the main
+      contracts (SE(2) invariance, parity with upstream STARS, no future leakage, batched graphs,
+      controller safety, ORCA's LP, deterministic counterfactuals, learned crowds).
+
+96. **Does the forecaster help? Pedestrian conditions × policies** (`simplenavsim/scripts/crowd_conditions.py`).
+    - **Rows: six pedestrian conditions.**
+      1. replay: scripted, no reaction.
+      2. social_force: scripted goals.
+      3. reactive_replay: scripted paths tracked with social forces.
+      4. stars_blind: the forecaster drives the crowd, robot not in its graph.
+      5. stars_reactive: the forecaster drives the crowd, robot in its graph (the reference crowd).
+      6. stars_social (new): forecasts give each pedestrian's intent; social forces move it and
+         avoid the robot, people and walls.
+    - **Policies:**
+      - goal-seeking;
+      - the untuned controller with a constant-velocity predictor;
+      - v4 with a constant-velocity predictor;
+      - v4 with the STARS predictor.
+
+      All use v4's 77-arc grid, as tuned.
+    - **Scenes:** crossing, group_toward and dense_flow, 30 test seeds each. The first seed of
+      each kind is a fixed scene shown in GIF grids (rows = condition, columns = scene) for v4 with
+      either predictor.
+    - **Crowd realism:** on 30 recorded STEPS test scenes with the robot absent, each condition's
+      pedestrians are compared with the real tracks (position error, speed, overlaps).
+      replay and reactive_replay follow the recorded future, and social_force knows each track's
+      endpoint. The STARS crowds know only the first 3.2 s, so the realism comparison is
+      deliberately unequal.

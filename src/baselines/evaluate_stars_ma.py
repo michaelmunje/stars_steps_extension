@@ -62,7 +62,7 @@ def simulation_report(model, store, batches, args, *, seconds: float, exec_steps
     for windows in batches:
         batch = _batch(store, windows, args)
         with _autocast(args):
-            trajectory = rollout(model, batch, rounds=rounds, exec_steps=exec_steps, knn=args.knn, radius=args.radius)
+            trajectory = rollout(model, batch, rounds=rounds, exec_steps=exec_steps)
         path = torch.cat([batch.obs_xy[:, -1:], trajectory.float()], dim=1)
         for key, value in motion_statistics(path, model.dt).items():
             simulated[key].append(value)
@@ -167,8 +167,8 @@ def main() -> None:
                 rounds = math.ceil(model.prediction_steps / steps)
                 with _autocast(args):
                     simulated = torch.stack([
-                        rollout(model, batch, rounds=rounds, exec_steps=steps, knn=args.knn, radius=args.radius)
-                        [:, :model.prediction_steps] for _ in range(samples)
+                        rollout(model, batch, rounds=rounds, exec_steps=steps)[:, :model.prediction_steps]
+                        for _ in range(samples)
                     ])
                 batch_metrics(simulated.float(), batch, accumulator, collision_distance=args.collision_distance,
                               dataset_names=store.names)

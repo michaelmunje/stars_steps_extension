@@ -1,8 +1,8 @@
 """Multi-agent STARS graphs at the native STEPS rate, built in torch.
 
 One graph per scene window. Every pedestrian that is visible at the last observed step and was
-seen at least ``MIN_HISTORY_POINTS`` times in the observation window becomes a node; all nodes
-are forecast. Unlike ``stars_data.py`` (single target in STARS's robot slot, 8 steps resampled to
+seen at least ``MIN_HISTORY_POINTS`` times in the observation window becomes a node
+(``stars_ma_batch.extract_window``); all nodes are forecast. Unlike ``stars_data.py`` (single target in STARS's robot slot, 8 steps resampled to
 40), there is no temporal interpolation onto STARS's 40-step grid: node and edge sequences have
 the observation length itself. Node type 0 stays reserved for a robot, so every pedestrian is
 ``NODE_TYPE_HUMAN``.
@@ -14,14 +14,12 @@ observed position, x axis along its last heading), so they are invariant to the 
 Edge features are STARS's SE(2) features (``stars_data.edge_features``): the destination's pose in
 the source's frame plus its per-step change. Headings come from the direction of travel as in
 STARS, except that steps before an agent's first movement take that movement's direction instead
-of the scene x axis (``headings_from_motion(backfill=True)``), so the features do not depend on the
-scene frame. Edges follow STARS's ``(source, destination)``
+of the scene x axis (``headings_from_motion``), so the features do not depend on the scene frame. Edges follow STARS's ``(source, destination)``
 convention; the topology is fully connected (as STARS) or, for the large STEPS graphs, the ``knn``
 nearest sources within ``radius`` metres of each destination at the last observed step.
 
-Everything is differentiable with respect to the input positions, so autoregressive rollouts can
-rebuild graphs from predicted positions and still backpropagate a multi-step loss; only the edge
-topology (an index selection) carries no gradient.
+This per-window builder is the reference for the batched training path (``stars_ma_batch``),
+which computes the same quantities for many graphs at once (checked in the tests).
 """
 from __future__ import annotations
 
@@ -29,18 +27,10 @@ import math
 
 import torch
 
-from baselines.stars_data import MIN_HISTORY_POINTS, NODE_TYPE_HUMAN
+from baselines.stars_data import NODE_TYPE_HUMAN
 
-NODE_FEATURE_DIM = 7
-NODE_FEATURE_NAMES = ("x", "y", "vx", "vy", "speed", "cos_dtheta", "sin_dtheta")
+NODE_FEATURE_DIM = 7  # x, y, vx, vy, speed, cos(dtheta), sin(dtheta)
 MOTION_EPSILON = 1e-8  # STARS's _xy_to_theta "has moved" threshold on |dx| + |dy|
-
-
-def select_agents(valid: torch.Tensor, observation_steps: int) -> torch.Tensor:
-    """Scene columns that become nodes: visible at the last observed step, seen >= twice."""
-    observed = valid[:observation_steps]
-    keep = observed[-1] & (observed.sum(dim=0) >= MIN_HISTORY_POINTS)
-    return torch.nonzero(keep, as_tuple=False).flatten()
 
 
 def fill_observed(xy: torch.Tensor, valid: torch.Tensor) -> torch.Tensor:
@@ -70,14 +60,13 @@ def fill_observed(xy: torch.Tensor, valid: torch.Tensor) -> torch.Tensor:
     return torch.stack(filled, dim=1)
 
 
-def headings_from_motion(xy: torch.Tensor, *, backfill: bool = False) -> torch.Tensor:
+def headings_from_motion(xy: torch.Tensor) -> torch.Tensor:
     """Direction of travel per step ``[T, N]``.
 
-    ``backfill=False`` is STARS's ``_xy_to_theta``: step 0 is 0 and later steps take the angle of
-    the last non-zero displacement (0 until an agent first moves). That 0 is the scene frame's x
-    axis, so it makes early-step features depend on the scene frame; ``backfill=True`` instead gives
-    the steps before an agent's first movement that first movement's direction. An agent that never
-    moves keeps 0 either way.
+    STARS's ``_xy_to_theta`` takes the angle of the last non-zero displacement, and 0 (the scene
+    frame's x axis) until an agent first moves, which makes early-step features depend on the scene
+    frame; here the steps before an agent's first movement take that first movement's direction.
+    An agent that never moves keeps 0.
     """
     displacement = xy[1:] - xy[:-1]
     moving = displacement.abs().sum(dim=-1) > MOTION_EPSILON
@@ -86,7 +75,7 @@ def headings_from_motion(xy: torch.Tensor, *, backfill: bool = False) -> torch.T
     for step in range(displacement.shape[0]):
         theta.append(torch.where(moving[step], angle[step], theta[-1]))
     theta = torch.stack(theta)
-    if backfill and displacement.shape[0]:
+    if displacement.shape[0]:
         has_moved = moving.any(dim=0)
         first = torch.where(has_moved, moving.float().argmax(dim=0), torch.zeros_like(has_moved, dtype=torch.long))
         initial = angle.gather(0, first[None]).squeeze(0)
@@ -179,7 +168,7 @@ def build_graph(
     if not bool(valid[-1].all()):
         raise ValueError("Every node must be visible at the last observed step")
     filled = fill_observed(torch.nan_to_num(xy), valid)
-    theta = headings_from_motion(filled, backfill=True)
+    theta = headings_from_motion(filled)
     nodes, origin, heading = node_features(filled, theta, dt)
     edge_index = neighbourhood_edges(filled[-1], valid.T, knn=knn, radius=radius)
     return {

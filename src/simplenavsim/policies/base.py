@@ -73,10 +73,17 @@ def save_policy(path, policy: Policy, values: dict[str, float], **extra) -> None
                        stream, sort_keys=False)
 
 
+# Controller terms removed after they did not help (decisions 78-82); older files saved them as 0.
+RETIRED = {"idle_turn_weight", "side_commit_weight", "pass_side_weight"}
+
+
 def load_policy_file(path) -> tuple[str, dict[str, float]]:
     with open(path) as stream:
         data = yaml.safe_load(stream)
-    return data["policy"], {k: float(v) for k, v in (data.get("parameters") or {}).items()}
+    values = {k: float(v) for k, v in (data.get("parameters") or {}).items()}
+    if any(values.get(k, 0.0) != 0.0 for k in RETIRED):
+        raise ValueError(f"{path}: uses a retired controller term {sorted(RETIRED & set(values))}")
+    return data["policy"], {k: v for k, v in values.items() if k not in RETIRED}
 
 
 class PedestrianPredictor(ABC):

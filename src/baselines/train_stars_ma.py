@@ -4,11 +4,11 @@ Phase 1, ``--phase ssl``: the extended STARS encoder (node motion + SE(2) edge f
 native rate, neighbourhood graphs) is trained with STARS's self-supervised graph-VAE objective
 plus node-motion reconstruction, selected on validation loss.
 
-Phases 2-4, ``--phase forecast``: a multi-agent decoder forecasts every pedestrian of each scene
+Phases 2-3, ``--phase forecast``: a multi-agent decoder forecasts every pedestrian of each scene
 window. ``--encoder-mode`` chooses a frozen or jointly fine-tuned phase-1 encoder
 (``--encoder-checkpoint``) or one trained from scratch; ``--decoder cvae`` adds the probabilistic
-decoder (phase 3); ``--rollout-exec-steps`` adds a closed-loop multi-step loss (phase 4). Forecast
-checkpoints are selected on validation best-of-K all-agent ADE.
+decoder (phase 3). Forecast checkpoints are selected on the mean over validation datasets of
+best-of-K all-agent ADE.
 
 Datasets come from a YAML config (``--config``, see ``configs/stars_ma/``) or ``--datasets``.
 Every option below can also be set in the config (same names, underscores); explicit flags win.
@@ -16,8 +16,7 @@ Every option below can also be set in the config (same names, underscores); expl
 Scale: every split is extracted once into a cached ``WindowStore`` (``stars_ma_batch``) that
 lives on the GPU; graphs are built batch-wise on the device; batches hold up to ``--max-nodes``
 pedestrians of similar-sized windows; ``torchrun --nproc-per-node 4`` trains data-parallel
-(DDP) across GPUs; ``--amp`` (default) runs the networks in bf16. ``--benchmark N`` times N
-training steps and exits.
+(DDP) across GPUs; ``--amp`` (default) runs the networks in bf16.
 """
 from __future__ import annotations
 
@@ -40,13 +39,7 @@ from baselines.stars import REFERENCE, UPSTREAM_COMMIT, UPSTREAM_REPOSITORY, VAE
 from baselines.stars_ma_batch import WindowStore, build_batch, cached_store, concat_stores, node_budget_batches, window_weights
 from baselines.stars_ma_graph import to_local, to_scene
 from baselines.stars_ma_metrics import MetricAccumulator, batch_metrics
-from baselines.stars_ma_model import (
-    DECODER_RECIPE,
-    ENCODER_RECIPE,
-    StarsMotionVAE,
-    StarsMultiAgentForecaster,
-    rollout,
-)
+from baselines.stars_ma_model import DECODER_RECIPE, ENCODER_RECIPE, StarsMotionVAE, StarsMultiAgentForecaster
 from baselines.status import RunStatus, checkpoint_metadata
 from config import Config, DatasetSpec, SeedConfig
 from data import CANONICAL_DT, SceneDataset
@@ -124,26 +117,14 @@ def _parser() -> argparse.ArgumentParser:
                         help="Processes used to extract windows the first time a split is cached")
     parser.add_argument("--max-scenes", type=int, help="Integration diagnostic: cap every split's window count")
     parser.add_argument("--max-batches", type=int, help="Integration diagnostic: cap batches per epoch and evaluation")
-    parser.add_argument("--benchmark", type=int, help="Time this many training steps, report throughput, and exit")
     parser.add_argument("--epochs", type=int)
     parser.add_argument("--patience", type=int, help="Early-stopping patience in validations (0 disables)")
     parser.add_argument("--max-nodes", type=int, default=16384, help="Pedestrians per batch on each GPU")
-    parser.add_argument("--max-graphs", type=int, help="Cap windows per batch")
-    parser.add_argument("--learning-rate", type=float, help="Peak LR (default: the recipe LR scaled by --lr-scaling)")
-    parser.add_argument("--lr-scaling", choices=("sqrt", "linear", "none"), default="sqrt",
-                        help=f"Scale the recipe LR with the global batch size relative to {REFERENCE_NODES} nodes")
+    parser.add_argument("--learning-rate", type=float,
+                        help=f"Peak LR (default: the recipe LR x sqrt(global nodes per batch / {REFERENCE_NODES}))")
     parser.add_argument("--max-learning-rate", type=float, default=3e-3, help="Cap for the scaled LR")
-    parser.add_argument("--schedule", choices=("cosine", "plateau", "constant"), default="cosine")
-    parser.add_argument("--warmup-epochs", type=float, default=2.0)
+    parser.add_argument("--warmup-epochs", type=float, default=2.0, help="Linear warm-up before the cosine decay")
     parser.add_argument("--amp", action=argparse.BooleanOptionalAction, default=True, help="bf16 autocast on CUDA")
-    parser.add_argument("--compile", action="store_true", help="torch.compile the temporal transformers")
-    parser.add_argument("--attention", choices=("auto", "math", "efficient"), default="auto",
-                        help="Attention kernel for the temporal transformers (see benchmark in docs/decisions.md)")
-    parser.add_argument("--activation-checkpointing", action="store_true",
-                        help="Recompute temporal-transformer activations in backward: less memory, more compute")
-    parser.add_argument("--eval-every", type=int, default=1, help="Validate every this many epochs")
-    parser.add_argument("--selection", choices=("macro", "pooled"), default="macro",
-                        help="Forecast selection: mean of per-dataset agent ADE (macro) or over all agents")
     graph = parser.add_argument_group("graph")
     graph.add_argument("--knn", type=int, default=16, help="Sources kept per destination (default 16)")
     graph.add_argument("--radius", type=float, default=10.0, help="Neighbourhood radius in metres (default 10)")
@@ -152,7 +133,6 @@ def _parser() -> argparse.ArgumentParser:
     encoder.add_argument("--hidden-dim", type=int)
     encoder.add_argument("--latent-dim", type=int)
     encoder.add_argument("--edge-only", action="store_true", help="Ablation: STARS's edge-only encoder (no node motion)")
-    encoder.add_argument("--node-loss-weight", type=float, default=1.0, help="ssl: weight of node-motion reconstruction")
     forecast = parser.add_argument_group("forecast")
     forecast.add_argument("--encoder-checkpoint", type=Path, help="A --phase ssl checkpoint (frozen/finetune)")
     forecast.add_argument("--encoder-mode", choices=("frozen", "finetune", "scratch"), default="frozen")
@@ -161,12 +141,8 @@ def _parser() -> argparse.ArgumentParser:
                                "--encoder-mode scratch, i.e. everything trainable at one LR)")
     forecast.add_argument("--decoder", choices=("deterministic", "cvae"), default="deterministic")
     forecast.add_argument("--cvae-latent-dim", type=int, default=32)
-    forecast.add_argument("--no-social-layer", action="store_true", help="Decoder without its social message-passing round")
     forecast.add_argument("--representation", choices=("mu", "hidden"), default=DECODER_RECIPE["representation"])
     forecast.add_argument("--kl-weight", type=float, default=FORECAST_RECIPE["kl_weight"])
-    forecast.add_argument("--rollout-exec-steps", type=int, default=0,
-                          help="> 0 adds the closed-loop multi-step loss, executing this many steps per round")
-    forecast.add_argument("--rollout-weight", type=float, default=1.0)
     forecast.add_argument("--samples", type=int, default=20, help="K for best-of-K validation (CVAE)")
     forecast.add_argument("--decoder-hidden-dim", type=int)
     forecast.add_argument("--decoder-dropout", type=float)
@@ -211,10 +187,8 @@ def parse_args(argv=None) -> argparse.Namespace:
             parser.error("--encoder-mode scratch does not take --encoder-checkpoint")
         if args.init_checkpoint and (args.encoder_checkpoint or args.encoder_mode != "scratch"):
             parser.error("--init-checkpoint takes --encoder-mode scratch and no --encoder-checkpoint")
-        if args.rollout_exec_steps < 0:
-            parser.error("--rollout-exec-steps must be >= 0")
-    elif args.encoder_checkpoint or args.init_checkpoint or args.rollout_exec_steps:
-        parser.error("--encoder-checkpoint/--init-checkpoint/--rollout-exec-steps apply to --phase forecast")
+    elif args.encoder_checkpoint or args.init_checkpoint:
+        parser.error("--encoder-checkpoint/--init-checkpoint apply to --phase forecast")
     return args
 
 
@@ -300,7 +274,7 @@ def epoch_batches(store: WindowStore, args, epoch: int, *, train: bool, weights=
     """This rank's batches: the same global list on every rank (seeded), split round-robin."""
     generator = torch.Generator().manual_seed(args.seed * 100003 + epoch)
     batches = node_budget_batches(store.sizes, args.max_nodes, generator=generator, shuffle=train,
-                                  weights=weights if train else None, max_graphs=args.max_graphs)
+                                  weights=weights if train else None)
     if train and args.world_size > 1:
         # Every rank takes the same number of steps (DDP); tiny splits repeat batches.
         count = max(args.world_size, len(batches) // args.world_size * args.world_size)
@@ -316,28 +290,16 @@ def _batch(store, windows, args):
 # ----------------------------------------------------------------------------- losses
 
 
-def _masked_distance(prediction: torch.Tensor, target: torch.Tensor, valid: torch.Tensor) -> torch.Tensor:
-    """Mean L2 error over valid (agent, step) pairs."""
-    error = torch.linalg.norm(prediction.float() - torch.nan_to_num(target), dim=-1)
-    return (error * valid).sum() / valid.sum().clamp(min=1)
-
-
-def forecast_loss(model, batch, args, kl_weight: float) -> dict[str, torch.Tensor]:
-    """Teacher-forced loss, CVAE KL, and (optionally) the closed-loop multi-step rollout loss."""
+def forecast_loss(model, batch, kl_weight: float) -> dict[str, torch.Tensor]:
+    """Teacher-forced mean L2 error over valid (agent, step) pairs plus the CVAE KL per supervised agent."""
     future_local = to_local(batch.future, batch.origin, batch.heading)
-    valid = batch.future_valid.to(future_local.dtype)
     out = model.training_forward(batch, future_local, batch.future_valid)
-    losses = {"forecast": _masked_distance(out["prediction"], future_local, valid)}
+    error = torch.linalg.norm(out["prediction"].float() - torch.nan_to_num(future_local), dim=-1)
+    valid = batch.future_valid.to(error.dtype)
+    losses = {"forecast": (error * valid).sum() / valid.sum().clamp(min=1)}
     losses["kl"] = out["kl"].float().sum() / batch.future_valid.any(dim=-1).sum().clamp(min=1) \
         if out["kl"] is not None else losses["forecast"].new_zeros(())
-    losses["rollout"] = losses["forecast"].new_zeros(())
-    if args.rollout_exec_steps:
-        # Closed loop: each agent keeps the intent z inferred from its future for the whole rollout.
-        rounds = math.ceil(model.prediction_steps / args.rollout_exec_steps)
-        simulated = rollout(model, batch, rounds=rounds, exec_steps=args.rollout_exec_steps, knn=args.knn,
-                            radius=args.radius, z=out["z"], keep_graph=True)[:, :model.prediction_steps]
-        losses["rollout"] = _masked_distance(simulated, batch.future, valid)
-    losses["loss"] = losses["forecast"] + kl_weight * losses["kl"] + args.rollout_weight * losses["rollout"]
+    losses["loss"] = losses["forecast"] + kl_weight * losses["kl"]
     return losses
 
 
@@ -350,8 +312,8 @@ class _Step(nn.Module):
 
     def forward(self, batch, weight: float) -> dict[str, torch.Tensor]:
         if self.args.phase == "ssl":
-            return self.model.loss(batch, weight, self.args.node_loss_weight)
-        return forecast_loss(self.model, batch, self.args, weight)
+            return self.model.loss(batch, weight)
+        return forecast_loss(self.model, batch, weight)
 
 
 def _autocast(args):
@@ -363,29 +325,17 @@ def _autocast(args):
 
 
 @torch.no_grad()
-def evaluate_forecaster(model, store: WindowStore, batches, args, *, samples: int, rollout_exec_steps: int = 0):
-    """Teacher-forced best-of-K metrics (per dataset too) and, with ``rollout_exec_steps``, closed-loop ones."""
+def evaluate_forecaster(model, store: WindowStore, batches, args, *, samples: int) -> dict[str, float]:
+    """Teacher-forced best-of-K metrics, pooled and per dataset."""
     model.eval()
-    teacher, closed = MetricAccumulator(), MetricAccumulator()
+    teacher = MetricAccumulator()
     for windows in batches:
         batch = _batch(store, windows, args)
         with _autocast(args):
             local = model.predict(batch, samples=samples)
         batch_metrics(to_scene(local.float(), batch.origin, batch.heading), batch, teacher, dataset_names=store.names)
-        if rollout_exec_steps:
-            rounds = math.ceil(model.prediction_steps / rollout_exec_steps)
-            runs = samples if model.latent_dim else 1
-            with _autocast(args):
-                simulated = torch.stack([
-                    rollout(model, batch, rounds=rounds, exec_steps=rollout_exec_steps, knn=args.knn,
-                            radius=args.radius)[:, :model.prediction_steps] for _ in range(runs)
-                ])
-            batch_metrics(simulated.float(), batch, closed)
     teacher.all_reduce()
-    closed.all_reduce()
-    result = teacher.result()
-    result.update({f"rollout_{key}": value for key, value in closed.result().items()})
-    return result
+    return teacher.result()
 
 
 @torch.no_grad()
@@ -396,7 +346,7 @@ def evaluate_ssl(model, store, batches, args, beta) -> dict[str, float]:
     for windows in batches:
         batch = _batch(store, windows, args)
         with _autocast(args):
-            losses = model.loss(batch, beta, args.node_loss_weight)
+            losses = model.loss(batch, beta)
         for key in sums:
             sums[key] += losses[key].double() * batch.num_nodes
         nodes += batch.num_nodes
@@ -406,12 +356,10 @@ def evaluate_ssl(model, store, batches, args, beta) -> dict[str, float]:
     return {key: float(stacked[i] / stacked[-1].clamp(min=1)) for i, key in enumerate(sums)}
 
 
-def selection_metric(metrics: dict[str, float], names: list[str], how: str) -> float:
-    if how == "macro":
-        values = [metrics[f"{name}/agent_ade"] for name in names if f"{name}/agent_ade" in metrics]
-        if values:
-            return float(np.mean(values))
-    return metrics["agent_ade"]
+def selection_metric(metrics: dict[str, float], names: list[str]) -> float:
+    """Mean of the per-dataset agent ADEs, so a large dataset does not drown small ones (decision 6)."""
+    values = [metrics[f"{name}/agent_ade"] for name in names if f"{name}/agent_ade" in metrics]
+    return float(np.mean(values)) if values else metrics["agent_ade"]
 
 
 # ----------------------------------------------------------------------------- checkpoints
@@ -457,23 +405,18 @@ def load_forecaster(path: Path, device: torch.device) -> tuple[StarsMultiAgentFo
 def _scaled_lr(base: float, args) -> float:
     if args.learning_rate is not None:
         return args.learning_rate
-    factor = args.world_size * args.max_nodes / REFERENCE_NODES
-    factor = {"sqrt": math.sqrt(factor), "linear": factor, "none": 1.0}[args.lr_scaling]
+    factor = math.sqrt(args.world_size * args.max_nodes / REFERENCE_NODES)
     return min(base * factor, max(base, args.max_learning_rate))
 
 
 def _scheduler(optimizer, args, steps_per_epoch: int):
-    if args.schedule == "plateau":
-        return torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode="min",
-                                                          patience=max(1, args.recipe["patience"] // 3))
+    """Linear warm-up, then cosine decay to 2% of the peak LR."""
     warmup = max(1, int(args.warmup_epochs * steps_per_epoch))
     total = max(warmup + 1, args.recipe["max_epochs"] * steps_per_epoch)
 
     def factor(step: int) -> float:
         if step < warmup:
             return (step + 1) / warmup
-        if args.schedule == "constant":
-            return 1.0
         progress = min(1.0, (step - warmup) / (total - warmup))
         return 0.02 + 0.98 * 0.5 * (1 + math.cos(math.pi * progress))
 
@@ -509,15 +452,6 @@ def _build_model(args, payload):
     return model, groups
 
 
-def _maybe_compile(model, args):
-    if not args.compile:
-        return
-    encoder = model.encoder
-    encoder.base.edge_encoder = torch.compile(encoder.base.edge_encoder, dynamic=True)
-    if encoder.use_node_features:
-        encoder.node_encoder = torch.compile(encoder.node_encoder, dynamic=True)
-
-
 def train(args) -> None:
     forecasting = resolve_forecasting_config(preset=DEFAULT_PRESET)
     args.obs, args.pred = forecasting.window.observation_steps, forecasting.window.prediction_steps
@@ -535,7 +469,6 @@ def train(args) -> None:
     args.decoder_recipe = {
         **DECODER_RECIPE,
         "latent_dim": args.cvae_latent_dim if args.decoder == "cvae" else 0,
-        "social_layer": not args.no_social_layer,
         "representation": args.representation,
         **({"hidden_dim": args.decoder_hidden_dim} if args.decoder_hidden_dim else {}),
         **({"dropout": args.decoder_dropout} if args.decoder_dropout is not None else {}),
@@ -595,10 +528,6 @@ def train(args) -> None:
             model.load_state_dict(init["state_dict"])
             run.log("forecaster weights loaded", checkpoint=str(args.init_checkpoint))
         model = model.to(device)
-        model.encoder.checkpoint_temporal = args.activation_checkpointing
-        import baselines.stars_ma_model as model_module
-        model_module.ATTENTION_BACKEND = None if args.attention == "auto" else args.attention
-        _maybe_compile(model, args)
         optimizer = torch.optim.AdamW(groups(args.recipe["learning_rate"]), weight_decay=args.recipe["weight_decay"])
         steps_per_epoch = len(epoch_batches(train_store, args, 0, train=True, weights=weights))
         if not steps_per_epoch:
@@ -637,19 +566,12 @@ def train(args) -> None:
             else:
                 weight = args.recipe["kl_weight"] * min(1.0, epoch / max(1, args.recipe["kl_warmup_epochs"]))
             batches = epoch_batches(train_store, args, epoch, train=True, weights=weights)
-            if args.benchmark:
-                batches = (batches * math.ceil(args.benchmark / max(1, len(batches))))[: args.benchmark]
             sums = {}
-            nodes = edges = skipped = bad_streak = 0
+            nodes = skipped = bad_streak = 0
             if device.type == "cuda":
-                torch.cuda.synchronize(device)
                 torch.cuda.reset_peak_memory_stats(device)
             started = time.perf_counter()
-            for index, windows in enumerate(run.progress(batches, desc=f"{args.phase} epoch {epoch}")):
-                if args.benchmark and index == min(5, len(batches) // 4):
-                    if device.type == "cuda":
-                        torch.cuda.synchronize(device)
-                    started, nodes, edges = time.perf_counter(), 0, 0  # exclude warm-up steps
+            for windows in run.progress(batches, desc=f"{args.phase} epoch {epoch}"):
                 batch = _batch(train_store, windows, args)
                 with _autocast(args):
                     losses = step_module(batch, weight)
@@ -666,42 +588,26 @@ def train(args) -> None:
                     continue
                 bad_streak = 0
                 optimizer.step()
-                if args.schedule != "plateau":
-                    scheduler.step()
+                scheduler.step()
                 global_step += 1
                 for key, value in losses.items():
                     sums[key] = sums.get(key, 0.0) + value.detach().float()
                 nodes += batch.num_nodes
-                edges += int(batch.edge_index.shape[1])
             if device.type == "cuda":
                 torch.cuda.synchronize(device)
             elapsed = time.perf_counter() - started
             train_metrics = {f"train_{k}": float(_all_mean(v / max(1, len(batches)), args)) for k, v in sums.items()}
             train_metrics["train_skipped_steps"] = skipped
             throughput = {"epoch_seconds": elapsed, "nodes_per_second": nodes * args.world_size / elapsed,
-                          "edges_per_second": edges * args.world_size / elapsed,
-                          "steps_per_second": len(batches) / elapsed,
                           "peak_memory_gb": torch.cuda.max_memory_allocated(device) / 2**30 if device.type == "cuda" else 0.0,
                           "learning_rate": optimizer.param_groups[0]["lr"]}
-            if args.benchmark:
-                run.update(status="complete", stage="benchmark", **throughput, **train_metrics)
-                if args.main:
-                    print({**throughput, **train_metrics}, flush=True)
-                return
-
-            if epoch % args.eval_every and epoch != args.recipe["max_epochs"]:
-                run.metric({"stage": args.phase, "epoch": epoch, **train_metrics, **throughput})
-                continue
             val_batches = epoch_batches(val_store, args, 0, train=False)
             if args.phase == "ssl":
                 metrics = evaluate_ssl(model, val_store, val_batches, args, weight)
                 selection, name = metrics["loss"], "val_ssl_loss"
             else:
-                metrics = evaluate_forecaster(model, val_store, val_batches, args, samples=samples,
-                                              rollout_exec_steps=args.rollout_exec_steps)
-                selection, name = selection_metric(metrics, val_store.names, args.selection), f"val_top{samples}_agent_ADE_{args.selection}"
-            if args.schedule == "plateau":
-                scheduler.step(selection)
+                metrics = evaluate_forecaster(model, val_store, val_batches, args, samples=samples)
+                selection, name = selection_metric(metrics, val_store.names), f"val_top{samples}_agent_ADE_macro"
             run.metric({"stage": args.phase, "epoch": epoch, "beta" if args.phase == "ssl" else "kl_weight": weight,
                         "selection": selection, **train_metrics, **throughput,
                         **{f"val_{k}": v for k, v in metrics.items()}})

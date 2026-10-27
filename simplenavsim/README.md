@@ -33,7 +33,7 @@ python simplenavsim/scripts/visualize_rollout.py --checkpoint checkpoints/simple
 ```
 
 All scripts take `--device` (`cuda`, `cpu`; default: CUDA if available) and `--pedestrians`
-(`replay`, `social_force`, `reactive_replay`, `orca`, `stars_crowd`). `simplenavsim/configs/cmaes_recorded.yaml`
+(`replay`, `social_force`, `reactive_replay`, `orca`, `stars_crowd`, `stars_social`). `simplenavsim/configs/cmaes_recorded.yaml`
 adds recorded STEPS traffic to the scenario mix.
 
 **Latest policy, its test results and animations:** [`docs/latest_policy/`](../docs/latest_policy/README.md).
@@ -61,9 +61,6 @@ python simplenavsim/scripts/compare_policies.py --config simplenavsim/configs/cm
 python simplenavsim/scripts/train_cmaes.py --config simplenavsim/configs/cmaes_crowd_v4.yaml --device cuda \
   --policy checkpoints/simplenavsim/cmaes_crowd_v4/best_policy.yaml --out-dir checkpoints/simplenavsim/my_run
 
-# Why does the robot turn instead of waiting? (per-step stop feasibility and turning)
-python simplenavsim/scripts/diagnose_waiting.py --config simplenavsim/configs/cmaes_crowd_v4.yaml \
-  --policy checkpoints/simplenavsim/cmaes_crowd_v4/best_policy.yaml --kinds dense_flow narrow_passage
 ```
 
 Results and figures: `docs/results/README.md`; the reasoning behind each config version is in
@@ -126,6 +123,9 @@ for CSV data.
   0.4 s with the robot in the graph as one more person. CVAE intents follow a seeded AR(1)
   process. Moves that would cross a wall slide along it; recorded scenes' arena box does not
   block pedestrians. Config: `simplenavsim/configs/pedestrians_stars.yaml`.
+- **STARS + social forces** (`stars_social`): the forecast (robot not in the graph) sets each
+  pedestrian's desired velocity toward where it should be 0.4 s ahead; social forces turn that into
+  motion that avoids the robot, other pedestrians and walls.
 
 The robot is a non-reciprocal obstacle for every model, and reactive pedestrians cannot
 interpenetrate it. The **counterfactual** run uses identical inputs with the robot removed, and the
@@ -152,8 +152,8 @@ wall, are discarded (a hard constraint). If none remain, the robot stops (emerge
 parameters: `goal_weight`, `collision_weight`, `pedestrian_weight`, `disruption_weight`,
 `obstacle_weight`, `preferred_speed`, `personal_space_radius`, `prediction_horizon`, `turn_penalty`,
 `smoothness_weight`, plus the waiting-behaviour scales `speed_scale`, `retreat_scale` and
-`alignment_weight` (decision 70). `idle_turn_weight` and `side_commit_weight` exist but did not
-help (decisions 79, 81); keep them at 0. `goal_seeking` is the same controller with every
+`alignment_weight` (decision 70). Memory terms, staged plans and learned policies were tried and
+removed (decisions 78-92). `goal_seeking` is the same controller with every
 pedestrian term off.
 
 ### Metrics

@@ -33,7 +33,7 @@ def main() -> None:
     parser.add_argument("--split", default="test", choices=("train", "val", "test"))
     parser.add_argument("--per-kind", type=int, help="Scenarios per kind (default: config test_per_kind)")
     parser.add_argument("--config", type=Path, default=DEFAULT_CONFIG)
-    parser.add_argument("--pedestrians", choices=("replay", "social_force", "reactive_replay", "orca", "stars_crowd"))
+    parser.add_argument("--pedestrians", choices=("replay", "social_force", "reactive_replay", "orca", "stars_crowd", "stars_social"))
     parser.add_argument("--device")
     parser.add_argument("--out-dir", type=Path, default=Path("runs/simplenavsim/evaluate"))
     args = parser.parse_args()

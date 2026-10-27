@@ -32,7 +32,7 @@ from torch import nn
 
 from baselines.stars import upstream_model_module
 from baselines.stars_data import EDGE_FEATURE_DIM
-from baselines.stars_ma_graph import NODE_FEATURE_DIM, build_graph, to_scene
+from baselines.stars_ma_graph import NODE_FEATURE_DIM, to_scene
 
 # STARS "homo" recipe sizes (stars.VAE_RECIPE) plus the new node-motion branch.
 ENCODER_RECIPE = {
@@ -48,7 +48,6 @@ ENCODER_RECIPE = {
 DECODER_RECIPE = {
     "hidden_dim": 256,
     "latent_dim": 0,  # 0 = deterministic; > 0 = CVAE intent latent size
-    "social_layer": True,
     "representation": "mu",  # STARS's node representation (encode_nodes); "hidden" uses the pre-head state
     "dropout": 0.1,
 }
@@ -64,36 +63,14 @@ def _retime(transformer: nn.Module, steps: int) -> nn.Module:
 # Fused attention kernels cap one call at 65,535 sequences (with dropout); a large batch has
 # hundreds of thousands of edge sequences, so the temporal transformers run in chunks.
 TEMPORAL_CHUNK = 32768
-# Attention backend for the 8-step temporal transformers: None = PyTorch's choice (a fused kernel),
-# "math" = plain matmul attention, which can be faster for very short sequences.
-ATTENTION_BACKEND: str | None = None
 
 
-def _attention_context():
-    import contextlib
-
-    if ATTENTION_BACKEND is None:
-        return contextlib.nullcontext()
-    from torch.nn.attention import SDPBackend, sdpa_kernel
-
-    return sdpa_kernel({"math": SDPBackend.MATH, "efficient": SDPBackend.EFFICIENT_ATTENTION}[ATTENTION_BACKEND])
-
-
-def _temporal(transformer: nn.Module, x: torch.Tensor, padding: torch.Tensor, checkpoint: bool = False) -> torch.Tensor:
-    """Run a temporal transformer over ``x [S, T, F]`` in chunks; ``checkpoint`` recomputes activations
-    in the backward pass instead of storing them (much less memory, ~1/3 more compute)."""
-    def run(chunk, mask):
-        if checkpoint and torch.is_grad_enabled():
-            from torch.utils.checkpoint import checkpoint as recompute
-
-            return recompute(lambda a, b: transformer(a, src_key_padding_mask=b), chunk, mask, use_reentrant=False)
-        return transformer(chunk, src_key_padding_mask=mask)
-
-    with _attention_context():
-        if x.shape[0] <= TEMPORAL_CHUNK:
-            return run(x, padding)
-        return torch.cat([run(x[i:i + TEMPORAL_CHUNK], padding[i:i + TEMPORAL_CHUNK])
-                          for i in range(0, x.shape[0], TEMPORAL_CHUNK)])
+def _temporal(transformer: nn.Module, x: torch.Tensor, padding: torch.Tensor) -> torch.Tensor:
+    """Run a temporal transformer over ``x [S, T, F]`` in chunks of ``TEMPORAL_CHUNK`` sequences."""
+    if x.shape[0] <= TEMPORAL_CHUNK:
+        return transformer(x, src_key_padding_mask=padding)
+    return torch.cat([transformer(x[i:i + TEMPORAL_CHUNK], src_key_padding_mask=padding[i:i + TEMPORAL_CHUNK])
+                      for i in range(0, x.shape[0], TEMPORAL_CHUNK)])
 
 
 class StarsMotionEncoder(nn.Module):
@@ -117,7 +94,6 @@ class StarsMotionEncoder(nn.Module):
         # optimiser or the checkpoint as dead weights.
         del self.base.robot_feat_proj
         self.use_node_features = bool(recipe["use_node_features"])
-        self.checkpoint_temporal = False  # runtime memory option, not part of the recipe
         if self.use_node_features:
             self.node_encoder = _retime(
                 upstream.TemporalEdgeTransformer(
@@ -145,11 +121,11 @@ class StarsMotionEncoder(nn.Module):
         hidden = base.node_type_emb(data.node_type)
         if self.use_node_features:
             node_pad = ~data.valid_mask.bool()
-            hidden = hidden + self.node_proj(_temporal(self.node_encoder, data.node_attr, node_pad, self.checkpoint_temporal))
+            hidden = hidden + self.node_proj(_temporal(self.node_encoder, data.node_attr, node_pad))
         source, destination = data.edge_index
         if source.numel():
             edge_valid = (data.valid_mask[source] * data.valid_mask[destination]).bool()
-            edge_emb = _temporal(base.edge_encoder, data.edge_attr, ~edge_valid, self.checkpoint_temporal)
+            edge_emb = _temporal(base.edge_encoder, data.edge_attr, ~edge_valid)
         else:
             # The upstream edge transformer cannot reshape an empty batch; no edges, no messages.
             edge_emb = hidden.new_zeros((0, self.hidden_dim))
@@ -194,7 +170,7 @@ class StarsMotionVAE(nn.Module):
             r["latent_dim"], r["hidden_dim"], observation_steps, r["dropout"], node_features=r["use_node_features"]
         )
 
-    def loss(self, data, beta: float, node_weight: float = 1.0) -> dict[str, torch.Tensor]:
+    def loss(self, data, beta: float) -> dict[str, torch.Tensor]:
         """STARS's valid-masked edge MSE (summed over features, per valid edge-step) + node term + beta * KL."""
         out = self.encoder(data)
         mu, logvar = out["mu"], out["logvar"]
@@ -213,7 +189,7 @@ class StarsMotionVAE(nn.Module):
         else:
             node = zero
         kl = -0.5 * (1 + logvar - mu.pow(2) - logvar.exp()).mean()
-        return {"loss": edge + node_weight * node + beta * kl, "edge": edge, "node": node, "kl": kl}
+        return {"loss": edge + node + beta * kl, "edge": edge, "node": node, "kl": kl}
 
 
 def _mlp(inputs: int, hidden: int, outputs: int, dropout: float) -> nn.Sequential:
@@ -242,14 +218,11 @@ class TrajectoryDecoder(nn.Module):
             self.future_encoder = _mlp(3 * prediction_steps, hidden, hidden, recipe["dropout"])
             self.posterior = _mlp(context + hidden, hidden, 2 * self.latent_dim, recipe["dropout"])
         self.input = nn.Linear(context + self.latent_dim, hidden)
-        if recipe["social_layer"]:
-            from torch_geometric.nn import TransformerConv
+        from torch_geometric.nn import TransformerConv
 
-            self.social = TransformerConv(hidden, hidden // num_heads, heads=num_heads, concat=True, beta=True,
-                                          dropout=recipe["dropout"], edge_dim=edge_dim)
-            self.social_norm = nn.LayerNorm(hidden)
-        else:
-            self.social = None
+        self.social = TransformerConv(hidden, hidden // num_heads, heads=num_heads, concat=True, beta=True,
+                                      dropout=recipe["dropout"], edge_dim=edge_dim)
+        self.social_norm = nn.LayerNorm(hidden)
         self.initial = nn.Linear(hidden, hidden)
         self.cell = nn.GRUCell(2 + hidden, hidden)
         self.output = nn.Linear(hidden, 2)
@@ -273,7 +246,7 @@ class TrajectoryDecoder(nn.Module):
                 raise ValueError("The CVAE decoder needs a latent sample z")
             context = torch.cat([context, z], dim=-1)
         hidden = F.gelu(self.input(context))
-        if self.social is not None and edge_index.numel():
+        if edge_index.numel():
             hidden = self.social_norm(hidden + self.social(hidden, edge_index, edge_attr=edge_emb))
         # Positions accumulate over the horizon: keep the recurrence in float32 under bf16 autocast.
         with torch.autocast(device_type=hidden.device.type, enabled=False):
@@ -335,7 +308,7 @@ class StarsMultiAgentForecaster(nn.Module):
         """Teacher-forced prediction with posterior latents; returns ``prediction [N, P, 2]`` and ``kl [N]``."""
         encoded = self.encode(data)
         if not self.latent_dim:
-            return {"prediction": self.decode(data, encoded, None)[0], "kl": None, "z": None}
+            return {"prediction": self.decode(data, encoded, None)[0], "kl": None}
         q_mu, q_logvar = self.decoder.posterior_params(encoded["context"], future_local, future_valid)
         p_mu, p_logvar = self.decoder.prior_params(encoded["context"])
         z = q_mu + torch.exp(0.5 * q_logvar) * torch.randn_like(q_mu)
@@ -344,7 +317,7 @@ class StarsMultiAgentForecaster(nn.Module):
         prior_z = p_mu + torch.exp(0.5 * p_logvar) * torch.randn_like(p_mu)
         z = torch.where(has_future, z, prior_z.detach())
         kl = 0.5 * (p_logvar - q_logvar + (q_logvar.exp() + (q_mu - p_mu) ** 2) / p_logvar.exp() - 1).sum(-1)
-        return {"prediction": self.decode(data, encoded, z[None])[0], "kl": kl * has_future.squeeze(-1), "z": z}
+        return {"prediction": self.decode(data, encoded, z[None])[0], "kl": kl * has_future.squeeze(-1)}
 
     @torch.no_grad()
     def predict(self, data, samples: int = 1) -> torch.Tensor:
@@ -353,48 +326,32 @@ class StarsMultiAgentForecaster(nn.Module):
         return self.decode(data, encoded, self.sample_latent(encoded["context"], samples))
 
 
-def _rebuild(batch, window: torch.Tensor, valid: torch.Tensor, *, dt: float, knn: int | None, radius: float | None):
-    """New batched graph from per-node scene-frame windows ``[N, T, 2]``, graph by graph."""
-    from torch_geometric.data import Batch, Data
-
-    graphs = []
-    pointer = batch.ptr.tolist()
-    for start, stop in zip(pointer[:-1], pointer[1:]):
-        graph = build_graph(window[start:stop].transpose(0, 1), valid[start:stop].T, dt=dt, knn=knn, radius=radius)
-        graphs.append(Data(num_nodes=stop - start, **graph))
-    return Batch.from_data_list(graphs)
-
-
-def rollout(model: StarsMultiAgentForecaster, batch, *, rounds: int, exec_steps: int, knn: int | None,
-            radius: float | None, z: torch.Tensor | None = None, keep_graph: bool = False) -> torch.Tensor:
-    """Closed-loop multi-agent simulation from a batch's observed windows.
+@torch.no_grad()
+def rollout(model: StarsMultiAgentForecaster, batch, *, rounds: int, exec_steps: int,
+            z: torch.Tensor | None = None) -> torch.Tensor:
+    """Closed-loop multi-agent simulation from a ``stars_ma_batch.GraphBatch``'s observed windows.
 
     Each round encodes the current scene, predicts ``model.prediction_steps`` ahead, executes the
     first ``exec_steps`` of them for every agent, shifts the window and rebuilds the interaction
-    graph from the updated states. ``z`` (``[N, Z]``, CVAE only) is each agent's intent, held
-    across rounds; a prior sample is drawn from the first round's context when it is None.
-    Returns scene-frame positions ``[N, rounds * exec_steps, 2]``. With ``keep_graph`` the rollout
-    is differentiable (multi-step training); otherwise it runs without gradients.
+    graph from the updated states (``GraphBatch.rebuild``). ``z`` (``[N, Z]``, CVAE only) is each
+    agent's intent, held across rounds; a prior sample is drawn from the first round's context
+    when it is None. Returns scene-frame positions ``[N, rounds * exec_steps, 2]``.
     """
     if not 1 <= exec_steps <= model.prediction_steps:
         raise ValueError("exec_steps must be between 1 and the decoder horizon")
-    with torch.set_grad_enabled(keep_graph and torch.is_grad_enabled()):
-        window, valid = batch.obs_xy, batch.valid_mask.bool()
-        current = batch
-        executed = []
-        for round_index in range(rounds):
-            encoded = model.encode(current)
-            if model.latent_dim and z is None:
-                z = model.sample_latent(encoded["context"], 1)[0]
-            local = model.decode(current, encoded, None if z is None else z[None])[0]
-            scene = to_scene(local[:, :exec_steps], current.origin, current.heading)
-            executed.append(scene)
-            if round_index + 1 < rounds:
-                steps = window.shape[1]
-                window = torch.cat([window, scene], dim=1)[:, -steps:]
-                valid = torch.cat([valid, torch.ones_like(scene[..., 0], dtype=torch.bool)], dim=1)[:, -steps:]
-                if hasattr(batch, "rebuild"):  # stars_ma_batch.GraphBatch: all graphs at once on the device
-                    current = batch.rebuild(window, valid)
-                else:
-                    current = _rebuild(batch, window, valid, dt=model.dt, knn=knn, radius=radius)
-        return torch.cat(executed, dim=1)
+    window, valid = batch.obs_xy, batch.valid_mask.bool()
+    current = batch
+    executed = []
+    for round_index in range(rounds):
+        encoded = model.encode(current)
+        if model.latent_dim and z is None:
+            z = model.sample_latent(encoded["context"], 1)[0]
+        local = model.decode(current, encoded, None if z is None else z[None])[0]
+        scene = to_scene(local[:, :exec_steps], current.origin, current.heading)
+        executed.append(scene)
+        if round_index + 1 < rounds:
+            steps = window.shape[1]
+            window = torch.cat([window, scene], dim=1)[:, -steps:]
+            valid = torch.cat([valid, torch.ones_like(scene[..., 0], dtype=torch.bool)], dim=1)[:, -steps:]
+            current = batch.rebuild(window, valid)
+    return torch.cat(executed, dim=1)

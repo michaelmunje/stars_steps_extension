@@ -274,6 +274,6 @@ was not used: it hard-codes SEAN/SNSB inputs.
 `train_stars_ma.py` / `evaluate_stars_ma.py` extend STARS into a multi-agent pedestrian dynamics
 model on STEPS: node motion features alongside STARS's edge features at the native rate, kNN/radius
 graphs, a per-agent deterministic or CVAE decoder that forecasts every pedestrian, and closed-loop
-rollouts with an optional multi-step training loss. The single-target STARS probe above is
+rollouts for evaluation and simulation. The single-target STARS probe above is
 unchanged. Design, commands, ablation flags and open items: [docs/stars_multiagent.md](../../docs/stars_multiagent.md).
 No GPU run yet.

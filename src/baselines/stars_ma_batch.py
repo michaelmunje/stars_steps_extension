@@ -1,15 +1,16 @@
-"""Scaled multi-agent STARS data path: cached windows, batched GPU graph construction, node budgets.
-
-``stars_ma_data.StarsMultiAgentDataset`` builds one PyG graph per window in Python, which caps
-training at a few thousand graphs per second. This module is the training path instead:
+"""Multi-agent STARS data path: cached windows, batched GPU graph construction, node budgets.
 
 * ``WindowStore`` holds every window of a split as flat node arrays (``ptr`` marks windows). It is
   extracted from the shared ``SceneDataset`` once (``build_store``, parallel) and cached on disk;
   a whole split is small enough (a few GB at most) to live on the GPU.
+* The benchmark population has one sample per (window, target pedestrian); multi-agent training
+  predicts every pedestrian at once, so ``windows="unique"`` keeps the first sample of each
+  ``(dataset, recording, start_step)`` window, while ``windows="all"`` keeps every sample so that
+  each graph's target node (node 0) is scored on the single-target baselines' population.
 * ``build_batch`` gathers a set of windows into padded ``[B, N, T]`` tensors and builds all their
   graphs at once on the device -- the same quantities as ``stars_ma_graph.build_graph`` (checked in
   the tests), vectorised over graphs. ``GraphBatch.rebuild`` does the same for closed-loop
-  rollouts, so multi-step training no longer rebuilds graph by graph.
+  rollouts.
 * ``node_budget_batches`` groups windows of similar size into batches of at most ``max_nodes``
   nodes, so one setting works for STEPS (~20 people per window) and MADRAS (up to ~550).
 """
@@ -26,7 +27,7 @@ import numpy as np
 import torch
 
 from baselines.stars_data import MIN_HISTORY_POINTS, NODE_TYPE_HUMAN
-from baselines.stars_ma_graph import MOTION_EPSILON, NODE_FEATURE_DIM, rotate
+from baselines.stars_ma_graph import MOTION_EPSILON, rotate
 
 CACHE_VERSION = 1
 
@@ -110,6 +111,37 @@ def _ranges(starts: torch.Tensor, sizes: torch.Tensor) -> torch.Tensor:
 # ----------------------------------------------------------------------------- extraction and cache
 
 
+def _leaf_rows(dataset, offset: int = 0):
+    """Yield ``(global_index, window_key)`` for every sample of a (possibly wrapped) SceneDataset."""
+    from torch.utils.data import ConcatDataset, Subset
+
+    if isinstance(dataset, ConcatDataset):
+        start = offset
+        for child in dataset.datasets:
+            yield from _leaf_rows(child, start)
+            start += len(child)
+    elif isinstance(dataset, Subset):
+        parent = {index: key for index, key in _leaf_rows(dataset.dataset)}
+        for position, index in enumerate(dataset.indices):
+            yield offset + position, parent[int(index)]
+    elif hasattr(dataset, "rows"):
+        name = getattr(getattr(dataset, "spec", None), "name", "")
+        for index, row in enumerate(dataset.rows):
+            yield offset + index, (name, row["recording"], int(row["start_step"]))
+    else:
+        raise TypeError(f"Cannot read window keys from {type(dataset).__name__}")
+
+
+def unique_window_indices(dataset) -> list[int]:
+    """Index of the first sample of every distinct scene window, in dataset order."""
+    seen, keep = set(), []
+    for index, key in _leaf_rows(dataset):
+        if key not in seen:
+            seen.add(key)
+            keep.append(index)
+    return keep
+
+
 def extract_window(scene, observation_steps: int, prediction_steps: int):
     """One sample's forecast nodes (target first) as numpy arrays, or None if the target is not a node."""
     xy = np.asarray(scene.xy, dtype=np.float32)
@@ -139,21 +171,17 @@ class _Extract(torch.utils.data.Dataset):
 
 
 def build_store(source, name: str, observation_steps: int, prediction_steps: int, *, windows: str = "unique",
-                workers: int = 0, limit: int | None = None, progress=None) -> WindowStore:
-    """Extract a split's windows from a ``SceneDataset`` (``windows`` as in ``StarsMultiAgentDataset``)."""
-    from baselines.stars_ma_data import unique_window_indices
-
+                workers: int = 0) -> WindowStore:
+    """Extract a split's windows (``"unique"`` or ``"all"``, see the module docstring) from a ``SceneDataset``."""
     if windows not in {"unique", "all"}:
         raise ValueError("windows must be 'unique' or 'all'")
     indices = unique_window_indices(source) if windows == "unique" else list(range(len(source)))
-    if limit is not None:
-        indices = indices[:limit]
     loader = torch.utils.data.DataLoader(_Extract(source, indices, observation_steps, prediction_steps),
                                          batch_size=64, num_workers=workers, collate_fn=list,
                                          prefetch_factor=4 if workers else None)
     parts = {key: [] for key in ("obs_xy", "obs_valid", "future", "future_valid")}
     sizes, sample_index = [], []
-    for chunk in (progress(loader) if progress else loader):
+    for chunk in loader:
         for index, window in chunk:
             if window is None:
                 continue
@@ -224,7 +252,7 @@ def fill_observed_padded(xy: torch.Tensor, valid: torch.Tensor) -> torch.Tensor:
 
 
 def headings_padded(xy: torch.Tensor) -> torch.Tensor:
-    """``headings_from_motion(xy, backfill=True)`` for ``[..., T, 2]`` positions: ``[..., T]``."""
+    """``stars_ma_graph.headings_from_motion`` for ``[..., T, 2]`` positions: ``[..., T]``."""
     displacement = xy[..., 1:, :] - xy[..., :-1, :]
     moving = displacement.abs().sum(dim=-1) > MOTION_EPSILON
     angle = torch.atan2(displacement[..., 1], displacement[..., 0])

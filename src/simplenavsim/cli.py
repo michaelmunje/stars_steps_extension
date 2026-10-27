@@ -65,54 +65,11 @@ def build(config_path=None, *, policy: str | None = None, pedestrian_model: str 
     from simplenavsim.core.config import make_predictor
 
     predictor = make_predictor(policy_config.get("predictor"), device)
-    if name == "learned":
-        # A learned policy file names its weights (.npy); it uses the config's predictor and robot limits.
-        controller = load_learned_policy(policy, env.robot, predictor)
-        values = {}
-    elif name == "contextual":
-        controller = load_contextual_policy(policy, make_controller(policy_config, "social", env.robot, predictor))
-        values = {}
-    else:
-        controller = make_controller(policy_config, name, env.robot, predictor)
+    controller = make_controller(policy_config, name, env.robot, predictor)
     config["policy_parameters"] = {**controller.default_parameters(), **values}
     objective = Objective(**(config.get("objective") or {}))
     evaluator = Evaluator(env, controller, objective, device=device, max_envs=config.get("max_envs", 4096))
     return config, env, controller, evaluator, recording_pool(config), device
-
-
-def load_learned_policy(path, robot, predictor):
-    """``LearnedPolicy`` from a YAML ``{policy: learned, weights: <.npy>, learned: {LearnedConfig fields}}``."""
-    import numpy as np
-    import yaml
-
-    from simplenavsim.policies.learned import LearnedConfig, LearnedPolicy
-
-    data = yaml.safe_load(Path(path).read_text())
-    options = dict(data.get("learned") or {})
-    for key in ("max_speed", "max_angular_speed", "max_acceleration", "max_angular_acceleration"):
-        options.setdefault(key, getattr(robot, key))
-    options.setdefault("min_speed", robot.min_speed)
-    options.setdefault("robot_radius", robot.radius)
-    policy = LearnedPolicy(LearnedConfig(**options), predictor)
-    weights = Path(data["weights"])
-    policy.weights = np.load(weights if weights.is_absolute() else Path(path).parent / weights)
-    return policy
-
-
-def load_contextual_policy(path, controller):
-    """``ContextualPolicy`` from ``{policy: contextual, base: <policy YAML>, weights: <.npy>, contextual: {...}}``."""
-    import numpy as np
-    import yaml
-
-    from simplenavsim.policies.contextual import ContextualPolicy
-
-    path = Path(path)
-    data = yaml.safe_load(path.read_text())
-    resolve = lambda p: Path(p) if Path(p).is_absolute() else (path.parent / p if (path.parent / p).exists() else Path(p))
-    _, base = load_policy_file(resolve(data["base"]))
-    policy = ContextualPolicy(controller, base, **(data.get("contextual") or {}))
-    policy.weights = np.load(resolve(data["weights"]))
-    return policy
 
 
 def cmaes_config(config: dict, **overrides) -> CMAESConfig:

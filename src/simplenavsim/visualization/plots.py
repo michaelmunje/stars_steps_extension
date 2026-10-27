@@ -176,46 +176,6 @@ def animate_rollout(batch, run, b: int = 0, *, path, counterfactual=None, plans=
     plt.close(fig)
 
 
-def animate_rollout_basic(batch, run, b: int = 0, *, path, counterfactual=None, every: int = 2, fps: int = 15):
-    """GIF of one environment: robot and pedestrian discs (the original, whole-scene animation)."""
-    fig, ax = plt.subplots(figsize=(6.5, 5.5))
-    _static(ax, batch, b)
-    lo, hi = _extent(batch, run, b)
-    ax.set_xlim(lo[0], hi[0]), ax.set_ylim(lo[1], hi[1]), ax.set_aspect("equal"), ax.grid(alpha=0.3)
-    pos, active = _np(run.ped_pos[b]), _np(run.ped_active[b])
-    peds = np.flatnonzero(_np(batch.ped_mask[b]))
-    colors = plt.cm.tab20(np.linspace(0, 1, 20))
-    discs = [ax.add_patch(Circle((0, 0), float(batch.ped_radius[b, p]), color=colors[p % 20], alpha=0.7)) for p in peds]
-    ghosts = []
-    if counterfactual is not None:
-        ghosts = [ax.add_patch(Circle((0, 0), float(batch.ped_radius[b, p]), fill=False, ls="--", color=colors[p % 20]))
-                  for p in peds]
-    robot_pose = _np(run.robot_pose[b])
-    robot = ax.add_patch(Circle(robot_pose[0, :2], 0.3, color=ROBOT, alpha=0.8))
-    heading, = ax.plot([], [], color="white", lw=2)
-    trail, = ax.plot([], [], color=ROBOT, lw=2)
-    label = ax.text(0.02, 0.97, "", transform=ax.transAxes, va="top")
-    frames = range(0, run.steps, every)
-
-    def update(k):
-        for disc, p in zip(discs, peds):
-            disc.set_visible(bool(active[p, k]))
-            disc.center = pos[p, k]
-        for ghost, p in zip(ghosts, peds):
-            ghost.set_visible(bool(counterfactual.ped_active[b, p, k]))
-            ghost.center = _np(counterfactual.ped_pos[b, p, k])
-        x, y, th = robot_pose[k]
-        robot.center = (x, y)
-        heading.set_data([x, x + 0.3 * np.cos(th)], [y, y + 0.3 * np.sin(th)])
-        trail.set_data(robot_pose[: k + 1, 0], robot_pose[: k + 1, 1])
-        label.set_text(f"t = {k * run.dt:4.1f} s   v = {float(run.robot_v[b, k]):.2f} m/s")
-        return [*discs, *ghosts, robot, heading, trail, label]
-
-    animation = FuncAnimation(fig, update, frames=frames, blit=False)
-    animation.save(path, writer=PillowWriter(fps=fps))
-    plt.close(fig)
-
-
 def plot_convergence(generations_file, path) -> None:
     """Training objective (best / mean of each generation) and validation objective over generations."""
     records = [json.loads(line) for line in Path(generations_file).read_text().splitlines() if line.strip()]
@@ -258,4 +218,73 @@ def plot_comparison(summaries: dict[str, dict[str, float]], path, metrics=None) 
         ax.axis("off")
     fig.tight_layout()
     fig.savefig(path, dpi=130)
+    plt.close(fig)
+
+
+def animate_grid(snapshots: list[dict], row_labels: list[str], path, *, title: str = "", every: int = 3,
+                 fps: int = 8, trail_s: float = 2.0, hold_s: float = 1.5) -> None:
+    """GIF grid: one row per snapshot (e.g. a pedestrian condition), one column per scene.
+
+    Each snapshot is ``crowd_conditions.snapshot`` output for the same scenes. Columns share a view,
+    so rows are directly comparable; each cell shows walls, pedestrians with ``trail_s`` trails
+    (red outline within 0.45 m of the robot), the robot, its path and current plan, and the outcome.
+    """
+    R, C = len(snapshots), len(snapshots[0]["names"])
+    views = []
+    for c in range(C):
+        pts = np.concatenate([np.concatenate([s["robot_pose"][c, : int(s["end_step"][c]) + 1, :2], s["goal"][c][None]])
+                              for s in snapshots])
+        lo, hi = pts.min(0) - 3.0, pts.max(0) + 3.0
+        span, centre = np.maximum(hi - lo, 8.0), (lo + hi) / 2
+        views.append((centre - span / 2, centre + span / 2))
+    aspect = max((hi - lo)[1] / (hi - lo)[0] for lo, hi in views)
+    fig, axes = plt.subplots(R, C, figsize=(3.4 * C, 3.4 * C * aspect * R / C + 0.6), squeeze=False)
+    fig.subplots_adjust(left=0.06, right=0.99, bottom=0.01, top=0.95, wspace=0.05, hspace=0.12)
+    fig.suptitle(title, fontsize=11)
+    colors = plt.cm.tab20(np.linspace(0, 1, 20))
+    trail = max(1, int(round(trail_s / snapshots[0]["dt"])))
+    last = int(max(s["end_step"].max() for s in snapshots))
+    frames = list(range(0, last + 1, every)) + [last] * int(hold_s * fps)
+
+    def update(k):
+        for r, s in enumerate(snapshots):
+            for c in range(C):
+                ax, (lo, hi) = axes[r, c], views[c]
+                ax.clear()
+                ax.set_xlim(lo[0], hi[0]), ax.set_ylim(lo[1], hi[1]), ax.set_aspect("equal")
+                ax.set_xticks([]), ax.set_yticks([])
+                end = int(s["end_step"][c])
+                kk = min(k, end)
+                for seg in s["segments"][c][s["segment_mask"][c]]:
+                    ax.plot([seg[0], seg[2]], [seg[1], seg[3]], color="black", lw=2)
+                ax.plot(*s["goal"][c], marker="*", color=GOAL, ms=11)
+                x, y, th = s["robot_pose"][c, kk]
+                for p in np.flatnonzero(s["ped_mask"][c]):
+                    if not s["ped_active"][c, p, kk]:
+                        continue
+                    k0 = max(0, kk - trail)
+                    seg = s["ped_pos"][c, p, k0:kk + 1][s["ped_active"][c, p, k0:kk + 1]]
+                    ax.plot(*seg.T, color=colors[p % 20], lw=1, alpha=0.5)
+                    near = np.hypot(*(s["ped_pos"][c, p, kk] - (x, y))) - s["ped_radius"][c, p] - 0.3 < 0.45
+                    ax.add_patch(Circle(s["ped_pos"][c, p, kk], s["ped_radius"][c, p], facecolor=colors[p % 20],
+                                        alpha=0.85, edgecolor="red" if near else "none", lw=1.5))
+                ax.plot(*s["robot_pose"][c, : kk + 1, :2].T, color=ROBOT, lw=1.5, alpha=0.6)
+                if s["plans"] and kk < len(s["plans"]):
+                    plan, steps = s["plans"][kk]
+                    ax.plot(*np.concatenate([[[x, y]], plan[c, : int(steps[c])]]).T, color=ROBOT, lw=1.2, ls="--")
+                ax.add_patch(Circle((x, y), 0.3, color=ROBOT))
+                ax.plot([x, x + 0.4 * np.cos(th)], [y, y + 0.4 * np.sin(th)], color="white", lw=1.5)
+                status = f"{kk * s['dt']:.1f} s"
+                if k >= end:
+                    status += "  " + ("reached" if s["success"][c] else "COLLISION" if s["collision"][c] else "timeout")
+                ax.text(0.02, 0.97, status, transform=ax.transAxes, va="top", fontsize=7,
+                        bbox=dict(facecolor="white", alpha=0.8, edgecolor="none", pad=1))
+                if r == 0:
+                    ax.set_title(s["names"][c].rsplit("-", 1)[0], fontsize=9)
+                if c == 0:
+                    ax.set_ylabel(row_labels[r], fontsize=8)
+
+    FuncAnimation(fig, update, frames=frames, blit=False).save(path, writer=PillowWriter(fps=fps))
+    update(last)
+    fig.savefig(Path(path).with_suffix(".png"), dpi=90)
     plt.close(fig)

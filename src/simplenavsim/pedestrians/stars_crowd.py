@@ -21,6 +21,12 @@ its motion comes from the forecaster:
 * a pedestrian leaves when its reference ends (recorded exits are kept).
 
 This makes the trajectory forecaster the crowd simulator, for recorded or scripted scenes.
+
+``StarsSocialModel`` (``stars_social``) combines the forecaster with social forces: the forecast
+sets where each pedestrian wants to be 0.4 s ahead (its desired velocity), and the social-force
+model of ``social_force.py`` turns that into motion while avoiding the robot, other pedestrians and
+walls. During warm-up pedestrians track their reference like ``reactive_replay``. The robot is not
+in the forecaster's graph by default; it acts through the forces.
 """
 from __future__ import annotations
 
@@ -31,8 +37,8 @@ from baselines.stars_ma_graph import to_scene
 from baselines.train_stars_ma import load_forecaster
 from simplenavsim.core.geometry import block_wall_crossings
 from simplenavsim.core.state import PedestrianState
-from simplenavsim.pedestrians.base import PedestrianModel, reference_velocity
-from simplenavsim.pedestrians.social_force import resolve_robot_contact
+from simplenavsim.pedestrians.base import PedestrianModel, clip_norm, reference_velocity
+from simplenavsim.pedestrians.social_force import SocialForceParams, integrate, resolve_robot_contact, social_forces
 
 
 class StarsCrowdModel(PedestrianModel):
@@ -150,11 +156,20 @@ class StarsCrowdModel(PedestrianModel):
                 rho = self.intent_correlation
                 fresh = torch.randn(self.eps.shape, generator=self.generator).to(self.eps.device)
                 self.eps = rho * self.eps + (1.0 - rho * rho) ** 0.5 * fresh
-            target = self._forecast(batch, robot, robot_present)
+            self.target = self._forecast(batch, robot, robot_present)
             # Per-step displacement toward the forecast's next model-rate position: applied to the
             # current position each step, so a pedestrian handed over mid-plan does not jump.
-            self.plan = (target - state.pos) / self.replan_every
+            self.plan = (self.target - state.pos) / self.replan_every
             self.plan_start = k
+        pos, vel = self._move(state, batch, k, kk, warm, spawn, active, robot, robot_radius, robot_present)
+        self.buffer.append((pos.clone(), active.clone()))
+        self.robot_buffer.append(robot.pos.clone())
+        keep = (self.history - 1) * self.stride + 1
+        self.buffer, self.robot_buffer = self.buffer[-keep:], self.robot_buffer[-keep:]
+        return PedestrianState(pos, vel, active, state.done | leave)
+
+    def _move(self, state, batch, k, kk, warm, spawn, active, robot, robot_radius, robot_present):
+        """Positions and velocities after this step: the reference while warming up, the forecast after."""
         model_pos = state.pos + self.plan
         pos = torch.where((warm | spawn)[..., None], batch.ped_ref[:, :, kk], model_pos)
         # The forecaster knows nothing of walls: model-driven moves that would cross one slide along it.
@@ -165,9 +180,36 @@ class StarsCrowdModel(PedestrianModel):
         vel = (pos - state.pos) / batch.dt
         vel = torch.where(spawn[..., None], reference_velocity(batch, kk), vel)
         pos, vel = resolve_robot_contact(pos, vel, batch, robot, robot_radius, robot_present)
-        vel = torch.where(active[..., None], vel, 0.0)
-        self.buffer.append((pos.clone(), active.clone()))
-        self.robot_buffer.append(robot.pos.clone())
-        keep = (self.history - 1) * self.stride + 1
-        self.buffer, self.robot_buffer = self.buffer[-keep:], self.robot_buffer[-keep:]
-        return PedestrianState(pos, vel, active, state.done | leave)
+        return pos, torch.where(active[..., None], vel, 0.0)
+
+
+class StarsSocialModel(StarsCrowdModel):
+    """Forecast intents, social-force motion (see the module docstring)."""
+
+    name = "stars_social"
+
+    def __init__(self, checkpoint, *, forces: SocialForceParams | None = None, tracking_gain: float = 1.0,
+                 max_desired_speed: float = 2.0, include_robot: bool = False, **kwargs) -> None:
+        super().__init__(checkpoint, include_robot=include_robot, **kwargs)
+        self.forces, self.tracking_gain, self.max_desired_speed = forces or SocialForceParams(), tracking_gain, max_desired_speed
+
+    def _move(self, state, batch, k, kk, warm, spawn, active, robot, robot_radius, robot_present):
+        f = self.forces
+        previous = max(0, kk - 1)
+        ref_vel = reference_velocity(batch, previous)
+        limit = f.max_speed_factor * torch.maximum(batch.ped_speed, torch.linalg.norm(ref_vel, dim=-1))
+        track = clip_norm(ref_vel + self.tracking_gain * (batch.ped_ref[:, :, previous] - state.pos), limit)
+        # Head for the forecast position, due when the next re-forecast starts.
+        steps_left = max(1, self.plan_start + self.replan_every - k)
+        intent = clip_norm((self.target - state.pos) / (steps_left * batch.dt), self.max_desired_speed)
+        desired = torch.where(warm[..., None], track, intent)
+        speed_limit = torch.maximum(limit, f.max_speed_factor * torch.linalg.norm(desired, dim=-1))
+        acceleration = social_forces(state, desired, batch, robot, robot_radius, robot_present, f)
+        pos, vel = integrate(state, acceleration, speed_limit, batch.dt)
+        blocked = block_wall_crossings(state.pos, pos, batch.segments, batch.segment_mask & batch.ped_walls[:, None])
+        pos = torch.where((~warm)[..., None], blocked, pos)
+        pos = torch.where(spawn[..., None], batch.ped_ref[:, :, kk], pos)
+        vel = torch.where(spawn[..., None], reference_velocity(batch, kk), vel)
+        pos = torch.where(active[..., None], pos, state.pos)
+        pos, vel = resolve_robot_contact(pos, vel, batch, robot, robot_radius, robot_present)
+        return pos, torch.where(active[..., None], vel, 0.0)

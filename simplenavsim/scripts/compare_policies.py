@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Side-by-side rollouts: one row per scenario, one column per policy, same seeds and pedestrians.
 
-    python simplenavsim/scripts/compare_policies.py --config simplenavsim/configs/cmaes_stars_best.yaml \
+    python simplenavsim/scripts/compare_policies.py --config simplenavsim/configs/cmaes_crowd_v4.yaml \
         --policies goal_seeking social checkpoints/simplenavsim/cmaes/best_policy.yaml \
         --scenarios crossing head_on group_toward dense_flow --output runs/simplenavsim/compare.png
 
