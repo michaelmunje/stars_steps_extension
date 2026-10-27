@@ -1566,3 +1566,27 @@ why, and how to undo it.
     - **Default 1.0 m** (`simulator.yaml`; SEAN 2.0 used 1.2 m).
     - Path and time efficiency now measure the straight line to the edge of the goal circle.
     - All results before this entry used 0.3 m.
+
+98. **PPO alongside CMA-ES (requested).** The objective is per episode, so PPO gets a per-step
+    reward that sums to roughly the same thing:
+    - goal progress as potential shaping (1 over the route);
+    - +1 success, −2 collision;
+    - −time, −comfort (steps within 0.45 m) and −robot_influence, scaled by dt / duration;
+    - −0.2 per full turn.
+
+    Detour and smoothness are left to the shaping and the turn charge.
+
+    - **Action space:** the controller's own arcs (77 for v4). Arcs that fail its hard safety
+      check are masked, so PPO keeps exactly v4's safety constraint. It learns which arc to take,
+      where CMA-ES tunes the scoring rule that ranks them.
+    - **Observation:** 64 numbers (goal, own motion, 6 nearest pedestrians with the STARS forecast
+      at 1 and 2 s, nearest wall).
+    - **Network:** 2 × 256 tanh MLP with arc logits and a value head.
+    - **Training:** behaviour cloning of v4's choices for 15 iterations (critic fitted too), then
+      PPO (clip 0.2, GAE 0.99/0.95, entropy 0.003). Each iteration uses 24 fresh training scenes
+      per kind (216 episodes). The best greedy policy on 108 fixed validation scenes is kept.
+    - This differs from the failed learned policies (91-92): those steered with continuous commands
+      and a separate shield, and were trained by ES, without per-step credit assignment.
+    - **Job:** seeds 0 and 1 in the STARS crowd (`cmaes_crowd_v4.yaml`, success radius 1.0 m), then
+      tested on the 270 test scenes against v4 and the v4 re-tune at the new radius
+      (`checkpoints/simplenavsim/cmaes_tol1`, job 72024).

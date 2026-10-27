@@ -193,7 +193,7 @@ class SocialNavigationPolicy(Policy):
         command = torch.where(emergency[:, None], torch.zeros(B, 2, device=device), commands[best])
         # For visualisation: the chosen plan [B, H, 2] (planning horizon only) and the pedestrian
         # forecasts it was scored against [B, P, H, 2] (None without pedestrians).
-        self.last_info = {"emergency_stop": emergency, "valid_fraction": valid.float().mean(1),
+        self.last_info = {"emergency_stop": emergency, "valid": valid, "choice": best,
                           "plan": robot_xy[torch.arange(B, device=device), best], "plan_steps": steps_used,
                           "predicted": future}
         return command
