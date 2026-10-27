@@ -4,7 +4,7 @@ simulator: simulator.yaml
 pedestrians: pedestrians_stars.yaml
 policy: policy_stars_best.yaml
 recorded:
-  source: steps            # steps | csv (see seanjax.datasets.trajectory_loader)
+  source: steps            # steps | csv (see simplenavsim.datasets.trajectory_loader)
   path: datasets/steps
   limit_per_split: 40      # recordings loaded per split
   max_pedestrians: 40

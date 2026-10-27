@@ -10,7 +10,7 @@ each dataset's test split (44928 windows in all). CVAE scores are best-of-20, in
 - **Scratch**: `cvae_hpo53_scratch_all`, trained from scratch with the settings of Optuna trial 53.
 - **SSL + fine-tune**: `cvae_sslall_finetune_all`, self-supervised pretraining on all datasets, then fine-tuning.
 - **Rollout**: the scratch model re-forecasting from its own predictions every 1 or 4 model steps
-  (0.4 s or 1.6 s). The STARS crowd in SEAN-JAX re-forecasts every model step, so exec 1 is the
+  (0.4 s or 1.6 s). The STARS crowd in SimpleNavSim re-forecasts every model step, so exec 1 is the
   setting that matters for simulation.
 
 ![Per-dataset test error](stars_ma_all_test.png)

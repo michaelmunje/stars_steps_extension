@@ -1,0 +1,19 @@
+# Trajectory-scoring navigation controller (simplenavsim.policies.social_navigation).
+name: social             # social | goal_seeking
+controller:
+  num_speeds: 6
+  num_turn_rates: 11
+  plan_dt: 0.2
+  max_horizon: 4.0
+  safety_horizon: 1.0    # hard pedestrian-collision constraint window (s)
+  safety_margin: 0.05
+  obstacle_clearance: 0.6
+  speed_cost: 0.5        # fades out when a pedestrian is within 2x personal space
+  retreat_cost: 2.0      # penalty on moving away from the goal (wait instead of orbiting)
+  disruption_lookahead: 1.5
+parameters: {}           # overrides of the tunable defaults, e.g. {preferred_speed: 0.7}
+predictor:               # pedestrian forecasts used by the controller
+  type: constant_velocity  # or: stars (multi-agent STARS forecaster)
+  # checkpoint: experiments/stars_ma/runs/<run>/checkpoints/best.pt
+  # mode: mean           # mean = CVAE prior mean; average = mean over `samples` draws
+  # predict_every: 2     # control steps between forecasts

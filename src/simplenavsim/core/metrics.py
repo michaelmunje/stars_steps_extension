@@ -1,0 +1,163 @@
+"""Social navigation metrics from recorded rollouts (per environment, ``[B]`` tensors).
+
+Robot task: ``success``, ``collision`` (``ped_collision``, ``obstacle_collision``), ``timeout``,
+``time_to_goal`` (NaN unless successful), ``normalized_time`` (episode time / limit, 1 on
+failure), ``time_efficiency`` (straight-line time at the robot's top speed / time to goal; 0 on
+failure), ``path_length``, ``path_efficiency`` (straight-line distance / path driven; 0 on failure).
+
+Comfort and safety (SEAN 2.0 zones, measured surface to surface): ``min_ped_clearance``,
+``intimate_violation_rate`` / ``personal_violation_rate`` (fraction of the robot's active steps
+with a pedestrian closer than 0.45 m / 1.2 m), ``stops`` (moving -> stopped transitions),
+``heading_change`` (rad) and ``loops`` (full turns beyond half a turn), ``emergency_stops``, ``command_smoothness`` (mean |dv|/dt + |dw|/dt) and ``jerk`` (mean |d^2 v|/dt^2).
+
+Pedestrian disruption, against the robot-absent counterfactual with identical initial conditions
+and pedestrian model (only meaningful for reactive pedestrians; zero for replay):
+``disruption_displacement`` (mean distance between matched pedestrian positions while both are in
+the scene, averaged over pedestrians), ``disruption_max_displacement``, ``velocity_deviation``
+(time-integrated |v - v_counterfactual|, mean per pedestrian), ``ped_delay`` (extra seconds in the
+scene, mean per pedestrian), ``disruption_local`` (matched displacement only while within 3 m of
+the robot, averaged over pedestrians that came that close), ``peds_affected`` (pedestrians displaced by more than
+``affected_threshold``) and ``reference_deviation`` (mean distance to the recorded reference).
+Minimising disruption is not the same as being socially appropriate, so these are reported
+separately from comfort and task metrics.
+"""
+from __future__ import annotations
+
+import math
+
+import torch
+
+from simplenavsim.core.geometry import wrap_angle
+from simplenavsim.core.rollout import Rollout
+from simplenavsim.core.state import ScenarioBatch
+
+INTIMATE_DISTANCE = 0.45
+PERSONAL_DISTANCE = 1.2
+
+
+def robot_metrics(run: Rollout, batch: ScenarioBatch, robot_radius: float,
+                  max_speed: float = 1.0) -> dict[str, torch.Tensor]:
+    B, K = run.robot_v.shape
+    device = run.robot_v.device
+    step = torch.arange(K, device=device)
+    live = step[None] <= run.end_step[:, None]                                   # robot in the episode
+    moving_steps = live[:, 1:].float()
+    collision = run.ped_collision | run.obstacle_collision
+    duration = run.end_step.float() * run.dt
+    out = {
+        "success": run.success.float(),
+        "collision": collision.float(),
+        "ped_collision": run.ped_collision.float(),
+        "obstacle_collision": run.obstacle_collision.float(),
+        "timeout": (~run.success & ~collision).float(),
+        "time_to_goal": torch.where(run.success, duration, torch.full_like(duration, float("nan"))),
+        "normalized_time": torch.where(run.success, duration / batch.duration, torch.ones_like(duration)),
+    }
+    steps = torch.linalg.norm(run.robot_pose[:, 1:, :2] - run.robot_pose[:, :-1, :2], dim=-1)
+    out["path_length"] = (steps * moving_steps).sum(-1)
+    straight = torch.linalg.norm(batch.robot_goal - batch.robot_start[:, :2], dim=-1)
+    # 1 = straight to the goal; detours, loops and orbits lower it. Failed episodes count as 0.
+    out["path_efficiency"] = torch.where(run.success, (straight / out["path_length"].clamp(min=1e-6)).clamp(max=1.0),
+                                         torch.zeros_like(straight))
+    # 1 = drove straight to the goal at top speed; waiting, slow driving and detours lower it.
+    out["time_efficiency"] = torch.where(run.success, (straight / max_speed / duration.clamp(min=1e-6)).clamp(max=1.0),
+                                         torch.zeros_like(straight))
+
+    # Loops: total heading change beyond half a turn, in full turns (a straight run with swerves ~0).
+    turn = wrap_angle(run.robot_pose[:, 1:, 2] - run.robot_pose[:, :-1, 2]).abs()
+    out["heading_change"] = (turn * moving_steps).sum(-1)
+    out["loops"] = torch.relu(out["heading_change"] - math.pi) / (2 * math.pi)
+
+    rel = run.robot_pose[:, None, :, :2] - run.ped_pos                           # [B, P, K, 2]
+    gap = torch.linalg.norm(rel, dim=-1) - batch.ped_radius[..., None] - robot_radius
+    present = run.ped_active & live[:, None]
+    gap = torch.where(present, gap, torch.full_like(gap, float("inf")))
+    nearest = gap.min(dim=1).values                                              # [B, K]
+    closest = nearest.min(dim=-1).values
+    out["min_ped_clearance"] = torch.where(torch.isfinite(closest), closest, torch.full_like(closest, float("nan")))
+    live_count = live.float().sum(-1).clamp(min=1)
+    out["intimate_violation_rate"] = ((nearest < INTIMATE_DISTANCE) & live).float().sum(-1) / live_count
+    out["personal_violation_rate"] = ((nearest < PERSONAL_DISTANCE) & live).float().sum(-1) / live_count
+
+    v = run.robot_v
+    was_moving = v[:, :-1] > 0.1
+    now_stopped = v[:, 1:] < 0.05
+    out["stops"] = (was_moving & now_stopped & live[:, 1:]).float().sum(-1)
+    out["emergency_stops"] = (run.emergency & live).float().sum(-1)
+    dv = (run.command[:, 1:, 0] - run.command[:, :-1, 0]).abs() / run.dt
+    dw = (run.command[:, 1:, 1] - run.command[:, :-1, 1]).abs() / run.dt
+    count = moving_steps.sum(-1).clamp(min=1)
+    out["command_smoothness"] = ((dv + dw) * moving_steps).sum(-1) / count
+    accel = (v[:, 1:] - v[:, :-1]) / run.dt
+    jerk = (accel[:, 1:] - accel[:, :-1]).abs() / run.dt
+    out["jerk"] = (jerk * live[:, 2:].float()).sum(-1) / live[:, 2:].float().sum(-1).clamp(min=1)
+    return out
+
+
+def disruption_metrics(run: Rollout, counterfactual: Rollout, batch: ScenarioBatch,
+                       affected_threshold: float = 0.3, local_radius: float = 3.0) -> dict[str, torch.Tensor]:
+    both = run.ped_active & counterfactual.ped_active                             # [B, P, K]
+    displacement = torch.linalg.norm(run.ped_pos - counterfactual.ped_pos, dim=-1) * both
+    seen = (run.ped_active | counterfactual.ped_active).any(-1) & batch.ped_mask   # [B, P]
+    n = seen.float().sum(-1).clamp(min=1)
+    per_ped_mean = displacement.sum(-1) / both.float().sum(-1).clamp(min=1)
+    per_ped_max = displacement.amax(-1)
+    vel = (run.ped_pos[:, :, 1:] - run.ped_pos[:, :, :-1]) / run.dt
+    vel_cf = (counterfactual.ped_pos[:, :, 1:] - counterfactual.ped_pos[:, :, :-1]) / run.dt
+    both_v = both[:, :, 1:] & both[:, :, :-1]
+    velocity_deviation = (torch.linalg.norm(vel - vel_cf, dim=-1) * both_v).sum(-1) * run.dt
+    delay = (run.ped_active.float().sum(-1) - counterfactual.ped_active.float().sum(-1)).clamp(min=0) * run.dt
+    reference = torch.linalg.norm(run.ped_pos - batch.ped_ref[:, :, : run.steps], dim=-1)
+    ref_valid = run.ped_active & batch.ped_valid[:, :, : run.steps]
+    reference_deviation = (reference * ref_valid).sum(-1) / ref_valid.float().sum(-1).clamp(min=1)
+    mean = lambda value: (value * seen).sum(-1) / n
+    # Displacement only while the pedestrian is within ``local_radius`` of the robot. Learned
+    # closed-loop crowds (stars_crowd) amplify any perturbation everywhere over time, so the
+    # global displacement there mostly measures that divergence rather than the robot's influence.
+    near = torch.linalg.norm(run.ped_pos - run.robot_pose[:, None, :, :2], dim=-1) < local_radius
+    local = both & near
+    local_mean = (displacement * local).sum(-1) / local.float().sum(-1).clamp(min=1)
+    ever_near = local.any(-1) & seen
+    return {
+        "disruption_local": (local_mean * ever_near).sum(-1) / ever_near.float().sum(-1).clamp(min=1),
+        "disruption_displacement": mean(per_ped_mean),
+        "disruption_max_displacement": (per_ped_max * seen).amax(-1),
+        "velocity_deviation": mean(velocity_deviation),
+        "ped_delay": mean(delay),
+        "peds_affected": ((per_ped_max > affected_threshold) & seen).float().sum(-1),
+        "reference_deviation": mean(reference_deviation),
+    }
+
+
+def influence_metrics(run: Rollout, batch: ScenarioBatch, threshold: float = 0.05) -> dict[str, torch.Tensor]:
+    """Robot-attributable change of learned-crowd forecasts (``stars_crowd``): per re-forecast, the
+    mean distance between the 4.8 s forecasts with and without the robot in the graph. Immune to
+    the closed-loop divergence that makes trajectory counterfactuals meaningless for learned crowds."""
+    value = run.ped_influence                                                    # [B, P, K], 0 between re-forecasts
+    record = value > 0
+    seen = run.ped_active.any(-1) & batch.ped_mask
+    per_ped = value.sum(-1) / record.float().sum(-1).clamp(min=1)                # mean over re-forecasts
+    n = seen.float().sum(-1).clamp(min=1)
+    return {"robot_influence": (per_ped * seen).sum(-1) / n,
+            "robot_influence_max": (value.amax(-1) * seen).amax(-1),
+            "peds_influenced": ((value.amax(-1) > threshold) & seen).float().sum(-1)}
+
+
+def all_metrics(run: Rollout, counterfactual: Rollout | None, batch: ScenarioBatch, robot_radius: float,
+                max_speed: float = 1.0) -> dict:
+    out = robot_metrics(run, batch, robot_radius, max_speed)
+    if run.ped_influence is not None:
+        out.update(influence_metrics(run, batch))
+    if counterfactual is not None:
+        out.update(disruption_metrics(run, counterfactual, batch))
+    return out
+
+
+def summarize(metrics: dict[str, torch.Tensor], mask: torch.Tensor | None = None) -> dict[str, float]:
+    """Mean of every metric over environments (NaN-aware, e.g. time_to_goal over successes)."""
+    out = {}
+    for key, value in metrics.items():
+        v = value if mask is None else value[mask]
+        finite = ~torch.isnan(v)
+        out[key] = float(v[finite].mean()) if bool(finite.any()) else float("nan")
+    return out

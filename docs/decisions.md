@@ -53,9 +53,9 @@ why, and how to undo it.
     reruns passed. Not yet identified; watch for it.
 
 14. **Pushing**: the scaling work goes to `main` of `stars_steps_extension` once optimisations
-    are in; later work (Optuna search, SEAN-JAX simulator) continues on a new branch.
+    are in; later work (Optuna search, SimpleNavSim simulator) continues on a new branch.
 
-15. **SEAN-JAX simulator lives in this repository** (a `seanjax/` package next to `src/`), because
+15. **SimpleNavSim simulator lives in this repository** (a `simplenavsim/` package next to `src/`), because
     it will use the trajectory forecaster for pedestrians and share the dataset loaders.
     Splitting it into its own repository later is straightforward.
 
@@ -77,10 +77,10 @@ why, and how to undo it.
 
 ## 2026-10-21 (continued): simulator and profiling
 
-16. **The simulator package is `seanjax`** (renamed from `sean3` as requested). Despite the name
-    it is implemented in PyTorch, which the specification allows ("PyTorch ... with JAX
-    optional"); a JAX port is not planned for now. Package: `src/seanjax/`; configs and scripts:
-    `seanjax/configs/`, `seanjax/scripts/`.
+16. **The simulator package** was first `sean3`, then `seanjax` as requested, and is now
+    `simplenavsim` (decision 94). It is implemented in PyTorch, which the specification allows
+    ("PyTorch ... with JAX optional"); a JAX port is not planned. Package: `src/simplenavsim/`; configs and scripts:
+    `simplenavsim/configs/`, `simplenavsim/scripts/`.
 
 17. **Isaac Sim / Isaac Lab (Phase 3) is high risk on this cluster.** Findings (survey of the
     official docs and package indexes):
@@ -125,7 +125,7 @@ why, and how to undo it.
 
 23. **CMA-ES objective weights** (success 1, collision 2, disruption 1, time 0.3, comfort 0.5;
     disruption = mean counterfactual displacement, comfort = personal-zone fraction) are a first
-    guess. Change them in `seanjax/configs/cmaes*.yaml`.
+    guess. Change them in `simplenavsim/configs/cmaes*.yaml`.
 
 24. **Profiling (job 65475)**: in closed-loop training, efficient-attention backward with dropout
     takes 28% of GPU time, bf16<->fp32 casts 22%, LayerNorm backward 12%, matmuls 12%.
@@ -222,8 +222,8 @@ why, and how to undo it.
     objective: scripted 0.547 vs v1 0.612; recorded 0.538 vs v1 0.521. v2 found a faster, more
     direct trade-off: time to goal 11.1 vs 14.5 s, disruption 0.185 vs 0.065 m. With the current
     objective weights the two are close. The best scripted policy stays
-    `checkpoints/seanjax/cmaes/best_policy.yaml` (v1); the best recorded-traffic policy is
-    `checkpoints/seanjax/cmaes_recorded_v2/best_policy.yaml`.
+    `checkpoints/simplenavsim/cmaes/best_policy.yaml` (v1); the best recorded-traffic policy is
+    `checkpoints/simplenavsim/cmaes_recorded_v2/best_policy.yaml`.
     - `evaluate.py` labelled policy files by file name only, so same-named files overwrote each
       other in comparisons. Now labelled `<folder>/<name>`.
 
@@ -275,7 +275,7 @@ why, and how to undo it.
 
     The two fast policies lose about 0.02. Their weights were tuned around constant velocity's
     errors. CMA-ES with the best forecaster in the loop (job 65618) tests whether re-tuning
-    recovers that. Tables: `runs/seanjax/paired/{constant_velocity,stars_best}/`.
+    recovers that. Tables: `runs/simplenavsim/paired/{constant_velocity,stars_best}/`.
 
 38. **Best forecaster so far: low-KL CVAE from scratch with the search settings**
     (`cvae_hpo0_scratch_full`). STEPS test, best of 20, versus constant velocity:
@@ -346,7 +346,7 @@ why, and how to undo it.
     unchanged.
 
 43. **Controller fix: the tuned policy drove in loops instead of waiting.** The side-by-side
-    figure (`seanjax/scripts/compare_policies.py`, `docs/results/navigation_compare_stars.png`)
+    figure (`simplenavsim/scripts/compare_policies.py`, `docs/results/navigation_compare_stars.png`)
     showed the v1-tuned policy orbiting in `dense_flow` and `narrow_passage`. Three causes:
     - The speed-tracking cost penalised slowing down.
     - The tuned weights (pedestrian 17.4, goal 0.76) made circling cheaper than waiting.
@@ -400,7 +400,7 @@ why, and how to undo it.
     - The robot is added to the graph as one more person (STEPS has no robot). Pedestrians cannot
       interpenetrate it.
 
-    Tested (`tests/test_seanjax.py`). Limitations:
+    Tested (`tests/test_simplenavsim.py`). Limitations:
     - Pedestrians ignore walls: the forecaster has no map, and recorded scenes have only an
       artificial arena.
     - Long rollouts make smooth sweeping arcs that drift from the recorded paths (mean deviation
@@ -467,7 +467,7 @@ why, and how to undo it.
 
     v2 is more efficient and smoother than v1 but less cautious; which is preferable depends on
     the objective weights, which remain a research choice. Recommended:
-    `checkpoints/seanjax/cmaes_stars_best_warm_v2/best_policy.yaml` for objective v2, v1 for
+    `checkpoints/simplenavsim/cmaes_stars_best_warm_v2/best_policy.yaml` for objective v2, v1 for
     minimum disruption.
 
     Side fix: the social-force sidestep now applies only to walking pedestrians. Standing-group
@@ -552,7 +552,7 @@ why, and how to undo it.
 
 56. **After the fixes in 55, tuning inside the STARS crowd pays off.** Re-evaluated on 90 test
     scenarios (80 scripted + 10 recorded STEPS scenes) with `stars_crowd` pedestrians
-    (`runs/seanjax/crowd_v2`), the crowd-tuned policy re-tuned on the corrected crowd is now best:
+    (`runs/simplenavsim/crowd_v2`), the crowd-tuned policy re-tuned on the corrected crowd is now best:
 
     | Policy | Objective | Success | Collision | Path eff. | Recorded success / objective |
     | --- | --- | --- | --- | --- | --- |
@@ -580,7 +580,7 @@ why, and how to undo it.
     finishes first is reported.
 
 58. **Crowd tuning v2: intimate-zone comfort term, larger validation set.** Two problems showed up
-    in the first crowd-tuning run (`checkpoints/seanjax/cmaes_crowd/convergence.png`):
+    in the first crowd-tuning run (`checkpoints/simplenavsim/cmaes_crowd/convergence.png`):
     - **The comfort term does not separate policies.** In the test set, the fraction of time a
       pedestrian is within 1.2 m is 0.35-0.40 for every policy, goal-seeking included, because
       dense scenes make that unavoidable. CMA-ES therefore drove `personal_space_radius` to its
@@ -653,10 +653,10 @@ why, and how to undo it.
     restarted with fewer epochs, because that would change the cosine schedule mid-experiment.
     Instead they are resumed with `--resume` after the timeout; `latest.pt` is saved every epoch.
     The crowd v2 test evaluation and figures are queued behind the tuning job (dependency on
-    65742) and written to `runs/seanjax/crowd_v3/` and `docs/results/navigation_compare_crowd_v3.png`.
+    65742) and written to `runs/simplenavsim/crowd_v3/` and `docs/results/navigation_compare_crowd_v3.png`.
 
 64. **Crowd tuning v2 results, and a wall bug in the STARS crowd.**
-    Test results under the v2 objective (intimate-zone comfort), from `runs/seanjax/crowd_v3`:
+    Test results under the v2 objective (intimate-zone comfort), from `runs/simplenavsim/crowd_v3`:
 
     | Policy | Objective | Success | Collision | Intimate-zone rate | Min gap (m) | Recorded success |
     | --- | --- | --- | --- | --- | --- | --- |
@@ -682,11 +682,11 @@ why, and how to undo it.
       not a physical wall (recorded people cross it), so it is exempt
       (`Scenario.meta["pedestrian_walls"] = False`, `ScenarioBatch.ped_walls`).
     - All STARS-crowd numbers above were simulated with the bug, in the scenes that have walls.
-      They are re-evaluated in the fixed crowd as `runs/seanjax/crowd_v4`, and the v2 tuning is
+      They are re-evaluated in the fixed crowd as `runs/simplenavsim/crowd_v4`, and the v2 tuning is
       rerun there, warm-started from `cmaes_crowd_v2`.
 
 65. **Wall-respecting crowd: re-evaluation, and unstable exec-1 closed-loop training.**
-    - **Navigation** (`runs/seanjax/crowd_v4`, 270 test scenarios, 30 per kind, objective of 58):
+    - **Navigation** (`runs/simplenavsim/crowd_v4`, 270 test scenarios, 30 per kind, objective of 58):
 
       | Policy | Objective | Success | Collision | Intimate-zone rate | Min gap (m) | Recorded success (30) |
       | --- | --- | --- | --- | --- | --- | --- |
@@ -723,7 +723,7 @@ why, and how to undo it.
     `turn_penalty` to 0. New controller option `retreat_along_path` (default off, so earlier
     results are unchanged) charges retreat at the worst point along the plan. Job `cma_noloop`:
     - evaluates `cmaes_crowd_v2` with the option on and no re-tuning
-      (`runs/seanjax/crowd_v4_noloop`), to compare against its 0.303 in 65;
+      (`runs/simplenavsim/crowd_v4_noloop`), to compare against its 0.303 in 65;
     - re-tunes from it with the option on (`cmaes_crowd_v3_noloop.yaml`).
 
     The option becomes the default if it removes the loops without lowering the objective.
@@ -740,7 +740,7 @@ why, and how to undo it.
     the ranking.
 
 68. **Why tuned policies circle: they choose to, standing still is allowed.**
-    `seanjax/scripts/diagnose_waiting.py` (`runs/seanjax/diagnose_waiting/`, 20 test scenes per
+    `simplenavsim/scripts/diagnose_waiting.py` (`runs/simplenavsim/diagnose_waiting/`, 20 test scenes per
     kind) logs whether the stop command `(v=0, w=0)` passed the hard safety check at each step.
     - Stopping is allowed 91-99% of the time for every policy, so the circling is not forced
       evasion. (A first run reported 100% "ruled out": the turn-rate grid's middle value is
@@ -754,10 +754,10 @@ why, and how to undo it.
       blocking pedestrian is more than about 1 m away, while an arc with no net progress costs
       little.
     - Job 65801 tests the same policy, without re-tuning, at `speed_cost` 0.2 and 0.0, with the
-      waiting diagnostic and a figure (`runs/seanjax/crowd_v4_speed*`). The goal term already
+      waiting diagnostic and a figure (`runs/simplenavsim/crowd_v4_speed*`). The goal term already
       rewards progress, so a lower speed cost should not slow free-space driving much.
 
-69. **The speed cost is not the cause of circling** (job 65801, `runs/seanjax/crowd_v4_speed*`).
+69. **The speed cost is not the cause of circling** (job 65801, `runs/simplenavsim/crowd_v4_speed*`).
     `cmaes_crowd_v2` without re-tuning:
 
     | `speed_cost` | Objective | Success | Dense-flow path eff. | Recorded success | Turning while stop allowed (dense flow) |
@@ -788,7 +788,7 @@ why, and how to undo it.
     - **New objective term:** `circling`, weight 0.2 per loop in `cmaes_crowd_v4.yaml`.
     - **Job `cma_crowd4`:** three seeds (42, 7, 3), warm-started from `cmaes_crowd_v2`. The test
       evaluation and figures under the v4 objective are queued behind it
-      (`runs/seanjax/crowd_v6`, `docs/results/navigation_compare_crowd_v6.png`). The v4
+      (`runs/simplenavsim/crowd_v6`, `docs/results/navigation_compare_crowd_v6.png`). The v4
       objective differs from v3's, so all policies are re-scored under it there.
 
 71. **Annealing alone barely helps** (`cvae_hpo53_all_anneal`, test split, against
@@ -807,7 +807,7 @@ why, and how to undo it.
     The early-stopped model was nearly converged. `cvae_hpo53_scratch_all` stays the
     all-dataset reference unless the exec-4 fine-tune (65775) does better in closed loop.
 
-72. **Re-tuning in the wall-respecting crowd** (`runs/seanjax/crowd_v5`, 270 test scenes, objective
+72. **Re-tuning in the wall-respecting crowd** (`runs/simplenavsim/crowd_v5`, 270 test scenes, objective
     of 58):
 
     | Policy | Objective | Success | Collision | Intimate-zone rate | Path eff. | Loops / episode | Recorded success |
@@ -858,8 +858,8 @@ why, and how to undo it.
       they were stopped by hand (65) and are not resumable results.
 
 75. **Crowd v4 (tuned waiting costs, loop penalty) is the new reference policy**
-    (`checkpoints/seanjax/cmaes_crowd_v4/best_policy.yaml`).
-    270 test scenes under the v4 objective, which charges 0.2 per loop (`runs/seanjax/crowd_v6`
+    (`checkpoints/simplenavsim/cmaes_crowd_v4/best_policy.yaml`).
+    270 test scenes under the v4 objective, which charges 0.2 per loop (`runs/simplenavsim/crowd_v6`
     and `crowd_v6_vs_v3`):
 
     | Policy | Objective | Success | Collision | Intimate-zone rate | Path eff. | Loops / episode | Recorded success (30) |
@@ -889,17 +889,17 @@ why, and how to undo it.
     bound is now 20 and two seeds re-tune from v4 (`cmaes_crowd_v5.yaml`, job 65938). Existing
     policies are unaffected; their values lie inside the new range. The same job renders v4
     rollout GIFs (four recorded scenes plus dense flow, narrow passage and group) to
-    `runs/seanjax/crowd_v6/visualize/`.
+    `runs/simplenavsim/crowd_v6/visualize/`.
     The single-dataset job (74) was lost to a node failure (`NODE_FAIL`, job 65888). UCY, ETH and
     Madras had finished. PTDPES resumes from `latest.pt` (epoch 14) and the Grand Central test
     evaluation is rerun (job 65932).
     Update: job 65938 was also lost to `NODE_FAIL` at generation 88-89. Both v5 searches were
     resumed from `checkpoint.pkl` (job 65986). The test evaluation and comparison figure
-    (`runs/seanjax/crowd_v7`, `docs/results/navigation_compare_crowd_v7.png`) are queued with
+    (`runs/simplenavsim/crowd_v7`, `docs/results/navigation_compare_crowd_v7.png`) are queued with
     `afterok` (job 65987). Node failures are recurring, so every long job here keeps
     resumable checkpoints.
 
-77. **Crowd v5 does not beat v4; v4 stays the reference.** Test results (`runs/seanjax/crowd_v7`,
+77. **Crowd v5 does not beat v4; v4 stays the reference.** Test results (`runs/simplenavsim/crowd_v7`,
     v4 objective):
 
     | Policy | Objective | Success | Collision | Intimate-zone rate | Loops / episode (dense flow) | Recorded success |
@@ -925,22 +925,22 @@ why, and how to undo it.
     Turning stays free when it buys progress, and waiting (v = 0, w ~ 0) becomes the cheaper
     option when the way is blocked. Job 66008:
     - v4 with `idle_turn_weight = 1` and no re-tuning, on the test set
-      (`runs/seanjax/crowd_v8_idle1_untuned`), to see the term's direct effect;
+      (`runs/simplenavsim/crowd_v8_idle1_untuned`), to see the term's direct effect;
     - three CMA-ES runs with the term free (`cmaes_crowd_v6.yaml`): from v4 with seeds 42 and 7,
       and from v4 with the term at 1.
     **Update: first form rejected.** The first version charged
     `idle * |w|`, any turning on arcs without progress. On v4 with weight 1 and no re-tuning it
     made loops worse: 0.51 per episode against 0.08, objective -0.145 against 0.380
-    (`runs/seanjax/crowd_v8_idle_turn_all_untuned`). It also charges the turn back toward the
+    (`runs/simplenavsim/crowd_v8_idle_turn_all_untuned`). It also charges the turn back toward the
     goal, which a robot facing away needs, so it blocked recovery and produced wider loops. The
     tuning job was cancelled. The term now charges only the loss of goal alignment on arcs without
     progress: `idle * relu(alignment_now - alignment_end) / 2`. Turning back toward the goal is
     free. The untuned effect at weights 1 and 3 is checked first (job 66013,
-    `runs/seanjax/crowd_v8_idle{1,3}`), before any re-tuning.
+    `runs/simplenavsim/crowd_v8_idle{1,3}`), before any re-tuning.
 
 79. **The idle-turn term does not help; navigation controller work stops here.** Revised term
     (charging only turning away from the goal without progress) on v4 without re-tuning
-    (`runs/seanjax/crowd_v8_idle{1,3}`):
+    (`runs/simplenavsim/crowd_v8_idle{1,3}`):
 
     | `idle_turn_weight` | Objective | Success | Loops (dense flow) | Recorded success |
     | --- | --- | --- | --- | --- |
@@ -959,7 +959,7 @@ why, and how to undo it.
       Removing them needs a controller with memory, for example committing to a passing side for
       a few seconds. That is a new controller, not a cost term, and it is left as a recorded
       next step rather than started.
-    - **Reference policy:** `checkpoints/seanjax/cmaes_crowd_v4/best_policy.yaml`.
+    - **Reference policy:** `checkpoints/simplenavsim/cmaes_crowd_v4/best_policy.yaml`.
 
 80. **One model per dataset vs one model for all** (`docs/results/stars_ma_single_vs_all.png`).
     Same recipe (trial 53) for every model; test split, best-of-20:
@@ -990,7 +990,7 @@ why, and how to undo it.
     default 0, so existing policies are unchanged). The memory resets at the start of every
     rollout. The aim is to stop successive plans from alternating sides, which is how a dense-flow
     loop forms. Job 66087:
-    - v4 with the weight at 0.5 and at 2, no re-tuning (`runs/seanjax/crowd_v9_commit*`), plus
+    - v4 with the weight at 0.5 and at 2, no re-tuning (`runs/simplenavsim/crowd_v9_commit*`), plus
       the waiting diagnostic at 2;
     - two CMA-ES runs with the weight free (`cmaes_crowd_v7.yaml`, seeds 42 and 7, starting from
       v4 with the weight at 0.5).
@@ -998,7 +998,7 @@ why, and how to undo it.
     Tuning runs alongside the untuned check this time because both fit on one node. If the
     untuned check is clearly harmful, the tuning result is not used.
     **Result: no gain, and the design was wrong.** On v4 without re-tuning
-    (`runs/seanjax/crowd_v9_commit*`):
+    (`runs/simplenavsim/crowd_v9_commit*`):
 
     | `side_commit_weight` | Objective | Collision | Loops (dense flow / narrow) |
     | --- | --- | --- | --- |
@@ -1013,7 +1013,7 @@ why, and how to undo it.
     v7 tuning runs already in flight are allowed to finish but are not expected to help.
     A pass-side memory is the corrected design. It needs the controller to identify the blocking
     pedestrian, which is a larger change, so it is recorded here and not started without review.
-    **Tuning closes it out** (`runs/seanjax/crowd_v9`, 270 test scenes). CMA-ES drove
+    **Tuning closes it out** (`runs/simplenavsim/crowd_v9`, 270 test scenes). CMA-ES drove
     `side_commit_weight` to 0 (seed 42) and 0.02 (seed 7). The tuned policies score 0.320 and
     0.327 against v4's 0.375 in the same run. They loop a little less (0.05-0.07) but collide
     2-2.5x more (2.2-2.6% against 1.1%), the same trade-off as v5 seed 7 in 77. v4 stays the
@@ -1031,21 +1031,21 @@ why, and how to undo it.
 
     Unlike 81, continuing to turn is free, and only switching sides around the same person is
     charged. Job `eval_pass` runs v4 with the weight at 1 and at 3, no re-tuning
-    (`runs/seanjax/crowd_v10_pass*`), plus the waiting diagnostic and a comparison figure at 3.
+    (`runs/simplenavsim/crowd_v10_pass*`), plus the waiting diagnostic and a comparison figure at 3.
 
     **Seed replicates** (job 66145). The all-dataset model's lead over single-dataset models is
     1-3% on STEPS, PTDPES, Madras and Grand Central (80), and seed noise has only been measured on
     STEPS. Two more seeds of `cvae_hpo53_scratch_all`, plus one more each of the PTDPES and Grand
     Central single-dataset models, put error bars on those gaps.
     **Result: no effect.** v4 with `pass_side_weight` 1 and 3, no re-tuning
-    (`runs/seanjax/crowd_v10_pass*`): objective 0.352 and 0.349 against 0.367 in the same run;
+    (`runs/simplenavsim/crowd_v10_pass*`): objective 0.352 and 0.349 against 0.367 in the same run;
     loops 0.08 for all three; collisions unchanged. The comparison figure shows paths identical
     to v4. Not tuned. The parameter stays at its default 0.
 
 83. **Per-episode outcomes depend on batch composition; aggregates are stable.** v4 collided on
-    the seed-0 `dense_flow` and `narrow_passage` scenes in `runs/seanjax/crowd_v10_pass3/compare.png`.
+    the seed-0 `dense_flow` and `narrow_passage` scenes in `runs/simplenavsim/crowd_v10_pass3/compare.png`.
     In `navigation_compare_crowd_v6.png` it reached the goal on the same scenes. Checks
-    (`runs/seanjax/repro/`):
+    (`runs/simplenavsim/repro/`):
     - Two runs of the same three-scene figure on the current code agree (dense-flow collision at
       14.8 s against 14.6 s; narrow-passage collision at 6.9 s in both).
     - The full 270-scene test evaluation on the current code gives 0.387 objective, 98.5%
@@ -1164,9 +1164,9 @@ why, and how to undo it.
       range; `docs/results/stars_ma_all_test.png` shows the new reference model.
     - **STEPS simulator model unchanged** (`cvae_kl01_finetune`, 0.080 ADE, with 20 s rollouts
       validated for realism). The pooled model is level with it on STEPS (0.079), but its
-      simulation realism has not been checked, so it does not replace it in SEAN-JAX.
+      simulation realism has not been checked, so it does not replace it in SimpleNavSim.
 
-87. **The pooled forecaster is as realistic in simulation; testing it as the SEAN-JAX crowd.**
+87. **The pooled forecaster is as realistic in simulation; testing it as the SimpleNavSim crowd.**
     20 s STEPS test rollouts of `cvae_all_lr3e-4_seed42` against `cvae_kl01_finetune`:
     - mean speed 0.116 against 0.115 m/s (smoothed real 0.115);
     - speed Wasserstein to smoothed real 0.060 against 0.059;
@@ -1184,7 +1184,7 @@ why, and how to undo it.
     If v4 scores the same, the pooled model becomes the simulator default, so one model serves
     forecasting on every dataset and the crowd.
     **Result: the pooled crowd reacts about 3x less to the robot; the STEPS crowd stays the default.**
-    v4 on 270 test scenes (`runs/seanjax/crowd_{steps_ref,pooled,pooledcrowd}`):
+    v4 on 270 test scenes (`runs/simplenavsim/crowd_{steps_ref,pooled,pooledcrowd}`):
 
     | v4 | STEPS crowd + predictor | Pooled crowd + predictor | Pooled crowd, STEPS predictor |
     | --- | --- | --- | --- |
@@ -1201,7 +1201,7 @@ why, and how to undo it.
       comparable across crowds; behaviour metrics are.
     - v4 transfers to the pooled crowd without re-tuning (97% success, 0.4% collisions). That is
       useful robustness evidence.
-    - **Decision.** The STEPS crowd stays the SEAN-JAX default. v4 was tuned in it, its realism was
+    - **Decision.** The STEPS crowd stays the SimpleNavSim default. v4 was tuned in it, its realism was
       validated (48), and it is the more responsive, harder crowd. Neither model has seen a robot (the
       data has none), so which reaction strength is right is not something these data can settle.
       The pooled configs stay as a robustness check: `cmaes_crowd_v4_pooled.yaml` and
@@ -1213,14 +1213,14 @@ why, and how to undo it.
     - Job `cma_pooled` tunes in the pooled crowd (`cmaes_crowd_v4_pooled.yaml`), warm-started from
       v4, seeds 42 and 7.
     - Job `eval_cross` then evaluates both new policies and v4 in both crowds on the 270 test
-      scenes (`runs/seanjax/cross_{steps,pooled}`).
+      scenes (`runs/simplenavsim/cross_{steps,pooled}`).
     - **Selection rule:** the reference is the policy with the best *worse* result of the two
       crowds. The comparison uses behaviour metrics (success, collision, intimate-zone time,
       recorded success, loops) and each crowd's own objective, never objectives across crowds.
       v4 stays the reference unless a new policy is at least as good in the STEPS crowd and better
       in the pooled one.
     **Result: v4 stays the reference; tuning in the less reactive crowd makes policies aggressive.**
-    (`runs/seanjax/cross_{steps,pooled}`, 270 test scenes each.)
+    (`runs/simplenavsim/cross_{steps,pooled}`, 270 test scenes each.)
 
     | Policy | STEPS crowd: success / collision / < 0.45 m / recorded / objective | Pooled crowd: success / collision / < 0.45 m / recorded / objective |
     | --- | --- | --- |
@@ -1250,8 +1250,8 @@ why, and how to undo it.
       straight plan at full speed would cover. That rewards arriving sooner.
     - **Job 66878:**
       - v4 with the option on and no re-tuning, plus the waiting diagnostic and a dense-flow GIF
-        (`runs/seanjax/meanprog_untuned`);
-      - a re-tune from v4 with it on (`checkpoints/seanjax/cmaes_crowd_meanprog`).
+        (`runs/simplenavsim/meanprog_untuned`);
+      - a re-tune from v4 with it on (`checkpoints/simplenavsim/cmaes_crowd_meanprog`).
     - Unlike 78-82, this changes how the goal term is computed rather than adding a penalty; the
       untuned check comes first.
     **Result: not adopted; the controller-tweak line of work ends here.** 270 test scenes, same
@@ -1288,9 +1288,9 @@ why, and how to undo it.
     - Candidates double (132 instead of 66), so compute roughly doubles. That is the reason for
       this design over a full grid of command pairs (about 4,000 candidates).
     - **Job `twostage`:**
-      - v4 untuned with the option (`runs/seanjax/twostage_untuned`, with the waiting
+      - v4 untuned with the option (`runs/simplenavsim/twostage_untuned`, with the waiting
         diagnostic and a dense-flow GIF);
-      - two re-tunes, seeds 42 and 7 (`checkpoints/seanjax/cmaes_crowd_twostage*`).
+      - two re-tunes, seeds 42 and 7 (`checkpoints/simplenavsim/cmaes_crowd_twostage*`).
 
       The time limit is 4 h, after 89's 1 h limit cut a job short.
     - **Judged on the `loops` metric,** not net turning (89), alongside success, collisions,
@@ -1299,15 +1299,15 @@ why, and how to undo it.
     meant any first move, spinning in place included, was "rescued" by stage 2. All staged plans
     then scored nearly alike, and the robot executed whatever first command won by a hair. v4
     untuned: 42% success and 2.20 loops per episode, against 98.5% and 0.08
-    (`runs/seanjax/twostage_untuned_v1`). The re-tunes were cancelled. Revised: only *waiting*
+    (`runs/simplenavsim/twostage_untuned_v1`). The re-tunes were cancelled. Revised: only *waiting*
     gets a second stage, one wait-then-go candidate per hold time in `stage1_times` (0.5, 1.0,
     1.5 s), so there are 69 candidates instead of 66. The untuned check comes first this time.
     **Revised form, untuned: no effect.** v4 with wait-then-go candidates scores the same as v4:
     0.381 against 0.387, success 98.1%, collisions 0.7%, loops 0.08 (0.17 in dense flow). The three
     new candidates are essentially never chosen: with v4's weights, an arc round the flow still
     scores better than waiting and then going. A re-tune (two seeds, job `twostage_tune`) can
-    rebalance that; its test evaluation is queued behind it (`runs/seanjax/twostage_tuned`).
-    **Re-tuned: no gain; closed.** 270 test scenes (`runs/seanjax/twostage_tuned`):
+    rebalance that; its test evaluation is queued behind it (`runs/simplenavsim/twostage_tuned`).
+    **Re-tuned: no gain; closed.** 270 test scenes (`runs/simplenavsim/twostage_tuned`):
     - v4: 0.367 objective, 97.8% success, 1.1% collisions, 2.6% intimate, 0.08 loops (0.16 dense flow).
     - Wait-then-go re-tune, seed 7: the same metrics, 0.12 dense-flow loops. Its search essentially
       kept v4's weights, and the difference is within noise.
@@ -1322,7 +1322,7 @@ why, and how to undo it.
     dense-flow loops look like a limit of re-planned one-step scoring. A learned policy can
     represent context-dependent behaviour, such as holding still while a cross flow passes, which
     a per-step cost rule cannot.
-    - **Policy** (`seanjax/policies/learned.py`): an MLP with inputs 64 -> 64 -> 64 -> 2 (8.4k
+    - **Policy** (`simplenavsim/policies/learned.py`): an MLP with inputs 64 -> 64 -> 64 -> 2 (8.4k
       weights), outputs squashed to the robot's limits. Inputs, in the robot frame:
       - the goal;
       - the robot's own motion;
@@ -1334,12 +1334,12 @@ why, and how to undo it.
       weight vector per environment. It loads in `build()` from
       `{policy: learned, weights: <.npy>}`, so `evaluate.py`, `compare_policies.py` and
       `visualize_rollout.py` work unchanged.
-    - **Training** (`seanjax/scripts/train_learned.py`):
+    - **Training** (`simplenavsim/scripts/train_learned.py`):
       1. behaviour cloning from v4 on 40 training scenes per kind (disjoint seeds), by MSE;
       2. OpenAI-ES: 48 antithetic perturbations, sigma 0.02, centred ranks, Adam lr 0.01,
          6 fresh training scenes per kind per generation, 300 generations. The objective is v4's
          (`cmaes_crowd_v4.yaml`), the validation set is fixed, and the best checkpoint is kept.
-    - **Job `learned`:** seeds 0 and 1 (`checkpoints/seanjax/learned_v1*`). Afterwards: the
+    - **Job `learned`:** seeds 0 and 1 (`checkpoints/simplenavsim/learned_v1*`). Afterwards: the
       270-scene test against v4, cross-crowd robustness (88), and loops in dense flow. It is
       adopted only if it beats v4 on the decision-88 worst-case rule.
     - Tested: a CPU smoke run of the whole pipeline; evaluate and visualise with a learned policy;
@@ -1351,7 +1351,7 @@ why, and how to undo it.
     instead picks another safe command. New `shield_fallback`: an unsafe command is replaced by
     the nearest safe command on a 7 x 11 `(v, w)` grid, checked against the pedestrian forecast
     and walls over 1 s, and the robot stops only if none is safe (tested). Job `learned2` trains
-    with it from the same BC weights (`checkpoints/seanjax/learned_v2*`). Job `learned` keeps
+    with it from the same BC weights (`checkpoints/simplenavsim/learned_v2*`). Job `learned` keeps
     running as the stop-only comparison.
     **Progress at about generation 40-80.**
     - Stop-only shield (`learned_v1`): it plateaus at validation -0.5 with 75% success and 10-15%
@@ -1360,7 +1360,7 @@ why, and how to undo it.
       collisions and 0.19-0.23 loops. Far better, but still well short of v4 (about 0.39, 99%
       success, 1% collisions).
     - **Next:** ES with 48 perturbations is noisy for 8.4k weights. Job `learned3` uses 96 (same BC
-      start, fallback shield, seeds 0 and 1, `checkpoints/seanjax/learned_v3*`), alongside v2.
+      start, fallback shield, seeds 0 and 1, `checkpoints/simplenavsim/learned_v3*`), alongside v2.
     **The steering network plateaus.** `learned_v2` holds at -0.08 to -0.22 validation from
     generation 40 to 90 (88-91% success, 6-10% collisions). `learned_v3` (population 96) reaches
     the same level faster but no higher. Both are far below v4 (about 0.39). v2 is cancelled; v3
@@ -1368,7 +1368,7 @@ why, and how to undo it.
 
 92. **Context-dependent controller settings instead of a steering network.** A network that
     steers has to relearn everything v4 already does well, above all keeping clear of people. New
-    `seanjax/policies/contextual.py`: the social controller still plans, with its hard safety
+    `simplenavsim/policies/contextual.py`: the social controller still plans, with its hard safety
     constraint, and a small MLP adjusts 10 of v4's tuned settings at every step from the
     observation. Inputs are 64 -> 32 -> 10, about 2.4k weights, and each setting moves at most
     ±0.5 of its CMA-ES range in unit scale. The tuned settings are:
@@ -1383,7 +1383,7 @@ why, and how to undo it.
     - `train_learned.py --kind contextual` writes
       `{policy: contextual, base: <v4 yaml>, weights: <.npy>}`, which `build()` loads.
     - **Job `contextual`:** ES with population 48 for 200 generations, sigma 0.02 and 0.05, seeds
-      0 and 1 (`checkpoints/seanjax/contextual_v1*`). Adopted only if it beats v4 on the
+      0 and 1 (`checkpoints/simplenavsim/contextual_v1*`). Adopted only if it beats v4 on the
       worst-case rule of 88.
     **First run: ES drifts away from v4 instead of improving.** Within 30 generations validation
     falls from 0.36-0.38 to 0.30-0.33, and collisions rise from 0 to 0.5-1.4%. The training-set
@@ -1391,7 +1391,7 @@ why, and how to undo it.
     v4 sits at an optimum of this very objective, so most perturbations of its settings hurt, and
     Adam at lr 0.01 moves every weight by about lr per step whatever the gradient's
     signal-to-noise. With noise-dominated ES gradients that is a random walk away from v4.
-    Restarted (job `contextual2`, `checkpoints/seanjax/contextual_v2*`):
+    Restarted (job `contextual2`, `checkpoints/simplenavsim/contextual_v2*`):
     - lr 0.002 (sigma 0.02) and lr 0.001 (sigma 0.05);
     - population 96 and 8 scenes per kind per generation, for less noisy gradients;
     - 150 generations.
@@ -1411,7 +1411,7 @@ why, and how to undo it.
       7-10% collisions, even with a fallback shield and population 96. It is far below v4.
     - Context-dependent settings around v4 (92) start at v4 but ES cannot find adjustments that
       beat it at this budget.
-    - v4 (`checkpoints/seanjax/cmaes_crowd_v4/best_policy.yaml`) remains the reference. On the
+    - v4 (`checkpoints/simplenavsim/cmaes_crowd_v4/best_policy.yaml`) remains the reference. On the
       evidence of 68-92 it is close to the best this controller and objective allow in the STARS
       crowd. Its remaining weakness, about 0.16 collision-free loops per dense-flow episode, is
       documented.
@@ -1456,3 +1456,31 @@ why, and how to undo it.
     - `atc_zeroshot`: the six-dataset reference on all seven test sets
       (`eval_test_all7_zeroshot.json`);
     - `fc_all7`: seven-dataset models, seeds 42 and 1, each followed by a seven-dataset test.
+
+## 2026-10-27: SimpleNavSim, denser arcs, time-to-goal term
+
+94. **Renamed to SimpleNavSim; denser arcs; a light time-to-goal term (requested).**
+    - **Rename.** `seanjax` is now `simplenavsim`: the package `src/simplenavsim/`, the configs
+      and scripts in `simplenavsim/`, the tests and the local outputs (`checkpoints/simplenavsim/`,
+      `runs/simplenavsim/`). The simulator is new code that used SEAN 2.0 only as a reference for
+      behaviours and metric definitions, so the name no longer suggests it is a SEAN version.
+      Earlier entries below use the new name.
+    - **Arcs.** The controller scored 7 speeds (including slow reverse) × 11 turn rates = 77
+      constant `(v, w)` arcs. The 0.3 rad/s turn-rate step allows no gentle corrections, so
+      the robot alternated between coarse turns. The default is now 11 speeds × 31 turn rates
+      (0.1 m/s, 0.1 rad/s) plus reverse = 372 arcs (`policy_stars_dense.yaml`). The configs of v1-v7
+      keep the 6 × 11 grid so their results still reproduce.
+    - **Time-to-goal term.** The objective's `time` term charges episode time against the 30 s
+      limit: weight 0.3 means one extra second costs 0.01, below evaluation noise (0.02). New
+      metric `time_efficiency` = straight-line time at top speed / time to goal (0 on failure). New
+      objective term `time_to_goal` charges `1 - time_efficiency`. Even an empty-world drive scores
+      only about 0.75-0.8 (turning to face the goal, accelerating, slow final approach), so
+      differences between policies come from waiting, slow driving and detours. Weight 0.25:
+      light, as asked. A dense-flow run at 0.57 costs about 0.1 and a direct run about 0.05,
+      against 2 for a collision, so it cannot buy speed with safety.
+    - **Experiments** (`cmaes_crowd_v8.yaml` = v4 + dense grid + `time_to_goal: 0.25`; and
+      `cmaes_crowd_v8_coarse.yaml` = the same objective with the 6 × 11 grid), all on the 270
+      test scenes:
+      1. v4 as tuned (coarse grid), under the v8 objective;
+      2. v4 with the dense grid, untuned (the effect of the arcs alone);
+      3. CMA-ES v8 warm-started from v4, seeds 42 and 7, then tested.

@@ -6,7 +6,7 @@ Checkpoint: `experiments/stars_ma/runs/cvae_all_lr3e-4_seed42/checkpoints/best.p
 
 Reasoning: [`docs/decisions.md`](../decisions.md), entries 59, 84-86.
 
-One model for STEPS, PTDPES, Madras, Grand Central, UCY and ETH. The SEAN-JAX crowd and planner still use the STEPS-only `cvae_kl01_finetune` (decision 86).
+One model for STEPS, PTDPES, Madras, Grand Central, UCY and ETH. The SimpleNavSim crowd and planner still use the STEPS-only `cvae_kl01_finetune` (decision 86).
 
 ## Test results
 

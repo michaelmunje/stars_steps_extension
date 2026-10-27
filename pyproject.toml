@@ -89,7 +89,7 @@ py-modules = [
 
 [tool.setuptools.packages.find]
 where = ["src"]
-include = ["baselines*", "datasets_preprocessing*", "paper*", "scripts*", "seanjax*"]
+include = ["baselines*", "datasets_preprocessing*", "paper*", "scripts*", "simplenavsim*"]
 namespaces = true
 
 [tool.setuptools.package-data]

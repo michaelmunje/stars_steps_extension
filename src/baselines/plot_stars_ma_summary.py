@@ -5,7 +5,7 @@
         --output docs/results/stars_ma_all_test.png
 
 Bars: constant velocity (grey reference), STARS best-of-K, and STARS re-forecasting from its own
-predictions every model step (``closed_loop/exec_1``, the setting the SEAN-JAX crowd uses).
+predictions every model step (``closed_loop/exec_1``, the setting the SimpleNavSim crowd uses).
 Left panel agent ADE, right panel agent FDE (closed loop: ADE only, so the right panel has two).
 """
 from __future__ import annotations

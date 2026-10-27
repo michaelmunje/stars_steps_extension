@@ -1,7 +1,0 @@
-# Pedestrians driven by the multi-agent STARS forecaster (seanjax.pedestrians.stars_crowd).
-model: stars_crowd
-stars_crowd:
-  checkpoint: experiments/stars_ma/runs/cvae_kl01_finetune/checkpoints/best.pt
-  device: cuda
-  include_robot: true      # the robot is one more person in the forecaster's graph
-  seed: 0                  # per-pedestrian intent draws (shared by the robot-absent counterfactual)

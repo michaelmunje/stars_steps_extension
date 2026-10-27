@@ -1,6 +1,6 @@
 # Results overview
 
-Living summary of the multi-agent STARS forecaster and the SEAN-JAX navigation experiments. The
+Living summary of the multi-agent STARS forecaster and the SimpleNavSim navigation experiments. The
 numbers here are copied from the files linked below. The reasoning behind each choice is in
 [`../decisions.md`](../decisions.md); entry numbers are given in brackets.
 
@@ -11,9 +11,9 @@ numbers here are copied from the files linked below. The reasoning behind each c
 
 | Use | Artifact | Headline (test split) |
 | --- | --- | --- |
-| STEPS forecaster, and the SEAN-JAX crowd and predictor | `experiments/stars_ma/runs/cvae_kl01_finetune/checkpoints/best.pt` | ADE / FDE 0.080 / 0.126 (constant velocity 0.276 / 0.518); realistic 20 s rollouts [48] |
+| STEPS forecaster, and the SimpleNavSim crowd and predictor | `experiments/stars_ma/runs/cvae_kl01_finetune/checkpoints/best.pt` | ADE / FDE 0.080 / 0.126 (constant velocity 0.276 / 0.518); realistic 20 s rollouts [48] |
 | All-dataset forecaster | `experiments/stars_ma/runs/cvae_all_lr3e-4_seed42/checkpoints/best.pt` | 2-3.5x better than constant velocity on all six datasets. Better than or level with a per-dataset model on every dataset, robust across seeds (pooled LR 3e-4) [86] |
-| Navigation policy | `checkpoints/seanjax/cmaes_crowd_v4/best_policy.yaml` | In the STARS crowd: 99% success, 0.7% collisions, 100% on recorded STEPS scenes [75] |
+| Navigation policy | `checkpoints/simplenavsim/cmaes_crowd_v4/best_policy.yaml` | In the STARS crowd: 99% success, 0.7% collisions, 100% on recorded STEPS scenes [75] |
 
 Closed questions: pooled training beats per-dataset training once its LR is lowered to 3e-4 [86];
 hyperparameter search has converged [61, 62]; closed-loop training does not
@@ -78,7 +78,7 @@ analysis are in [`stars_ma_all_test.md`](stars_ma_all_test.md).
 ![One model per dataset vs one for all](stars_ma_single_vs_all.png)
 - Feeding back its own predictions every step costs little on STEPS but 14–20% elsewhere.
 
-## Navigation (SEAN-JAX lightweight backend, 80 scripted test scenarios)
+## Navigation (SimpleNavSim lightweight backend, 80 scripted test scenarios)
 
 Objective v1 = success − 2·collision − disruption − 0.3·time − 0.5·personal-zone rate.
 
@@ -88,7 +88,7 @@ Objective v1 = success − 2·collision − disruption − 0.3·time − 0.5·pe
 | --- | --- | --- |
 | Goal-seeking baseline | −0.572 (30% collisions) | — |
 | Social controller, default | 0.439 (2.5% collisions) | 0.536 (0 collisions) |
-| CMA-ES tuned v1 (`checkpoints/seanjax/cmaes/best_policy.yaml`) | 0.612 | **0.647** |
+| CMA-ES tuned v1 (`checkpoints/simplenavsim/cmaes/best_policy.yaml`) | 0.612 | **0.647** |
 
 **Robustness to the pedestrian model:** the v1 policy, tuned against reactive replay, has 0
 collisions and beats the default under ORCA, social force and replay pedestrians [29].
@@ -115,7 +115,7 @@ test, best STARS predictor:
 - [`navigation_compare_stars.png`](navigation_compare_stars.png): goal-seeking vs default vs tuned,
   five scenarios.
 - [`navigation_compare_warm.png`](navigation_compare_warm.png): the reward-hacking policy.
-- Per-run GIFs are under `runs/seanjax/*/visualize/` (not in git).
+- Per-run GIFs are under `runs/simplenavsim/*/visualize/` (not in git).
 
 ## Forecaster as the crowd
 

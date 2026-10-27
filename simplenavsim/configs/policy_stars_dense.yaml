@@ -1,0 +1,20 @@
+# Trajectory-scoring controller with the dense arc grid (decision 94): 11 speeds x 31 turn rates
+# (0.1 m/s, 0.1 rad/s steps) plus slow reverse, 372 arcs; otherwise as policy_stars_best.yaml.
+name: social             # social | goal_seeking
+controller:
+  num_speeds: 11
+  num_turn_rates: 31
+  plan_dt: 0.2
+  max_horizon: 4.0
+  safety_horizon: 1.0    # hard pedestrian-collision constraint window (s)
+  safety_margin: 0.05
+  obstacle_clearance: 0.6
+  speed_cost: 0.5        # fades out when a pedestrian is within 2x personal space
+  retreat_cost: 2.0      # penalty on moving away from the goal (wait instead of orbiting)
+  disruption_lookahead: 1.5
+parameters: {}           # overrides of the tunable defaults, e.g. {preferred_speed: 0.7}
+predictor:               # pedestrian forecasts used by the controller
+  type: stars              # multi-agent STARS forecaster
+  checkpoint: experiments/stars_ma/runs/cvae_kl01_finetune/checkpoints/best.pt
+  mode: mean             # CVAE prior mean: one most-likely joint future
+  predict_every: 2       # re-forecast every 0.2 s
