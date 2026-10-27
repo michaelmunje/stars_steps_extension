@@ -1524,3 +1524,28 @@ why, and how to undo it.
       replay and reactive_replay follow the recorded future, and social_force knows each track's
       endpoint. The STARS crowds know only the first 3.2 s, so the realism comparison is
       deliberately unequal.
+    **Results** (job 71961, `docs/results/crowd_conditions/`; 90 test scenes per cell):
+    - **As the robot's predictor, STARS does not measurably help tuned v4.** v4 with the STARS
+      predictor and v4 with constant velocity are within one episode of 90 in success and
+      collisions in every condition. Time near people (< 0.45 m) is within 0.004 and the
+      closest approach within 0.03 m. v4 was tuned *with* the STARS predictor, and its large
+      personal space and safety margin seem to make the predictor's extra accuracy redundant at
+      these scales. (With the untuned controller it helped, decision 37.)
+    - **The crowd model matters more than the predictor.** Goal-seeking success ranges from 31%
+      (replay: nobody yields) to 67% (social force: everybody yields). The untuned controller
+      reaches 91% in replay and in the reactive STARS crowd, but 100% under social force. Robot
+      influence on pedestrians: `disruption_local` is 0.02 m when the forecaster cannot see the
+      robot (stars_blind), against 0.45-0.58 m when it can (stars_reactive).
+    - **Crowd realism** (30 recorded STEPS test scenes, robot absent):
+      - **STARS crowds track real people best at 5 s.** Error is 0.19 m, against 0.37 m for
+        reactive replay, which follows the true path, and 0.66 m for social force, which knows
+        each endpoint.
+      - **At 10 s STARS falls behind reactive replay** (0.55 m against 0.43 m), though it still
+        beats social force (0.66 m).
+      - **STARS pedestrians are slow:** 0.084 m/s against a raw recorded speed of 0.158 m/s. The
+        raw speed includes tracking jitter, and decision 39 measured 0.115 m/s smoothed.
+      - **The stars_social hybrid is the least realistic** (0.85 m mean error). Social forces in
+        dense recorded crowds push people apart (no overlaps at all) and lag the forecast intents.
+        As built it does not combine the two well.
+    - **Loops** (0.10-0.21 per episode for v4) remain in dense flow under every crowd model, so
+      they come from the controller, not from the STARS crowd.
