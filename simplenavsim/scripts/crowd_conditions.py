@@ -124,15 +124,17 @@ def run_condition(name, args, config, device):
             "fixed": {s.name: {m: float(fixed_metrics[m][i]) for m in METRICS + ("time_to_goal",)}
                       for i, s in enumerate(fixed)}}
         if label in ANIMATED:
-            out["animations"][label] = snapshot(fixed_batch, fixed_run, plans)
+            out["animations"][label] = snapshot(fixed_batch, fixed_run, plans, fixed_cf)
     out["realism"] = realism(env, recording_pool(config), args.realism_scenes, device)
     return out
 
 
-def snapshot(batch, run, plans):
-    """What ``plots.animate_grid`` needs, as numpy."""
+def snapshot(batch, run, plans, counterfactual=None):
+    """What ``plots.animate_grid`` needs, as numpy (``counterfactual``: the robot-absent rollout)."""
     n = lambda t: t.detach().float().cpu().numpy() if t.dtype.is_floating_point else t.detach().cpu().numpy()
-    return {"names": batch.names, "dt": run.dt, "robot_pose": n(run.robot_pose), "robot_v": n(run.robot_v),
+    ghost = {} if counterfactual is None else {"ped_ghost": n(counterfactual.ped_pos),
+                                               "ghost_active": n(counterfactual.ped_active)}
+    return {**ghost, "names": batch.names, "dt": run.dt, "robot_pose": n(run.robot_pose), "robot_v": n(run.robot_v),
             "ped_pos": n(run.ped_pos), "ped_active": n(run.ped_active), "ped_mask": n(batch.ped_mask),
             "ped_radius": n(batch.ped_radius), "segments": n(batch.segments), "segment_mask": n(batch.segment_mask),
             "goal": n(batch.robot_goal), "start": n(batch.robot_start), "end_step": n(run.end_step),
@@ -169,7 +171,7 @@ def render(out_dir: Path) -> None:
                                                       for c, r in results.items()}, indent=1))
     for label in ANIMATED:
         animate_grid([results[c]["animations"][label] for c in results], list(results),
-                     out_dir / f"grid_{label}.gif", title=f"{label}: rows = pedestrian condition")
+                     out_dir / f"grid_{label}.gif", title=f"{label}: rows = pedestrian condition; dashed circle = pedestrian without the robot")
     print(f"saved {out_dir}")
 
 

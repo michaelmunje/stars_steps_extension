@@ -10,6 +10,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.animation import FuncAnimation, PillowWriter
+from matplotlib.lines import Line2D
 from matplotlib.patches import Circle
 
 ROBOT, GOAL, REFERENCE, COUNTERFACTUAL = "#1f4e9c", "#2e8b57", "#9a9a9a", "#555555"
@@ -228,6 +229,8 @@ def animate_grid(snapshots: list[dict], row_labels: list[str], path, *, title: s
     Each snapshot is ``crowd_conditions.snapshot`` output for the same scenes. Columns share a view,
     so rows are directly comparable; each cell shows walls, pedestrians with ``trail_s`` trails
     (red outline within 0.45 m of the robot), the robot, its path and current plan, and the outcome.
+    With ``ped_ghost`` (the robot-absent rollout), a dashed circle shows where a pedestrian would be
+    without the robot whenever that is over 0.1 m away.
     """
     R, C = len(snapshots), len(snapshots[0]["names"])
     views = []
@@ -238,10 +241,21 @@ def animate_grid(snapshots: list[dict], row_labels: list[str], path, *, title: s
         span, centre = np.maximum(hi - lo, 8.0), (lo + hi) / 2
         views.append((centre - span / 2, centre + span / 2))
     aspect = max((hi - lo)[1] / (hi - lo)[0] for lo, hi in views)
-    fig, axes = plt.subplots(R, C, figsize=(3.4 * C, 3.4 * C * aspect * R / C + 0.6), squeeze=False)
-    fig.subplots_adjust(left=0.06, right=0.99, bottom=0.01, top=0.95, wspace=0.05, hspace=0.12)
+    height = 3.4 * aspect * R * 1.12 + 1.3                                   # rows + title + legend (inches)
+    fig, axes = plt.subplots(R, C, figsize=(3.4 * C, height), squeeze=False)
+    fig.subplots_adjust(left=0.06, right=0.99, bottom=0.75 / height, top=1 - 0.55 / height, wspace=0.05, hspace=0.12)
     fig.suptitle(title, fontsize=11)
     colors = plt.cm.tab20(np.linspace(0, 1, 20))
+    legend = [Line2D([], [], marker="o", color=ROBOT, ls="", ms=8, label="robot"),
+              Line2D([], [], color=ROBOT, alpha=0.6, label="robot path"),
+              Line2D([], [], color=ROBOT, ls="--", label="current plan"),
+              Line2D([], [], marker="*", color=GOAL, ls="", ms=11, label="goal"),
+              Line2D([], [], marker="o", color=colors[0], ls="", ms=8, label="pedestrian (2 s trail)"),
+              Line2D([], [], marker="o", color=colors[0], mec="red", mew=1.5, ls="", ms=8, label="within 0.45 m of robot")]
+    if any("ped_ghost" in s for s in snapshots):
+        legend.append(Line2D([], [], marker="o", mfc="none", mec=colors[0], ls=":", color="gray", ms=8,
+                             label="same pedestrian without the robot"))
+    fig.legend(handles=legend, loc="lower center", ncol=4, fontsize=8, frameon=False)
     trail = max(1, int(round(trail_s / snapshots[0]["dt"])))
     last = int(max(s["end_step"].max() for s in snapshots))
     frames = list(range(0, last + 1, every)) + [last] * int(hold_s * fps)
@@ -268,6 +282,12 @@ def animate_grid(snapshots: list[dict], row_labels: list[str], path, *, title: s
                     near = np.hypot(*(s["ped_pos"][c, p, kk] - (x, y))) - s["ped_radius"][c, p] - 0.3 < 0.45
                     ax.add_patch(Circle(s["ped_pos"][c, p, kk], s["ped_radius"][c, p], facecolor=colors[p % 20],
                                         alpha=0.85, edgecolor="red" if near else "none", lw=1.5))
+                    ghost = s.get("ped_ghost")
+                    if ghost is not None and s["ghost_active"][c, p, kk] \
+                            and np.hypot(*(ghost[c, p, kk] - s["ped_pos"][c, p, kk])) > 0.1:
+                        ax.plot(*np.stack([ghost[c, p, kk], s["ped_pos"][c, p, kk]]).T, color="gray", lw=0.8, ls=":")
+                        ax.add_patch(Circle(ghost[c, p, kk], s["ped_radius"][c, p], fill=False,
+                                            edgecolor=colors[p % 20], lw=1.0, ls="--"))
                 ax.plot(*s["robot_pose"][c, : kk + 1, :2].T, color=ROBOT, lw=1.5, alpha=0.6)
                 if s["plans"] and kk < len(s["plans"]):
                     plan, steps = s["plans"][kk]

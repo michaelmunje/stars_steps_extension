@@ -13,6 +13,7 @@ from __future__ import annotations
 import argparse
 import importlib.util
 import json
+import pickle
 import sys
 from pathlib import Path
 
@@ -67,9 +68,10 @@ def main() -> None:
         run = rollout(env, batch, policy, policy.parameter_tensor(values, batch.size, device))
         metrics = all_metrics(run, cf, batch, env.robot.radius, env.robot.max_speed, env.sim.goal_tolerance)
         fixed_run, plans = recorded_rollout(policy, env, fixed_batch, values, device)
+        fixed_cf = rollout(env, fixed_batch, robot_present=False)
         if yaml.safe_load(Path(path).read_text())["policy"] == "ppo":
             plans = []                      # the controller's plan is not the arc PPO chose
-        snaps.append(snapshot(fixed_batch, fixed_run, plans))
+        snaps.append(snapshot(fixed_batch, fixed_run, plans, fixed_cf))
         results[label] = summarize(metrics)
         rows.append(f"| {label} | " + " | ".join(f"{results[label].get(m, float('nan')):.3f}" for m in METRICS) + " |")
         print(label, json.dumps({m: round(results[label][m], 3) for m in ("success", "collision")}), flush=True)
@@ -77,8 +79,9 @@ def main() -> None:
     (args.out_dir / "results.md").write_text(f"# Policies, {len(scenes)} test scenes ({', '.join(args.kinds)})\n\n"
                                              + "\n".join(table) + "\n")
     (args.out_dir / "results.json").write_text(json.dumps(results, indent=1))
+    (args.out_dir / "snapshots.pkl").write_bytes(pickle.dumps(snaps))
     animate_grid(snaps, [p.split("=", 1)[0] for p in args.policy], args.out_dir / "grid_policies.gif",
-                 title="rows = policy (STARS crowd), dashed = current plan")
+                 title="rows = policy (STARS crowd); dashed line = plan, dashed circle = pedestrian without the robot")
     print(f"saved {args.out_dir}")
 
 
