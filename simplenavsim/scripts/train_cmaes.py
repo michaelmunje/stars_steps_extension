@@ -25,6 +25,7 @@ def main() -> None:
     parser.add_argument("--num-generations", type=int)
     parser.add_argument("--population-size", type=int)
     parser.add_argument("--seed", type=int)
+    parser.add_argument("--optimizer", choices=("cmaes", "ppo"))
     parser.add_argument("--policy", help="Start from a saved policy YAML (its values become the initial mean)")
     parser.add_argument("--pedestrians", choices=("replay", "social_force", "reactive_replay", "orca", "stars_crowd", "stars_social"))
     parser.add_argument("--device")
@@ -36,7 +37,7 @@ def main() -> None:
     config, env, policy, evaluator, pool, device = build(args.config, policy=args.policy,
                                                          pedestrian_model=args.pedestrians, device=args.device)
     cfg = cmaes_config(config, num_generations=args.num_generations, population_size=args.population_size,
-                       seed=args.seed)
+                       seed=args.seed, optimizer=args.optimizer)
     if args.policy:
         cfg.initial = {**config["policy_parameters"], **cfg.initial}
     print(f"device {device}, pedestrians {env.pedestrians.name}, policy {policy.name}, optimizing {cfg.optimize}")

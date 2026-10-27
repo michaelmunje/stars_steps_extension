@@ -1590,3 +1590,37 @@ why, and how to undo it.
     - **Job:** seeds 0 and 1 in the STARS crowd (`cmaes_crowd_v4.yaml`, success radius 1.0 m), then
       tested on the 270 test scenes against v4 and the v4 re-tune at the new radius
       (`checkpoints/simplenavsim/cmaes_tol1`, job 72024).
+    **Result (job 72030, 270 test scenes):** PPO choosing arcs reaches 93-94% success with 4-5%
+    collisions and 17% time within 0.45 m, objective 0.11-0.15. v4 scores 98.5%, 1.1%, 2.7% and
+    0.42. PPO is faster (10.5 against 11.0 s) and loops less, by cutting close.
+    - Behaviour cloning never reached v4's level: 31% validation success, so the network does not
+      reproduce v4's choices from its observation.
+    - The 1 s safety mask does not stand in for v4's proximity costs.
+    - Superseded by 99.
+
+    The v4 re-tune at the 1.0 m radius (job 72024, `cmaes_tol1`) kept generation 0, v4 itself: no
+    better parameters were found. Test 0.428 against 0.421 is noise.
+
+99. **Two fair PPO comparisons (requested).** The user asked for the comparison to be as fair as
+    possible, then proposed learned subgoals, which is also standard in the literature
+    (subgoal recommendation for MPC, Brito et al., RA-L 2021).
+    - **PPO on the same 11 parameters** (`optimization/ppo_search.py`, `optimizer: ppo`): a
+      Gaussian over the unit-cube parameters with PPO's clipped update, plugged into the CMA-ES
+      loop as a pycma ask/tell replacement. Everything except the update rule is identical to
+      CMA-ES: search space, warm start (v4, sigma 0.1), population 32, 100 generations, training
+      scenes and refresh, validation and selection. With one action per episode this compares
+      the optimisers, not RL credit assignment.
+    - **Learned subgoals for v4** (`policies/ppo.py`, `scripts/train_ppo.py`; replaces the
+      arc-choice PPO):
+      - Every 1 s a network picks a subgoal within 3 m of the goal, in the robot's frame. v4's
+        controller drives to it unchanged (arcs, costs, safety check).
+      - The offset head starts at zero. Verified: at iteration 0 the policy scores exactly the
+        controller's validation objective (0.4376 on the v1 setup). Learning can only change
+        where v4 steers.
+      - The reward is the config's objective at episode end, the number CMA-ES maximises, plus
+        progress shaping that sums to a constant per scene.
+      - 200 iterations of 216 fresh training episodes; validation every 5 iterations keeps the
+        best greedy policy.
+    - **Jobs:** subgoal seeds 0 and 1, CMA-ES seed 7 for parity, and PPO-parameters seeds 42 and 7.
+      All in the STARS crowd at the 1.0 m success radius, then tested on 270 test scenes against
+      v4.

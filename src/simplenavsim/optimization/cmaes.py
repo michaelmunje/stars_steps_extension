@@ -47,6 +47,7 @@ class CMAESConfig:
     validate_every: int = 5
     duration: float = 30.0
     dt: float = 0.1
+    optimizer: str = "cmaes"   # cmaes | ppo (same loop, scenarios and budget; decision 99)
 
 
 class CMAESTrainer:
@@ -105,9 +106,14 @@ class CMAESTrainer:
             es = state["es"]
             log.info("resumed at generation %d", state["generation"])
         else:
-            es = cma.CMAEvolutionStrategy(self.encode(self.base), c.sigma0,
-                                          {"popsize": c.population_size, "bounds": [0.0, 1.0], "seed": c.seed,
-                                           "verbose": -9})
+            if c.optimizer == "ppo":
+                from simplenavsim.optimization.ppo_search import PPOSearch
+
+                es = PPOSearch(self.encode(self.base), c.sigma0, popsize=c.population_size, seed=c.seed)
+            else:
+                es = cma.CMAEvolutionStrategy(self.encode(self.base), c.sigma0,
+                                              {"popsize": c.population_size, "bounds": [0.0, 1.0], "seed": c.seed,
+                                               "verbose": -9})
             default_score, default_metrics = self.validate(self.base)
             save_policy(self.out_dir / "default_policy.yaml", self.policy, self.base, validation_objective=default_score)
             state = {"es": es, "generation": 0, "best": {"values": self.base, "val_objective": default_score,

@@ -1,14 +1,15 @@
-"""PPO navigation policy: a network chooses one of the social controller's arcs (decision 98).
+"""Learned subgoals for the tuned controller, trained with PPO (decision 99; cf. Brito et al., RA-L 2021).
 
-The action space is the controller's grid of constant ``(v, w)`` arcs. Arcs that fail the
-controller's hard safety check (a pedestrian within ``safety_margin`` inside ``safety_horizon``, or
-a wall) are masked out, so the learned policy keeps exactly the tuned controller's safety
-constraint; with no arc left the robot stops. The network sees 64 egocentric numbers: the goal, the
-robot's own motion, the 6 nearest visible pedestrians (relative position and velocity, and the
-predictor's forecast 1 s and 2 s ahead) and the nearest obstacle. It outputs arc logits and a value.
+Every ``hold`` control steps a network picks a subgoal: an offset of up to ``max_offset`` metres
+from the real goal, in the robot's frame. The social controller (its arcs, costs, hard safety
+constraint and tuned parameters, unchanged) then drives toward that subgoal. The offset head
+starts at zero, so the untrained policy *is* the controller; learning can only change where it
+steers. Observation: 64 egocentric numbers (goal, own motion, the 6 nearest pedestrians with the
+controller's 1 s and 2 s forecasts, nearest obstacle).
 """
 from __future__ import annotations
 
+from dataclasses import replace
 from pathlib import Path
 
 import torch
@@ -24,7 +25,7 @@ OBS_DIM = 3 + 4 + K_PEDS * 9 + 3
 
 
 def _rotate(vec, cos, sin):
-    """World-frame vectors ``[..., 2]`` into the robot frame."""
+    """World-frame vectors ``[..., 2]`` into the robot frame (the inverse with ``-sin``)."""
     return torch.stack([cos * vec[..., 0] + sin * vec[..., 1], -sin * vec[..., 0] + cos * vec[..., 1]], -1)
 
 
@@ -57,67 +58,72 @@ def features(obs: Observation, future: torch.Tensor | None, plan_dt: float, robo
     return torch.nan_to_num(torch.cat([goal, own, peds.reshape(B, -1), obstacle], -1))
 
 
-class ActorCritic(nn.Module):
-    def __init__(self, arcs: int, hidden: int = 256) -> None:
+class SubgoalNet(nn.Module):
+    """Gaussian over a 2-D offset (pre-``tanh``) and a value; the mean head starts at exactly zero."""
+
+    def __init__(self, hidden: int = 256, init_std: float = 0.3) -> None:
         super().__init__()
-        self.arcs, self.hidden = arcs, hidden
+        self.hidden = hidden
         self.body = nn.Sequential(nn.Linear(OBS_DIM, hidden), nn.Tanh(), nn.Linear(hidden, hidden), nn.Tanh())
-        self.logits, self.value = nn.Linear(hidden, arcs), nn.Linear(hidden, 1)
+        self.mean, self.value = nn.Linear(hidden, 2), nn.Linear(hidden, 1)
+        nn.init.zeros_(self.mean.weight), nn.init.zeros_(self.mean.bias)
+        self.log_std = nn.Parameter(torch.full((2,), float(torch.log(torch.tensor(init_std)))))
 
-    def forward(self, x: torch.Tensor, valid: torch.Tensor):
+    def forward(self, x):
         h = self.body(x)
-        logits = torch.where(valid, self.logits(h), torch.full_like(valid, -1e9, dtype=h.dtype))
-        return logits, self.value(h)[:, 0]
+        return torch.distributions.Normal(self.mean(h), self.log_std.exp()), self.value(h)[:, 0]
 
 
-class PPOPolicy(Policy):
-    """Greedy (or sampled) arc choice by ``net``; the wrapped controller supplies arcs, masks and forecasts."""
+class SubgoalPolicy(Policy):
+    """The controller, steered by learned subgoals. ``sample=True`` explores and records decisions."""
 
-    name = "ppo"
+    name = "subgoal"
     parameters = ()
 
-    def __init__(self, controller, controller_values: dict, net: ActorCritic) -> None:
+    def __init__(self, controller, controller_values: dict, net: SubgoalNet, *, hold: int = 10,
+                 max_offset: float = 3.0) -> None:
         self.controller, self.controller_values, self.net = controller, controller_values, net
+        self.hold, self.max_offset, self.sample = hold, max_offset, False
         self.last_info: dict = {}
 
     def reset(self, batch_size: int) -> None:
         self.controller.reset(batch_size)
-
-    def observe(self, obs: Observation):
-        """Features ``[B, OBS_DIM]``, arc validity ``[B, M]`` and the controller's own choice ``[B]``."""
-        params = self.controller.parameter_tensor(self.controller_values, obs.robot_pose.shape[0], obs.robot_pose.device)
-        self.controller.act(obs, params)
-        info, c = self.controller.last_info, self.controller.config
-        x = features(obs, info["predicted"], c.plan_dt, c.robot_radius, c.max_angular_speed)
-        return x, info["valid"], info["choice"]
-
-    def command(self, choice: torch.Tensor, valid: torch.Tensor) -> torch.Tensor:
-        command = self.controller.candidates(valid.device)[choice]
-        return torch.where(valid.any(1)[:, None], command, torch.zeros_like(command))
+        self.k, self.subgoal, self.decisions = 0, None, []
 
     def act(self, obs: Observation, params: torch.Tensor) -> torch.Tensor:
-        x, valid, _ = self.observe(obs)
-        with torch.no_grad():
-            logits, _ = self.net(x, valid)
-        info = self.controller.last_info
-        self.last_info = {"emergency_stop": ~valid.any(1), "plan": info["plan"], "plan_steps": info["plan_steps"],
-                          "predicted": info["predicted"]}
-        return self.command(logits.argmax(1), valid)
+        c = self.controller.config
+        if self.k % self.hold == 0:
+            x = features(obs, self.controller.last_info.get("predicted") if self.k else None, c.plan_dt,
+                         c.robot_radius, c.max_angular_speed)
+            with torch.no_grad():
+                dist, value = self.net(x)
+            raw = dist.sample() if self.sample else dist.mean
+            offset = torch.tanh(raw) * self.max_offset                               # robot frame
+            cos, sin = torch.cos(obs.robot_pose[:, 2]), torch.sin(obs.robot_pose[:, 2])
+            self.subgoal = obs.goal + _rotate(offset, cos, -sin)
+            if self.sample:
+                self.decisions.append({"k": self.k, "x": x, "raw": raw, "logp": dist.log_prob(raw).sum(-1),
+                                       "value": value})
+        self.k += 1
+        values = self.controller.parameter_tensor(self.controller_values, obs.robot_pose.shape[0], obs.robot_pose.device)
+        command = self.controller.act(replace(obs, goal=self.subgoal), values)
+        self.last_info = {**self.controller.last_info, "subgoal": self.subgoal}
+        return command
 
     def save(self, directory: Path, stem: str = "best") -> Path:
-        torch.save({"state_dict": self.net.state_dict(), "arcs": self.net.arcs, "hidden": self.net.hidden},
-                   directory / f"{stem}.pt")
+        torch.save({"state_dict": self.net.state_dict(), "hidden": self.net.hidden}, directory / f"{stem}.pt")
         path = directory / f"{stem}_policy.yaml"
-        path.write_text(yaml.safe_dump({"policy": "ppo", "checkpoint": f"{stem}.pt",
+        path.write_text(yaml.safe_dump({"policy": "subgoal", "checkpoint": f"{stem}.pt", "hold": self.hold,
+                                        "max_offset": self.max_offset,
                                         "controller_parameters": {k: float(v) for k, v in self.controller_values.items()}},
                                        sort_keys=False))
         return path
 
     @classmethod
-    def load(cls, path, controller, device="cpu") -> "PPOPolicy":
+    def load(cls, path, controller, device="cpu") -> "SubgoalPolicy":
         path = Path(path)
         spec = yaml.safe_load(path.read_text())
         payload = torch.load(path.parent / spec["checkpoint"], map_location=device)
-        net = ActorCritic(payload["arcs"], payload["hidden"]).to(device)
+        net = SubgoalNet(payload["hidden"]).to(device)
         net.load_state_dict(payload["state_dict"])
-        return cls(controller, spec["controller_parameters"], net.eval())
+        return cls(controller, spec["controller_parameters"], net.eval(), hold=spec["hold"], max_offset=spec["max_offset"])

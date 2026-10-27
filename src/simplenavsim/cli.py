@@ -65,10 +65,10 @@ def build(config_path=None, *, policy: str | None = None, pedestrian_model: str 
     from simplenavsim.core.config import make_predictor
 
     predictor = make_predictor(policy_config.get("predictor"), device)
-    if name == "ppo":
-        from simplenavsim.policies.ppo import PPOPolicy
+    if name == "subgoal":
+        from simplenavsim.policies.ppo import SubgoalPolicy
 
-        controller = PPOPolicy.load(policy, make_controller(policy_config, "social", env.robot, predictor), device)
+        controller = SubgoalPolicy.load(policy, make_controller(policy_config, "social", env.robot, predictor), device)
         values = {}
     else:
         controller = make_controller(policy_config, name, env.robot, predictor)
