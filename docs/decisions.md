@@ -1624,3 +1624,27 @@ why, and how to undo it.
     - **Jobs:** subgoal seeds 0 and 1, CMA-ES seed 7 for parity, and PPO-parameters seeds 42 and 7.
       All in the STARS crowd at the 1.0 m success radius, then tested on 270 test scenes against
       v4.
+    **Results (jobs 72120, 72132; 270 test scenes, STARS crowd, 1.0 m success radius):**
+
+    | Run | Kept checkpoint | Test objective | Success | Collision |
+    | --- | --- | --- | --- | --- |
+    | v4 (evaluated alongside other runs) | v4 | 0.421-0.434 | 98.5-98.9% | 0.7-1.1% |
+    | CMA-ES re-tune, seeds 42 / 7 | generation 0 = v4 (both) | 0.428 / 0.428 | 98.5% | 0.7% |
+    | PPO on the 11 parameters, seed 42 | generation 10 | 0.425 | 98.9% | 0.7% |
+    | PPO on the 11 parameters, seed 7 | generation 0 = v4 | 0.434 | 98.9% | 0.7% |
+    | Subgoal PPO, seed 0 | iteration 0 = v4 | 0.434 | 98.9% | 0.7% |
+    | Subgoal PPO, seed 1 | iteration 95 | 0.369 | 97.4% | 1.9% |
+    | Arc-choice PPO (98) | trained network | 0.11-0.15 | 93-94% | 4-5% |
+
+    - No optimiser started from v4 finds a better policy. Five of the six selections are v4
+      itself or indistinguishable from it.
+    - The one PPO-tuned subgoal network that won validation (0.451 against v4's 0.444) does worse
+      on test: a selection on noise.
+    - v4's own scores vary between runs, 0.443-0.452 on validation and 0.421-0.434 on test
+      (bf16 crowd). Gains under about 0.01 are not measurable with 108 validation scenes.
+    - **Conclusion:** v4 is a local optimum of this controller, objective and crowd for both
+      optimisers.
+    - The CMA-ES search mean drifts below v4 during tuning (validation 0.37-0.45) because it
+      chases noisy best-of-32 training scores on 72 scenes. Validation selection keeps v4.
+    - Any further tuning needs a lower-noise signal: more training scenes per generation and a
+      larger validation set averaged over several crowd seeds.
