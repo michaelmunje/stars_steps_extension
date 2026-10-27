@@ -1549,3 +1549,20 @@ why, and how to undo it.
         As built it does not combine the two well.
     - **Loops** (0.10-0.21 per episode for v4) remain in dense flow under every crowd model, so
       they come from the controller, not from the STARS crowd.
+
+97. **Success radius 1.0 m (was 0.3 m), after diagnosing the robot's 360s.** On 90 test scenes
+    (crossing, group_toward, dense_flow; v4 with replay and reactive-replay pedestrians), 8 of the
+    10 full turns happen within about 1.5 m of the goal. They are almost all in dense flow, where
+    the goal lies inside the stream of people (nearest person 0.6-1.5 m). The robot dodges people
+    crossing the goal area at 0.7-0.8 m/s. Its turning radius at that speed (about 0.5 m) cannot
+    land in a 0.3 m circle, so it orbits.
+    - Fading the pull to cruising speed near the goal changed nothing (same loop counts), so it
+      was not kept.
+    - Success radius, v4 untuned (replay / reactive replay):
+      - 0.3 m: loops 0.10 / 0.20, time to goal 12.3 / 12.8 s.
+      - 0.5 m: loops 0.07 / 0.13.
+      - 1.0 m: loops 0.04 / 0.12, time to goal 10.7 / 11.4 s.
+      - Success and collisions are unchanged.
+    - **Default 1.0 m** (`simulator.yaml`; SEAN 2.0 used 1.2 m).
+    - Path and time efficiency now measure the straight line to the edge of the goal circle.
+    - All results before this entry used 0.3 m.

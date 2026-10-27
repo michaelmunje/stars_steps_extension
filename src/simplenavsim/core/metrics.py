@@ -4,6 +4,7 @@ Robot task: ``success``, ``collision`` (``ped_collision``, ``obstacle_collision`
 ``time_to_goal`` (NaN unless successful), ``normalized_time`` (episode time / limit, 1 on
 failure), ``time_efficiency`` (straight-line time at the robot's top speed / time to goal; 0 on
 failure), ``path_length``, ``path_efficiency`` (straight-line distance / path driven; 0 on failure).
+Both measure the straight line to the edge of the goal circle (``goal_tolerance``).
 
 Comfort and safety (SEAN 2.0 zones, measured surface to surface): ``min_ped_clearance``,
 ``intimate_violation_rate`` / ``personal_violation_rate`` (fraction of the robot's active steps
@@ -35,8 +36,8 @@ INTIMATE_DISTANCE = 0.45
 PERSONAL_DISTANCE = 1.2
 
 
-def robot_metrics(run: Rollout, batch: ScenarioBatch, robot_radius: float,
-                  max_speed: float = 1.0) -> dict[str, torch.Tensor]:
+def robot_metrics(run: Rollout, batch: ScenarioBatch, robot_radius: float, max_speed: float = 1.0,
+                  goal_tolerance: float = 0.0) -> dict[str, torch.Tensor]:
     B, K = run.robot_v.shape
     device = run.robot_v.device
     step = torch.arange(K, device=device)
@@ -55,7 +56,7 @@ def robot_metrics(run: Rollout, batch: ScenarioBatch, robot_radius: float,
     }
     steps = torch.linalg.norm(run.robot_pose[:, 1:, :2] - run.robot_pose[:, :-1, :2], dim=-1)
     out["path_length"] = (steps * moving_steps).sum(-1)
-    straight = torch.linalg.norm(batch.robot_goal - batch.robot_start[:, :2], dim=-1)
+    straight = (torch.linalg.norm(batch.robot_goal - batch.robot_start[:, :2], dim=-1) - goal_tolerance).clamp(min=1e-3)
     # 1 = straight to the goal; detours, loops and orbits lower it. Failed episodes count as 0.
     out["path_efficiency"] = torch.where(run.success, (straight / out["path_length"].clamp(min=1e-6)).clamp(max=1.0),
                                          torch.zeros_like(straight))
@@ -144,8 +145,8 @@ def influence_metrics(run: Rollout, batch: ScenarioBatch, threshold: float = 0.0
 
 
 def all_metrics(run: Rollout, counterfactual: Rollout | None, batch: ScenarioBatch, robot_radius: float,
-                max_speed: float = 1.0) -> dict:
-    out = robot_metrics(run, batch, robot_radius, max_speed)
+                max_speed: float = 1.0, goal_tolerance: float = 0.0) -> dict:
+    out = robot_metrics(run, batch, robot_radius, max_speed, goal_tolerance)
     if run.ped_influence is not None:
         out.update(influence_metrics(run, batch))
     if counterfactual is not None:

@@ -53,7 +53,7 @@ def main() -> None:
         batch = collate(scenarios, device)
         run = rollout(env, batch, policy, policy.parameter_tensor(config["policy_parameters"], batch.size, device))
         cf = rollout(env, batch, robot_present=False)
-        metrics = all_metrics(run, cf, batch, env.robot.radius, env.robot.max_speed)
+        metrics = all_metrics(run, cf, batch, env.robot.radius, env.robot.max_speed, env.sim.goal_tolerance)
         for r in range(rows):
             ax = axes[r, c]
             colors = plt.cm.tab20(np.linspace(0, 1, 20))

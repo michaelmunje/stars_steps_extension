@@ -114,10 +114,10 @@ def run_condition(name, args, config, device):
     for label, (policy_name, path, stars) in POLICIES.items():
         controller, values = make_policy(policy_name, path, stars, env, policy_config, device)
         run = rollout(env, batch, controller, controller.parameter_tensor(values, batch.size, device))
-        metrics = all_metrics(run, counterfactual, batch, env.robot.radius, env.robot.max_speed)
+        metrics = all_metrics(run, counterfactual, batch, env.robot.radius, env.robot.max_speed, env.sim.goal_tolerance)
         kinds = [s.kind for s in scenes]
         fixed_run, plans = recorded_rollout(controller, env, fixed_batch, values, device)
-        fixed_metrics = all_metrics(fixed_run, fixed_cf, fixed_batch, env.robot.radius, env.robot.max_speed)
+        fixed_metrics = all_metrics(fixed_run, fixed_cf, fixed_batch, env.robot.radius, env.robot.max_speed, env.sim.goal_tolerance)
         out["policies"][label] = {
             "all": summarize(metrics),
             "per_kind": {k: summarize(metrics, torch.tensor([x == k for x in kinds])) for k in args.kinds},

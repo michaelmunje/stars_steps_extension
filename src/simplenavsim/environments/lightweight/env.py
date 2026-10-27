@@ -38,7 +38,7 @@ class RobotConfig:
 
 @dataclass
 class SimConfig:
-    goal_tolerance: float = 0.3
+    goal_tolerance: float = 1.0   # m; SEAN 2.0 used 1.2 m. At 0.3 m the robot orbited the goal (decision 97)
     sensing_radius: float = 8.0
     history_steps: int = 8       # past pedestrian positions in observations (for learned predictors)
     history_stride: int = 4      # in simulation steps (0.4 s at dt = 0.1, the STEPS rate)

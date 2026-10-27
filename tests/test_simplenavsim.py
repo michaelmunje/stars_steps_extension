@@ -110,7 +110,7 @@ def test_goal_seeking_reaches_the_goal_in_an_empty_world_efficiently():
     env = LightweightEnv(ReplayModel())
     policy = GoalSeekingPolicy()
     run = rollout(env, batch, policy, policy.parameter_tensor({}, batch.size))
-    m = all_metrics(run, None, batch, env.robot.radius, env.robot.max_speed)
+    m = all_metrics(run, None, batch, env.robot.radius, env.robot.max_speed, env.sim.goal_tolerance)
     assert bool(m["success"].all()) and float(m["path_efficiency"].min()) > 0.95
     # Turning to face the goal, accelerating and the slow final approach cost 2-3 s of a ~10 m run.
     assert 0.7 < float(m["time_efficiency"].min()) and float(m["time_efficiency"].max()) <= 1.0

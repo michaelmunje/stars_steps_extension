@@ -43,7 +43,7 @@ def main() -> None:
     params = policy.parameter_tensor(config["policy_parameters"], 1, device)
     run = rollout(env, batch, policy, params)
     counterfactual = rollout(env, batch, robot_present=False)
-    metrics = summarize(all_metrics(run, counterfactual, batch, env.robot.radius, env.robot.max_speed))
+    metrics = summarize(all_metrics(run, counterfactual, batch, env.robot.radius, env.robot.max_speed, env.sim.goal_tolerance))
     args.out_dir.mkdir(parents=True, exist_ok=True)
     stem = args.out_dir / f"{scenario.name}-{policy.name}-{env.pedestrians.name}"
     plot_rollout(batch, run, counterfactual=counterfactual, path=f"{stem}.png")

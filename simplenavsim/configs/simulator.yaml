@@ -9,7 +9,7 @@ robot:                  # differential drive, Jackal-like
   max_acceleration: 1.0
   max_angular_acceleration: 3.0
 sim:
-  goal_tolerance: 0.3
+  goal_tolerance: 1.0    # m: success radius (SEAN 2.0: 1.2 m). Was 0.3, where the robot orbited the goal (decision 97)
   sensing_radius: 8.0
   history_steps: 8      # pedestrian history given to learned predictors
   history_stride: 4     # x dt = 0.4 s (STEPS rate)

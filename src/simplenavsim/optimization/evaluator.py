@@ -98,7 +98,7 @@ class Evaluator:
             rows = [values for values in chunk for _ in range(S)]
             params = self.policy.parameter_tensor(rows, batch.size, self.device)
             run = rollout(self.env, batch, self.policy, params)
-            metrics = all_metrics(run, _repeat_rollout(cf, n), batch, self.env.robot.radius, self.env.robot.max_speed)
+            metrics = all_metrics(run, _repeat_rollout(cf, n), batch, self.env.robot.radius, self.env.robot.max_speed, self.env.sim.goal_tolerance)
             score = self.objective(metrics)
             for c, values in enumerate(chunk):
                 rows_c = slice(c * S, (c + 1) * S)
@@ -113,6 +113,6 @@ class Evaluator:
         cf = self.counterfactual(scenarios, batch)
         params = self.policy.parameter_tensor(values, batch.size, self.device)
         run = rollout(self.env, batch, self.policy, params)
-        metrics = all_metrics(run, cf, batch, self.env.robot.radius, self.env.robot.max_speed)
+        metrics = all_metrics(run, cf, batch, self.env.robot.radius, self.env.robot.max_speed, self.env.sim.goal_tolerance)
         metrics["objective"] = self.objective(metrics)
         return metrics, run, cf, batch
