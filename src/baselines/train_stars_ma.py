@@ -62,7 +62,8 @@ DATASETS = {
     "madras": {"path": "datasets/madras"},
     "grand_central": {"path": "datasets/grand_central", "split_strategy": "temporal"},
     "ptdpes": {"path": "datasets/PTDPES"},
-    "atc": {"path": "datasets/atc"},
+    # Two-day converted subset: 2013-09-29 is the test split, 2013-05-22 is train/val (decision 93).
+    "atc": {"path": "datasets/atc_subset", "split_strategy": "held_out_recording"},
 }
 # STARS's phase-1 optimisation recipe (stars.VAE_RECIPE), at STARS's batch of 32 windows.
 SSL_RECIPE = {key: VAE_RECIPE[key] for key in
@@ -76,7 +77,7 @@ FORECAST_RECIPE = {
     "max_epochs": 200,
     "patience": 20,
     "min_delta": 1e-4,
-    "kl_weight": 1.0,
+    "kl_weight": 0.1,  # 1.0 collapses the latent on STEPS (docs/decisions.md 32-35)
     "kl_warmup_epochs": 10,
 }
 # The recipes' learning rates were set for 32 windows of ~19 STEPS pedestrians per step.
@@ -125,6 +126,9 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--max-batches", type=int, help="Integration diagnostic: cap batches per epoch and evaluation")
     parser.add_argument("--benchmark", type=int, help="Time this many training steps, report throughput, and exit")
     parser.add_argument("--epochs", type=int)
+    parser.add_argument("--patience", type=int, help="Early-stopping patience in validations (0 disables)")
+    parser.add_argument("--weight-decay", type=float)
+    parser.add_argument("--dropout", type=float, help="Encoder dropout (scratch encoders / phase 1)")
     parser.add_argument("--max-nodes", type=int, default=16384, help="Pedestrians per batch on each GPU")
     parser.add_argument("--max-graphs", type=int, help="Cap windows per batch")
     parser.add_argument("--learning-rate", type=float, help="Peak LR (default: the recipe LR scaled by --lr-scaling)")
@@ -152,6 +156,13 @@ def _parser() -> argparse.ArgumentParser:
     forecast = parser.add_argument_group("forecast")
     forecast.add_argument("--encoder-checkpoint", type=Path, help="A --phase ssl checkpoint (frozen/finetune)")
     forecast.add_argument("--encoder-mode", choices=("frozen", "finetune", "scratch"), default="frozen")
+    forecast.add_argument("--init-checkpoint", type=Path,
+                          help="A --phase forecast checkpoint: start from all its weights and recipes (with "
+                               "--encoder-mode scratch, i.e. everything trainable at one LR)")
+    forecast.add_argument("--encoder-lr-ratio", type=float,
+                          help="Fine-tuning: encoder LR / decoder LR (default: the recipe's 0.1)")
+    forecast.add_argument("--decoder-hidden-dim", type=int)
+    forecast.add_argument("--decoder-dropout", type=float)
     forecast.add_argument("--decoder", choices=("deterministic", "cvae"), default="deterministic")
     forecast.add_argument("--cvae-latent-dim", type=int, default=32)
     forecast.add_argument("--no-social-layer", action="store_true", help="Decoder without its social message-passing round")
@@ -182,7 +193,7 @@ def parse_args(argv=None) -> argparse.Namespace:
     args.train_entries = dataset_entries(args.datasets if args.datasets is not None else config.get("datasets"))
     val = args.val_datasets if args.val_datasets is not None else config.get("val_datasets")
     args.val_entries = dataset_entries(val) if val is not None else [dict(entry) for entry in args.train_entries]
-    for key in ("run_dir", "encoder_checkpoint", "cache_dir"):
+    for key in ("run_dir", "encoder_checkpoint", "init_checkpoint", "cache_dir"):
         if isinstance(getattr(args, key), str):
             setattr(args, key, Path(getattr(args, key)))
     if not args.phase or not args.run_dir:
@@ -196,10 +207,12 @@ def parse_args(argv=None) -> argparse.Namespace:
             parser.error(f"--encoder-mode {args.encoder_mode} needs --encoder-checkpoint")
         if args.encoder_mode == "scratch" and args.encoder_checkpoint:
             parser.error("--encoder-mode scratch does not take --encoder-checkpoint")
+        if args.init_checkpoint and (args.encoder_checkpoint or args.encoder_mode != "scratch"):
+            parser.error("--init-checkpoint takes --encoder-mode scratch and no --encoder-checkpoint")
         if args.rollout_exec_steps < 0:
             parser.error("--rollout-exec-steps must be >= 0")
-    elif args.encoder_checkpoint or args.rollout_exec_steps:
-        parser.error("--encoder-checkpoint/--rollout-exec-steps apply to --phase forecast")
+    elif args.encoder_checkpoint or args.rollout_exec_steps or args.init_checkpoint:
+        parser.error("--encoder-checkpoint/--rollout-exec-steps/--init-checkpoint apply to --phase forecast")
     return args
 
 
@@ -258,6 +271,14 @@ def load_stores(entries: list[dict], split: str, args, forecasting, *, windows: 
         source = SceneDataset(DatasetSpec(entry["name"], path), split, cfg)
         if not len(source):
             continue
+        cap = entry.get("max_windows")
+        cap = cap.get(split) if isinstance(cap, dict) else cap
+        if cap and len(source.rows) > int(cap):
+            # Seeded subset of the index rows, before window extraction (ATC has millions of heavily
+            # overlapping windows; decision 93). The cache key includes the row count.
+            keep = np.sort(np.random.default_rng(args.data_seed).choice(len(source.rows), int(cap), replace=False))
+            source.rows = [source.rows[i] for i in keep]
+            args.run.log(f"{entry['name']}/{split}: capped to {int(cap)} windows")
         options = dict(windows=windows, forecasting=config_as_dict(forecasting), cache_dir=args.cache_dir,
                        workers=args.cache_workers, log=lambda message: args.run.log(message))
         if args.main:
@@ -431,6 +452,9 @@ def load_forecaster(path: Path, device: torch.device) -> tuple[StarsMultiAgentFo
 # ----------------------------------------------------------------------------- training
 
 
+MAX_NONFINITE_STREAK = 100   # consecutive non-finite gradient steps before a run is stopped
+
+
 def _scaled_lr(base: float, args) -> float:
     if args.learning_rate is not None:
         return args.learning_rate
@@ -475,7 +499,7 @@ def _build_model(args, payload):
             parameter.requires_grad_(False)
         groups = lambda lr: [{"params": model.decoder.parameters(), "lr": lr}]
     elif args.encoder_mode == "finetune":
-        ratio = FORECAST_RECIPE["encoder_learning_rate"] / FORECAST_RECIPE["learning_rate"]
+        ratio = args.encoder_lr_ratio or FORECAST_RECIPE["encoder_learning_rate"] / FORECAST_RECIPE["learning_rate"]
         groups = lambda lr: [{"params": model.decoder.parameters(), "lr": lr},
                              {"params": model.encoder.parameters(), "lr": lr * ratio}]
     else:
@@ -492,12 +516,12 @@ def _maybe_compile(model, args):
         encoder.node_encoder = torch.compile(encoder.node_encoder, dynamic=True)
 
 
-def train(args) -> None:
+def train(args) -> dict | None:
     forecasting = resolve_forecasting_config(preset=DEFAULT_PRESET)
     args.obs, args.pred = forecasting.window.observation_steps, forecasting.window.prediction_steps
     payload = None
     encoder_overrides = {"hidden_dim": args.hidden_dim, "latent_dim": args.latent_dim,
-                         "use_node_features": False if args.edge_only else None}
+                         "use_node_features": False if args.edge_only else None, "dropout": args.dropout}
     args.encoder_recipe = {**ENCODER_RECIPE, **{k: v for k, v in encoder_overrides.items() if v is not None}}
     if args.encoder_checkpoint:
         payload = torch.load(args.encoder_checkpoint, map_location="cpu", weights_only=False)
@@ -511,12 +535,27 @@ def train(args) -> None:
         "latent_dim": args.cvae_latent_dim if args.decoder == "cvae" else 0,
         "social_layer": not args.no_social_layer,
         "representation": args.representation,
+        **({"hidden_dim": args.decoder_hidden_dim} if args.decoder_hidden_dim else {}),
+        **({"dropout": args.decoder_dropout} if args.decoder_dropout is not None else {}),
     }
+    init = None
+    if args.init_checkpoint:
+        init = torch.load(args.init_checkpoint, map_location="cpu", weights_only=False)
+        if init.get("model") != "stars_ma" or init.get("phase") != "forecast":
+            raise ValueError(f"{args.init_checkpoint} is not a multi-agent STARS forecaster checkpoint")
+        if init["graph"] != {"knn": args.knn, "radius": args.radius}:
+            raise ValueError(f"Graph topology differs from the init checkpoint ({init['graph']})")
+        args.encoder_recipe, args.decoder_recipe = dict(init["encoder_recipe"]), dict(init["decoder_recipe"])
     base_recipe = SSL_RECIPE if args.phase == "ssl" else FORECAST_RECIPE
-    args.recipe = {**base_recipe, **({"max_epochs": args.epochs} if args.epochs else {})}
+    args.recipe = {**base_recipe, **({"max_epochs": args.epochs} if args.epochs else {}),
+                   **({"patience": args.patience} if args.patience is not None else {})}
     args.recipe["learning_rate"] = _scaled_lr(base_recipe["learning_rate"], args)
+    if args.weight_decay is not None:
+        args.recipe["weight_decay"] = args.weight_decay
     if args.phase == "forecast":
         args.recipe["kl_weight"] = args.kl_weight
+        if init is not None:
+            args.recipe["kl_warmup_epochs"] = 0     # the latent is already trained: no KL annealing
 
     torch.manual_seed(args.seed)
     np.random.seed(args.seed)
@@ -524,7 +563,7 @@ def train(args) -> None:
         torch.cuda.manual_seed_all(args.seed)
         torch.backends.cuda.matmul.allow_tf32 = True
         torch.backends.cudnn.allow_tf32 = True
-    skip = {"device_realized", "run_config", "run", "main"}
+    skip = {"device_realized", "run_config", "run", "main", "epoch_callback"}
     args.run_config = {
         **{key: (str(value) if isinstance(value, Path) else value) for key, value in vars(args).items() if key not in skip},
         "model": "stars_ma",
@@ -550,6 +589,9 @@ def train(args) -> None:
                    val_datasets=val_store.names)
 
         model, groups = _build_model(args, payload)
+        if init is not None:
+            model.load_state_dict(init["state_dict"])
+            run.log("forecaster weights loaded", checkpoint=str(args.init_checkpoint))
         model = model.to(device)
         model.encoder.checkpoint_temporal = args.activation_checkpointing
         _maybe_compile(model, args)
@@ -594,7 +636,7 @@ def train(args) -> None:
             if args.benchmark:
                 batches = (batches * math.ceil(args.benchmark / max(1, len(batches))))[: args.benchmark]
             sums = {}
-            nodes = edges = 0
+            nodes = edges = skipped = bad_streak = 0
             if device.type == "cuda":
                 torch.cuda.synchronize(device)
                 torch.cuda.reset_peak_memory_stats(device)
@@ -609,7 +651,16 @@ def train(args) -> None:
                     losses = step_module(batch, weight)
                 optimizer.zero_grad(set_to_none=True)
                 losses["loss"].backward()
-                torch.nn.utils.clip_grad_norm_(trainable, args.recipe["grad_clip"])
+                norm = torch.nn.utils.clip_grad_norm_(trainable, args.recipe["grad_clip"])
+                # The norm is taken after DDP's all-reduce, so every rank skips the same steps.
+                if not torch.isfinite(norm):
+                    optimizer.zero_grad(set_to_none=True)
+                    skipped += 1
+                    bad_streak += 1
+                    if bad_streak >= MAX_NONFINITE_STREAK:
+                        raise FloatingPointError(f"{bad_streak} consecutive non-finite gradients (epoch {epoch})")
+                    continue
+                bad_streak = 0
                 optimizer.step()
                 if args.schedule != "plateau":
                     scheduler.step()
@@ -622,6 +673,7 @@ def train(args) -> None:
                 torch.cuda.synchronize(device)
             elapsed = time.perf_counter() - started
             train_metrics = {f"train_{k}": float(_all_mean(v / max(1, len(batches)), args)) for k, v in sums.items()}
+            train_metrics["train_skipped_steps"] = skipped
             throughput = {"epoch_seconds": elapsed, "nodes_per_second": nodes * args.world_size / elapsed,
                           "edges_per_second": edges * args.world_size / elapsed,
                           "steps_per_second": len(batches) / elapsed,
@@ -649,6 +701,8 @@ def train(args) -> None:
             run.metric({"stage": args.phase, "epoch": epoch, "beta" if args.phase == "ssl" else "kl_weight": weight,
                         "selection": selection, **train_metrics, **throughput,
                         **{f"val_{k}": v for k, v in metrics.items()}})
+            if getattr(args, "epoch_callback", None) is not None:
+                args.epoch_callback(epoch, selection, metrics)  # e.g. Optuna reporting / pruning
             improved, stopped = stopper.update(selection)
             if improved:
                 best_epoch = epoch
@@ -672,6 +726,7 @@ def train(args) -> None:
         if best_epoch is None:
             raise RuntimeError("No finite validation metric was observed")
         run.update(status="complete", stage="training", best_validation_metric=stopper.best, best_epoch=best_epoch)
+        return {"best": stopper.best, "best_epoch": best_epoch}
     except Exception as error:
         run.log("run failed", error=repr(error), traceback=traceback.format_exc())
         run.update(status="failed", error=repr(error))
@@ -686,6 +741,16 @@ def main(argv=None) -> None:
     finally:
         if args.world_size > 1 and dist.is_initialized():
             dist.destroy_process_group()
+    if args.world_size > 1:
+        # Multi-GPU runs on all datasets hit a bus error in interpreter teardown *after* training
+        # finished and saved (docs/decisions.md 42), which marked successful jobs FAILED. Everything
+        # is on disk by now, so skip the teardown.
+        import sys
+
+        if torch.cuda.is_available():
+            torch.cuda.synchronize()
+        sys.stdout.flush(), sys.stderr.flush()
+        os._exit(0)
 
 
 if __name__ == "__main__":

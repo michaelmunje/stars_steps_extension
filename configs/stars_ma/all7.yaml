@@ -1,0 +1,14 @@
+# Multi-agent STARS on all seven converted datasets: the six of all.yaml plus the ATC two-day subset
+# (decision 93). Same robust pooled recipe as all.yaml (LR 3e-4, decisions 84-86).
+datasets:
+  - steps
+  - ptdpes
+  - madras
+  - grand_central      # temporal split (registered default)
+  - ucy
+  - eth
+  - name: atc          # held-out-recording split: 2013-09-29 is test
+    # 2.67M train / 0.24M val / 5.18M test windows, heavily overlapping (every person at every
+    # step starts one): seeded subsets keep ATC at the scale of STEPS / PTDPES (decision 93).
+    max_windows: {train: 80000, val: 10000, test: 50000}
+learning_rate: 3.0e-4

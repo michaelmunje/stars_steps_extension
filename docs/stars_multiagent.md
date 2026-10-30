@@ -7,15 +7,15 @@ probe (`baselines.train_stars`, `baselines.stars`) is unchanged and remains the 
 
 | Module | Contents |
 |---|---|
-| `src/baselines/stars_ma_graph.py` | Torch graph builder: node selection, local-frame node motion features, STARS SE(2) edge features, kNN/radius topology; differentiable in positions |
+| `src/baselines/stars_ma_graph.py` | Per-window reference graph builder: local-frame node motion features, STARS SE(2) edge features, kNN/radius topology |
 | `src/baselines/stars_ma_model.py` | `StarsMotionEncoder`, phase-1 `StarsMotionVAE`, `TrajectoryDecoder` (deterministic / CVAE), `StarsMultiAgentForecaster`, closed-loop `rollout` |
-| `src/baselines/stars_ma_data.py` | `StarsMultiAgentDataset`: one graph per scene window over the shared `Scene` samples |
-| `src/baselines/stars_ma_batch.py` | Training data path: cached `WindowStore` per split (GPU-resident), batched on-device graph construction (`build_batch`, `GraphBatch.rebuild` for rollouts), node-budget batching |
-| `src/baselines/stars_ma_metrics.py` | Best-of-K ADE/FDE (target / agent / joint), interacting vs isolated, density bins, collisions, closest approach, diversity, motion distributions |
-| `src/baselines/train_stars_ma.py` | `--phase ssl` and `--phase forecast` (frozen / finetune / scratch, deterministic / CVAE, multi-step rollout loss); dataset configs, DDP, bf16, resume, `--benchmark` |
+| `src/baselines/stars_ma_batch.py` | Data path: cached `WindowStore` per split (GPU-resident, unique or all windows), batched on-device graph construction (`build_batch`, `GraphBatch.rebuild` for rollouts), node-budget batching |
+| `src/baselines/stars_ma_metrics.py` | Best-of-K ADE/FDE (target / agent / joint), interacting vs isolated, moving vs stationary, density bins, collisions, closest approach, diversity, motion distributions |
+| `src/baselines/train_stars_ma.py` | `--phase ssl` and `--phase forecast` (frozen / finetune / scratch, deterministic / CVAE); dataset configs, DDP, bf16, resume, `--init-checkpoint` |
+| `src/baselines/hpo_stars_ma.py`, `hpo_report.py` | Optuna search over the forecast phase and its summary |
 | `configs/stars_ma/*.yaml` | Dataset lists: `steps`, `ptdpes`, `all` (every converted dataset), `steps_plus_ptdpes` (weighted mixture) |
 | `src/baselines/evaluate_stars_ma.py` | Teacher-forced, closed-loop and long-horizon simulation report (JSON) |
-| `tests/test_stars_ma.py` | Contracts below |
+| `tests/test_stars_ma.py`, `tests/test_stars_ma_batch.py` | Contracts below |
 
 ## Design
 
@@ -45,8 +45,8 @@ tests check that the edge-only encoder equals upstream STARS exactly on 40-step 
 temporal transformers have their positional embedding resized to 8 steps.
 
 **Phase 1 (`--phase ssl`).** STARS's VAE objective at the native length: valid-masked edge
-reconstruction + `beta` KL (STARS warm-up), plus valid-masked node-motion reconstruction
-(`--node-loss-weight`). STARS's optimiser recipe.
+reconstruction + `beta` KL (STARS warm-up), plus valid-masked node-motion reconstruction.
+STARS's optimiser recipe.
 
 **Decoder.** Per agent: `[representation ‖ current motion state ‖ z]` -> one social
 `TransformerConv` round over the same graph (reusing encoder edge embeddings) -> GRU emitting
@@ -61,10 +61,9 @@ to the scene frame. Permutation-equivariant and size-agnostic (tested).
 
 **Closed loop (`rollout`).** Encode scene -> predict 12 steps -> execute the first `exec_steps` for
 every agent -> shift the 8-step window -> rebuild graph -> repeat. A CVAE agent's `z` is its intent:
-drawn once and held across rounds. The agent set is closed (no entries or exits). With
-`--rollout-exec-steps s` training adds a multi-step loss: the model is rolled out over the 12-step
-horizon on its own predictions (posterior `z` held fixed) and the rollout is supervised against
-ground truth; gradients flow through the rebuilt graphs.
+drawn once and held across rounds. The agent set is closed (no entries or exits). Rollouts are
+used for evaluation and simulation only: a closed-loop multi-step training loss was tried and
+removed, since it did not help and cost 3-15x compute (decisions 47, 63, 65, 73).
 
 **Data.** The benchmark population has one sample per (window, target); training uses unique
 windows (`steps` train split: 101,032 samples -> 76,675 windows). Evaluation defaults to `--windows all`,
@@ -90,11 +89,6 @@ python -m baselines.train_stars_ma --phase forecast --dataset steps --decoder cv
   --encoder-checkpoint experiments/stars_ma/ssl/checkpoints/best.pt --encoder-mode finetune \
   --run-dir experiments/stars_ma/cvae_finetune
 
-# Phase 4: multi-step closed-loop training (4 steps executed per round)
-python -m baselines.train_stars_ma --phase forecast --dataset steps --decoder cvae \
-  --encoder-checkpoint experiments/stars_ma/ssl/checkpoints/best.pt --encoder-mode finetune \
-  --rollout-exec-steps 4 --run-dir experiments/stars_ma/cvae_finetune_rollout4
-
 # Evaluation: teacher-forced, closed-loop at 1/4/12 executed steps, 20 s simulation
 python -m baselines.evaluate_stars_ma --checkpoint experiments/stars_ma/cvae_finetune/checkpoints/best.pt \
   --datasets steps --split test --output experiments/stars_ma/cvae_finetune/eval_test.json
@@ -106,7 +100,6 @@ python -m baselines.evaluate_stars_ma --checkpoint experiments/stars_ma/cvae_fin
 | Edge-only vs node + edge | `--edge-only` on both phases vs default |
 | Frozen vs fine-tuned | `--encoder-mode frozen` vs `finetune` |
 | Deterministic vs multimodal | `--decoder deterministic` vs `cvae` |
-| One-step vs multi-step training | `--rollout-exec-steps 0` vs `4` (or `1`) |
 | STARS topology | `--fully-connected` on both phases |
 
 `--max-scenes`, `--max-batches`, `--epochs`, `--hidden-dim`, `--latent-dim` and `--device cpu`
@@ -118,16 +111,15 @@ Validated on CPU only: unit tests (`tests/test_stars_ma.py`) and tiny end-to-end
 phase and the evaluator on `steps`. **No GPU training has been run, so there are no results
 yet.**
 
-Tests: torch graph equals the numpy STARS adapter; SE(2) invariance of features; kNN / radius
-topology; edge-only encoder equals upstream STARS at 40 steps; no future leakage into predictions
-or rollouts; permutation equivariance; CVAE shapes and positive KL; differentiable rollouts;
-frame round trip; metrics on known predictions; window de-duplication.
+Tests: SE(2) invariance of features and agreement with the numpy STARS adapter; edge-only
+encoder equals upstream STARS at 40 steps; no future leakage into predictions or rollouts;
+permutation equivariance; CVAE shapes and positive KL; batched graphs equal per-window graphs;
+metrics on known predictions; config / flag precedence.
 
 ## Open items
 
-1. **GPU runs and budgets.** Time an epoch at the default sizes; tune `--batch-size`, `--knn`,
-   `--num-workers`. Rollout training rebuilds graphs per graph in Python each round, so it will be
-   the bottleneck; batching `build_graph` across graphs is the first optimisation.
+1. **GPU runs and budgets.** Done: see the benchmark in `docs/decisions.md` (bf16, 16,384
+   pedestrians per GPU batch, batched on-device graphs).
 2. **Stationary pedestrians.** On `steps` the forecast agents' mean future speed is 0.12 m/s and
    90% of them move slower than 0.2 m/s (validation split, 300 windows), so most agents are
    standing. Headings of standing agents follow tracker jitter (STARS's `|dx|+|dy| > 1e-8` rule),

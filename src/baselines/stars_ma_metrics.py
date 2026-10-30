@@ -11,6 +11,8 @@ frame is a rigid transform of the world frame, so they equal world-frame distanc
 * ``interacting_*`` / ``isolated_*``: complete agents with / without another complete agent
   within ``interaction_radius`` at some future ground-truth step.
 * ``density_<bin>_*``: complete agents grouped by the graph's node count.
+* ``moving_*`` / ``stationary_*``: complete agents whose ground-truth future mean speed is above /
+  below ``moving_speed`` (most STEPS pedestrians stand, so pooled ADE mostly measures them).
 * ``collision_rate_pred`` / ``collision_rate_gt``: fraction of complete-agent pairs closer than
   ``collision_distance`` at some future step (prediction averaged over K, and ground truth).
 * ``min_distance_*``: mean closest approach between complete-agent pairs.
@@ -131,7 +133,7 @@ def forecasting_metrics(prediction: torch.Tensor, batch, accumulator: MetricAccu
 
 def batch_metrics(prediction: torch.Tensor, batch, accumulator: MetricAccumulator, *,
                   collision_distance: float = 0.2, interaction_radius: float = 2.0,
-                  dataset_names: list[str] | None = None) -> None:
+                  dataset_names: list[str] | None = None, moving_speed: float = 0.2) -> None:
     """``forecasting_metrics`` vectorised over the graphs of a ``stars_ma_batch.GraphBatch``.
 
     Same definitions and totals (checked in the tests), without a per-graph Python loop or host
@@ -175,6 +177,14 @@ def batch_metrics(prediction: torch.Tensor, batch, accumulator: MetricAccumulato
         cm = chosen.to(ade.dtype)
         per_graph[f"{name}_ade"] = ((min_ade * cm).sum(-1), cm.sum(-1))
         per_graph[f"{name}_fde"] = ((min_fde * cm).sum(-1), cm.sum(-1))
+    start = batch.to_padded(batch.obs_xy[:, -1])                       # [B, N, 2]
+    path = torch.cat([start[:, :, None], future], dim=2)
+    mean_speed = torch.linalg.norm(path[:, :, 1:] - path[:, :, :-1], dim=-1).mean(-1) / batch.dt
+    moving = (mean_speed > moving_speed) & complete
+    for name, chosen in (("moving", moving), ("stationary", complete & ~moving)):
+        cm = chosen.to(ade.dtype)
+        per_graph[f"{name}_ade"] = ((min_ade * cm).sum(-1), cm.sum(-1))
+        per_graph[f"{name}_fde"] = ((min_fde * cm).sum(-1), cm.sum(-1))
     sizes = (batch.ptr[1:] - batch.ptr[:-1]).to(ade.dtype)
     for low, high, label in DENSITY_BINS:
         in_bin = ((sizes >= low) & (sizes < high)).to(ade.dtype)
@@ -200,7 +210,8 @@ def batch_metrics(prediction: torch.Tensor, batch, accumulator: MetricAccumulato
     for name, (total, number) in per_graph.items():
         accumulator.add(name, total.sum(), number.sum())
     if dataset_names:
-        headline = ("target_ade", "target_fde", "agent_ade", "agent_fde", "joint_ade", "joint_fde")
+        headline = ("target_ade", "target_fde", "agent_ade", "agent_fde", "joint_ade", "joint_fde",
+                    "moving_ade", "moving_fde")
         for index in torch.unique(batch.dataset).tolist():
             chosen = batch.dataset == index
             for name in headline:

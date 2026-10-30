@@ -376,6 +376,27 @@ def build_batch(store: WindowStore, windows: torch.Tensor, *, dt: float, knn: in
                       dt=dt)
 
 
+def graph_batch_from_padded(xy: torch.Tensor, valid: torch.Tensor, node_mask: torch.Tensor, *, dt: float,
+                            knn: int | None, radius: float | None, prediction_steps: int = 12) -> GraphBatch:
+    """A ``GraphBatch`` from padded observed windows ``xy [B, N, T, 2]`` / ``valid [B, N, T]``.
+
+    Used for inference outside the datasets (e.g. pedestrians in a simulator); futures are empty.
+    Every masked-in node must be valid at the last step.
+    """
+    B, N = node_mask.shape
+    graph = batched_graph(xy, valid, node_mask, dt=dt, knn=knn, radius=radius)
+    sizes = node_mask.sum(dim=1)
+    ptr = torch.zeros(B + 1, dtype=torch.long, device=xy.device)
+    ptr[1:] = sizes.cumsum(0)
+    nodes = int(ptr[-1])
+    is_target = torch.zeros(nodes, dtype=torch.bool, device=xy.device)
+    return GraphBatch(**graph, future=xy.new_zeros(nodes, prediction_steps, 2),
+                      future_valid=torch.zeros(nodes, prediction_steps, dtype=torch.bool, device=xy.device),
+                      is_target=is_target, batch=torch.repeat_interleave(torch.arange(B, device=xy.device), sizes),
+                      ptr=ptr, node_mask=node_mask, dataset=torch.zeros(B, dtype=torch.long, device=xy.device),
+                      windows=torch.arange(B, device=xy.device), knn=knn, radius=radius, dt=dt)
+
+
 def _scatter_padded(values: torch.Tensor, node_mask: torch.Tensor, fill) -> torch.Tensor:
     B, N = node_mask.shape
     out = values.new_full((B * N, *values.shape[1:]), fill)

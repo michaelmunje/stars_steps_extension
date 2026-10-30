@@ -57,6 +57,7 @@ def simulation_report(model, store, batches, args, *, seconds: float, exec_steps
     rounds = math.ceil(seconds / model.dt / exec_steps)
     simulated = {"speed": [], "acceleration": []}
     real = {"speed": [], "acceleration": []}
+    smoothed = {"speed": [], "acceleration": []}  # tracker jitter removed (one 1-2-1 pass)
     accumulator = MetricAccumulator()
     for windows in batches:
         batch = _batch(store, windows, args)
@@ -69,6 +70,10 @@ def simulation_report(model, store, batches, args, *, seconds: float, exec_steps
         truth = torch.cat([batch.obs_xy[complete, -1:], batch.future[complete]], dim=1)
         for key, value in motion_statistics(truth, model.dt).items():
             real[key].append(value)
+        soft = truth.clone()
+        soft[:, 1:-1] = 0.25 * truth[:, :-2] + 0.5 * truth[:, 1:-1] + 0.25 * truth[:, 2:]
+        for key, value in motion_statistics(soft, model.dt).items():
+            smoothed[key].append(value)
         speed = torch.linalg.norm(path[:, 1:] - path[:, :-1], dim=-1) / model.dt
         accumulator.add("implausible_agent_rate", (speed > max_speed).any(dim=-1).sum(), speed.shape[0])
         padded = batch.to_padded(path)                                         # [B, N, T, 2]
@@ -87,6 +92,9 @@ def simulation_report(model, store, batches, args, *, seconds: float, exec_steps
         report[f"sim_{key}_mean"] = float(sim.mean()) if len(sim) else float("nan")
         report[f"real_{key}_mean"] = float(gt.mean()) if len(gt) else float("nan")
         report[f"sim_{key}_wasserstein"] = wasserstein_1d(sim, gt)
+        soft = _gather_arrays(smoothed[key], args)
+        report[f"real_smoothed_{key}_mean"] = float(soft.mean()) if len(soft) else float("nan")
+        report[f"sim_{key}_wasserstein_smoothed"] = wasserstein_1d(sim, soft)
     report.update({"sim_seconds": rounds * exec_steps * model.dt, "sim_exec_steps": exec_steps})
     return report
 
@@ -140,7 +148,7 @@ def main() -> None:
         batches = batches[: args.max_batches]
     samples = args.samples if model.latent_dim else 1
 
-    teacher = MetricAccumulator()
+    teacher, constant_velocity = MetricAccumulator(), MetricAccumulator()
     closed = {steps: MetricAccumulator() for steps in args.rollout_exec_steps}
     with torch.no_grad():
         for windows in batches:
@@ -149,6 +157,12 @@ def main() -> None:
                 local = model.predict(batch, samples=samples)
             batch_metrics(to_scene(local.float(), batch.origin, batch.heading), batch, teacher,
                           collision_distance=args.collision_distance, dataset_names=store.names)
+            # Reference: constant velocity from the last observed displacement (Schoeller et al.).
+            velocity = batch.obs_xy[:, -1] - batch.obs_xy[:, -2]
+            horizon = torch.arange(1, model.prediction_steps + 1, device=velocity.device, dtype=velocity.dtype)
+            cv = batch.obs_xy[:, -1:, :] + horizon[None, :, None] * velocity[:, None]
+            batch_metrics(cv[None], batch, constant_velocity, collision_distance=args.collision_distance,
+                          dataset_names=store.names)
             for steps, accumulator in closed.items():
                 rounds = math.ceil(model.prediction_steps / steps)
                 with _autocast(args):
@@ -159,6 +173,7 @@ def main() -> None:
                 batch_metrics(simulated.float(), batch, accumulator, collision_distance=args.collision_distance,
                               dataset_names=store.names)
     teacher.all_reduce()
+    constant_velocity.all_reduce()
     for accumulator in closed.values():
         accumulator.all_reduce()
 
@@ -167,6 +182,7 @@ def main() -> None:
         "datasets": store.names, "split": args.split, "windows": args.windows, "k": samples,
         "n_graphs": len(store),
         "teacher_forced": teacher.result(),
+        "constant_velocity": constant_velocity.result(),
         "closed_loop": {f"exec_{steps}": accumulator.result() for steps, accumulator in closed.items()},
     }
     if args.sim_seconds > 0:
@@ -178,7 +194,9 @@ def main() -> None:
         args.output.write_text(json.dumps(report, indent=2) + "\n")
         headline = {k: round(v, 4) for k, v in report["teacher_forced"].items()
                     if k.endswith(("agent_ade", "agent_fde", "target_ade", "target_fde"))}
-        print(json.dumps({"teacher_forced": headline, **({"simulation": report["simulation"]}
+        cv = {k: round(v, 4) for k, v in report["constant_velocity"].items()
+              if k.endswith(("agent_ade", "agent_fde", "target_ade", "target_fde"))}
+        print(json.dumps({"teacher_forced": headline, "constant_velocity": cv, **({"simulation": report["simulation"]}
                                                          if "simulation" in report else {})}, indent=1))
     if args.world_size > 1:
         dist.destroy_process_group()
