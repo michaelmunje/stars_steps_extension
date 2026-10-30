@@ -74,6 +74,10 @@ tests/
 
 | Topic | Where |
 | --- | --- |
+| **Latest forecaster** (results, figures) | [`docs/latest_forecaster/`](docs/latest_forecaster/README.md) |
+| **Latest navigation evaluation** (results, animations) | [`docs/results/evaluation/`](docs/results/evaluation/) |
+| All results and the reasoning behind them | [`docs/results/README.md`](docs/results/README.md), [`docs/decisions.md`](docs/decisions.md) |
+| SimpleNavSim simulator and policy tuning | [`simplenavsim/README.md`](simplenavsim/README.md) |
 | TACC Horizon setup and jobs | [`docs/horizon.md`](docs/horizon.md) |
 | Multi-agent STARS design, phases, ablations | [`docs/stars_multiagent.md`](docs/stars_multiagent.md) |
 | Loader, preprocessing, OpenTraj analysis, paper tables, visualization | [`docs/data_pipeline.md`](docs/data_pipeline.md) |

@@ -110,7 +110,7 @@ sbatch scripts/horizon/gpu_jobs.slurm \
 `$SSL` and `$F` are expanded by your shell when you submit, so the job receives the full commands.
 To chain a job after phase 1 instead of waiting, add `--dependency=afterok:<phase 1 job id>`.
 
-**Phase 4** (multi-step rollout loss) and the other ablations take the flags in
+The ablations take the flags in
 [`stars_multiagent.md`](stars_multiagent.md#commands) in the same way.
 
 **Evaluation** (also on a GPU node; writes a JSON report):
