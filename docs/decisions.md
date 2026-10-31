@@ -1657,8 +1657,13 @@ why, and how to undo it.
       config's 9 kinds x 30 test scenes. Each scene is scored by the config objective against a
       robot-absent run of the same condition. The latest CMA-ES re-tune (`cmaes_tol1`) kept v4
       unchanged, so v4 is the CMA-ES entry. Arc-choice PPO (98) is not re-run; its code was replaced in 99.
-    - `original.md` is the decision-99 evaluation (stars_reactive) and reproduces it: v4 0.434,
-      PPO-params 0.419, subgoal PPO 0.369. `conditions.md` adds the other five conditions.
+    - `original.md` is the decision-99 evaluation (stars_reactive). Two identical runs gave v4
+      0.434 / 0.421, PPO-params 0.419 / 0.424 and subgoal PPO 0.369 / 0.369 (bf16 crowd noise,
+      as in 99): CMA-ES and PPO on the same parameters are tied. `conditions.md` adds the other
+      five conditions.
+    - **Figures** (first test scene of each kind): `cmaes_conditions_encounters` and
+      `cmaes_conditions_crowds` (rows = pedestrian model), `policies` and `cmaes_vs_ppo`
+      (rows = policy, STARS crowd).
     - **The objective is not comparable across conditions.** `robot_influence` exists only when
       the robot is in the STARS crowd's graph (0 in stars_blind, absent elsewhere), so the other
       conditions have no disruption term and score about 0.2-0.3 higher.

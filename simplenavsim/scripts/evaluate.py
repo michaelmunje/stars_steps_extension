@@ -13,15 +13,14 @@ with a constant-velocity or STARS predictor, PPO over the same parameters, and l
 Scenes: the config's kinds x ``--per-kind`` test scenes (9 x 30 = 270), each scored by the config's
 objective and every metric against a robot-absent run of the same condition. ``robot_influence``
 needs the STARS crowd with the robot in its graph, so elsewhere the objective has no disruption term.
-The GIF columns are the first test scene of crossing, group_toward and dense_flow. Crowd realism
+The GIFs show the first test scene of each kind. Crowd realism
 is measured on recorded STEPS test scenes with the robot absent.
 
     python simplenavsim/scripts/evaluate.py --conditions replay social_force --device cuda
     python simplenavsim/scripts/evaluate.py --render     # tables and GIF grids from the saved runs
 
 Runs are saved as ``condition_<name>.pkl``; ``--render`` writes ``original.md`` (stars_reactive, the
-evaluation the policies were selected by), ``conditions.md``, ``results.json`` and the GIF grids
-``grid_v4_conditions`` (rows = condition), ``grid_policies`` and ``grid_cmaes_vs_ppo`` (rows = policy).
+evaluation the policies were selected by), ``conditions.md``, ``results.json`` and the GIF grids in ``FIGURES``.
 """
 from __future__ import annotations
 
@@ -60,8 +59,26 @@ POLICIES = {  # label: (controller, policy YAML, STARS predictor)
     "ppo_params": ("social", f"{CKPT}/ppo_params_s42/best_policy.yaml", True),
     "subgoal_ppo": ("subgoal", f"{CKPT}/subgoal_s1/best_policy.yaml", True),
 }
-FIXED = ("crossing", "group_toward", "dense_flow")
-GRIDS = {"grid_policies": ("v4", "ppo_params", "subgoal_ppo"), "grid_cmaes_vs_ppo": ("v4", "ppo_params")}
+KIND_NAMES = {"crossing": "Crossing", "head_on": "Head-on", "overtaking": "Overtaking a slow walker",
+              "following": "Following", "group_toward": "Oncoming group", "narrow_passage": "Narrow passage",
+              "stationary_group": "Standing group", "dense_flow": "Two-way corridor", "recorded": "Recorded STEPS crowd"}
+CONDITION_NAMES = {"replay": "Scripted paths\n(ignore robot)", "social_force": "Social forces",
+                   "reactive_replay": "Scripted paths\n+ social forces", "stars_blind": "STARS forecaster\n(ignores robot)",
+                   "stars_reactive": "STARS forecaster\n(reacts to robot)", "stars_social": "STARS goals\n+ social forces"}
+POLICY_NAMES = {"v4": "CMA-ES\n(tuned controller)", "ppo_params": "PPO\n(same parameters)",
+                "subgoal_ppo": "PPO subgoals\n(tuned controller)"}
+ENCOUNTERS = ("crossing", "head_on", "overtaking", "following")
+CROWDS = ("group_toward", "stationary_group", "narrow_passage", "dense_flow", "recorded")
+FIGURES = {  # file: (title, rows ("conditions" or policies), scene kinds)
+    "cmaes_conditions_encounters": ("CMA-ES-tuned controller under six pedestrian models: one-on-one encounters",
+                                    "conditions", ENCOUNTERS),
+    "cmaes_conditions_crowds": ("CMA-ES-tuned controller under six pedestrian models: groups and crowds",
+                                "conditions", CROWDS),
+    "policies": ("Tuned policies in the STARS crowd they were trained in", ("v4", "ppo_params", "subgoal_ppo"),
+                 ("head_on", "group_toward", "narrow_passage", "dense_flow", "recorded")),
+    "cmaes_vs_ppo": ("CMA-ES vs PPO tuning the same controller parameters (STARS crowd)", ("v4", "ppo_params"),
+                     ("head_on", "group_toward", "narrow_passage", "dense_flow", "recorded")),
+}
 COLUMNS = ("objective", "success", "collision", "robot_influence", "intimate_violation_rate", "time_efficiency",
            "normalized_time", "path_efficiency", "command_smoothness", "loops", "min_ped_clearance",
            "disruption_local")
@@ -136,7 +153,7 @@ def run_condition(name, args, config, device):
     env = make_env(config["simulator"], pedestrians)
     objective, cm, pool = Objective(**config["objective"]), config["cmaes"], recording_pool(config)
     scenes = scenario_set("test", cm["kinds"], args.per_kind, dt=cm["dt"], duration=cm["duration"], pool=pool)
-    fixed = [next(s for s in scenes if s.kind == kind) for kind in FIXED]
+    fixed = [next(s for s in scenes if s.kind == kind) for kind in cm["kinds"]]
     kinds = [s.kind for s in scenes]
     batch, fixed_batch = collate(scenes, device), collate(fixed, device)
     cf, fixed_cf = rollout(env, batch, robot_present=False), rollout(env, fixed_batch, robot_present=False)
@@ -166,6 +183,15 @@ def table(rows, head):
     return "\n".join(lines)
 
 
+def columns(snap, kinds):
+    """The scenes of ``kinds`` (in that order) from a snapshot of one scene per kind."""
+    idx = [[name.rsplit("-", 1)[0] for name in snap["names"]].index(k) for k in kinds]
+    out = {k: (v[idx] if hasattr(v, "shape") and v.ndim and len(v) == len(snap["names"]) else v) for k, v in snap.items()}
+    out["names"] = [snap["names"][i] for i in idx]
+    out["plans"] = [(plan[idx], steps[idx]) for plan, steps in snap["plans"]]
+    return out
+
+
 def render(out_dir: Path, docs_dir: Path) -> None:
     from simplenavsim.visualization.plots import animate_grid
 
@@ -193,11 +219,13 @@ def render(out_dir: Path, docs_dir: Path) -> None:
     (docs_dir / "conditions.md").write_text("\n".join(lines) + "\n")
     (docs_dir / "results.json").write_text(json.dumps({c: {k: v for k, v in r.items() if k != "animations"}
                                                        for c, r in results.items()}, indent=1))
-    animate_grid([res["animations"]["v4"] for res in results.values()], list(results),
-                 docs_dir / "grid_v4_conditions.gif", title="v4 (latest CMA-ES): rows = pedestrian condition")
-    for name, labels in GRIDS.items():
-        animate_grid([reference["animations"][label] for label in labels], list(labels), docs_dir / f"{name}.gif",
-                     title="rows = policy (stars_reactive crowd)")
+    for name, (title, rows, kinds) in FIGURES.items():
+        if rows == "conditions":
+            snaps, labels = [res["animations"]["v4"] for res in results.values()], [CONDITION_NAMES[c] for c in results]
+        else:
+            snaps, labels = [reference["animations"][p] for p in rows], [POLICY_NAMES[p] for p in rows]
+        animate_grid([columns(snap, kinds) for snap in snaps], labels, [KIND_NAMES[k] for k in kinds],
+                     docs_dir / f"{name}.gif", title=title)
     print(f"saved {docs_dir}")
 
 
