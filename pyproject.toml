@@ -10,6 +10,7 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
   "accelerate==1.15.0",
+  "cma==4.5.0",
   "dill==0.4.1",
   "easydict==1.13",
   "einops==0.8.2",
@@ -87,7 +88,7 @@ py-modules = [
 
 [tool.setuptools.packages.find]
 where = ["src"]
-include = ["baselines*", "datasets_preprocessing*", "paper*", "scripts*"]
+include = ["baselines*", "datasets_preprocessing*", "paper*", "scripts*", "simplenavsim*"]
 namespaces = true
 
 [tool.setuptools.package-data]

@@ -140,7 +140,7 @@ def main() -> None:
         batches = batches[: args.max_batches]
     samples = args.samples if model.latent_dim else 1
 
-    teacher = MetricAccumulator()
+    teacher, constant_velocity = MetricAccumulator(), MetricAccumulator()
     closed = {steps: MetricAccumulator() for steps in args.rollout_exec_steps}
     with torch.no_grad():
         for windows in batches:
@@ -149,6 +149,12 @@ def main() -> None:
                 local = model.predict(batch, samples=samples)
             batch_metrics(to_scene(local.float(), batch.origin, batch.heading), batch, teacher,
                           collision_distance=args.collision_distance, dataset_names=store.names)
+            # Reference: constant velocity from the last observed displacement (Schoeller et al.).
+            velocity = batch.obs_xy[:, -1] - batch.obs_xy[:, -2]
+            horizon = torch.arange(1, model.prediction_steps + 1, device=velocity.device, dtype=velocity.dtype)
+            cv = batch.obs_xy[:, -1:, :] + horizon[None, :, None] * velocity[:, None]
+            batch_metrics(cv[None], batch, constant_velocity, collision_distance=args.collision_distance,
+                          dataset_names=store.names)
             for steps, accumulator in closed.items():
                 rounds = math.ceil(model.prediction_steps / steps)
                 with _autocast(args):
@@ -159,6 +165,7 @@ def main() -> None:
                 batch_metrics(simulated.float(), batch, accumulator, collision_distance=args.collision_distance,
                               dataset_names=store.names)
     teacher.all_reduce()
+    constant_velocity.all_reduce()
     for accumulator in closed.values():
         accumulator.all_reduce()
 
@@ -167,6 +174,7 @@ def main() -> None:
         "datasets": store.names, "split": args.split, "windows": args.windows, "k": samples,
         "n_graphs": len(store),
         "teacher_forced": teacher.result(),
+        "constant_velocity": constant_velocity.result(),
         "closed_loop": {f"exec_{steps}": accumulator.result() for steps, accumulator in closed.items()},
     }
     if args.sim_seconds > 0:
@@ -178,7 +186,9 @@ def main() -> None:
         args.output.write_text(json.dumps(report, indent=2) + "\n")
         headline = {k: round(v, 4) for k, v in report["teacher_forced"].items()
                     if k.endswith(("agent_ade", "agent_fde", "target_ade", "target_fde"))}
-        print(json.dumps({"teacher_forced": headline, **({"simulation": report["simulation"]}
+        cv = {k: round(v, 4) for k, v in report["constant_velocity"].items()
+              if k.endswith(("agent_ade", "agent_fde", "target_ade", "target_fde"))}
+        print(json.dumps({"teacher_forced": headline, "constant_velocity": cv, **({"simulation": report["simulation"]}
                                                          if "simulation" in report else {})}, indent=1))
     if args.world_size > 1:
         dist.destroy_process_group()

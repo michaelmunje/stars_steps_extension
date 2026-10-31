@@ -76,7 +76,7 @@ FORECAST_RECIPE = {
     "max_epochs": 200,
     "patience": 20,
     "min_delta": 1e-4,
-    "kl_weight": 1.0,
+    "kl_weight": 0.1,  # 1.0 collapses the latent on STEPS
     "kl_warmup_epochs": 10,
 }
 # The recipes' learning rates were set for 32 windows of ~19 STEPS pedestrians per step.
@@ -125,6 +125,8 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--max-batches", type=int, help="Integration diagnostic: cap batches per epoch and evaluation")
     parser.add_argument("--benchmark", type=int, help="Time this many training steps, report throughput, and exit")
     parser.add_argument("--epochs", type=int)
+    parser.add_argument("--weight-decay", type=float)
+    parser.add_argument("--dropout", type=float, help="Encoder dropout (scratch encoders / phase 1)")
     parser.add_argument("--max-nodes", type=int, default=16384, help="Pedestrians per batch on each GPU")
     parser.add_argument("--max-graphs", type=int, help="Cap windows per batch")
     parser.add_argument("--learning-rate", type=float, help="Peak LR (default: the recipe LR scaled by --lr-scaling)")
@@ -152,6 +154,8 @@ def _parser() -> argparse.ArgumentParser:
     forecast = parser.add_argument_group("forecast")
     forecast.add_argument("--encoder-checkpoint", type=Path, help="A --phase ssl checkpoint (frozen/finetune)")
     forecast.add_argument("--encoder-mode", choices=("frozen", "finetune", "scratch"), default="frozen")
+    forecast.add_argument("--decoder-hidden-dim", type=int)
+    forecast.add_argument("--decoder-dropout", type=float)
     forecast.add_argument("--decoder", choices=("deterministic", "cvae"), default="deterministic")
     forecast.add_argument("--cvae-latent-dim", type=int, default=32)
     forecast.add_argument("--no-social-layer", action="store_true", help="Decoder without its social message-passing round")
@@ -431,6 +435,9 @@ def load_forecaster(path: Path, device: torch.device) -> tuple[StarsMultiAgentFo
 # ----------------------------------------------------------------------------- training
 
 
+MAX_NONFINITE_STREAK = 100   # consecutive non-finite gradient steps before a run is stopped
+
+
 def _scaled_lr(base: float, args) -> float:
     if args.learning_rate is not None:
         return args.learning_rate
@@ -497,7 +504,7 @@ def train(args) -> None:
     args.obs, args.pred = forecasting.window.observation_steps, forecasting.window.prediction_steps
     payload = None
     encoder_overrides = {"hidden_dim": args.hidden_dim, "latent_dim": args.latent_dim,
-                         "use_node_features": False if args.edge_only else None}
+                         "use_node_features": False if args.edge_only else None, "dropout": args.dropout}
     args.encoder_recipe = {**ENCODER_RECIPE, **{k: v for k, v in encoder_overrides.items() if v is not None}}
     if args.encoder_checkpoint:
         payload = torch.load(args.encoder_checkpoint, map_location="cpu", weights_only=False)
@@ -511,10 +518,14 @@ def train(args) -> None:
         "latent_dim": args.cvae_latent_dim if args.decoder == "cvae" else 0,
         "social_layer": not args.no_social_layer,
         "representation": args.representation,
+        **({"hidden_dim": args.decoder_hidden_dim} if args.decoder_hidden_dim else {}),
+        **({"dropout": args.decoder_dropout} if args.decoder_dropout is not None else {}),
     }
     base_recipe = SSL_RECIPE if args.phase == "ssl" else FORECAST_RECIPE
     args.recipe = {**base_recipe, **({"max_epochs": args.epochs} if args.epochs else {})}
     args.recipe["learning_rate"] = _scaled_lr(base_recipe["learning_rate"], args)
+    if args.weight_decay is not None:
+        args.recipe["weight_decay"] = args.weight_decay
     if args.phase == "forecast":
         args.recipe["kl_weight"] = args.kl_weight
 
@@ -594,7 +605,7 @@ def train(args) -> None:
             if args.benchmark:
                 batches = (batches * math.ceil(args.benchmark / max(1, len(batches))))[: args.benchmark]
             sums = {}
-            nodes = edges = 0
+            nodes = edges = skipped = bad_streak = 0
             if device.type == "cuda":
                 torch.cuda.synchronize(device)
                 torch.cuda.reset_peak_memory_stats(device)
@@ -609,7 +620,16 @@ def train(args) -> None:
                     losses = step_module(batch, weight)
                 optimizer.zero_grad(set_to_none=True)
                 losses["loss"].backward()
-                torch.nn.utils.clip_grad_norm_(trainable, args.recipe["grad_clip"])
+                norm = torch.nn.utils.clip_grad_norm_(trainable, args.recipe["grad_clip"])
+                # The norm is taken after DDP's all-reduce, so every rank skips the same steps.
+                if not torch.isfinite(norm):
+                    optimizer.zero_grad(set_to_none=True)
+                    skipped += 1
+                    bad_streak += 1
+                    if bad_streak >= MAX_NONFINITE_STREAK:
+                        raise FloatingPointError(f"{bad_streak} consecutive non-finite gradients (epoch {epoch})")
+                    continue
+                bad_streak = 0
                 optimizer.step()
                 if args.schedule != "plateau":
                     scheduler.step()
@@ -622,6 +642,7 @@ def train(args) -> None:
                 torch.cuda.synchronize(device)
             elapsed = time.perf_counter() - started
             train_metrics = {f"train_{k}": float(_all_mean(v / max(1, len(batches)), args)) for k, v in sums.items()}
+            train_metrics["train_skipped_steps"] = skipped
             throughput = {"epoch_seconds": elapsed, "nodes_per_second": nodes * args.world_size / elapsed,
                           "edges_per_second": edges * args.world_size / elapsed,
                           "steps_per_second": len(batches) / elapsed,
@@ -686,6 +707,15 @@ def main(argv=None) -> None:
     finally:
         if args.world_size > 1 and dist.is_initialized():
             dist.destroy_process_group()
+    if args.world_size > 1:
+        # Multi-GPU runs on all datasets hit a bus error in interpreter teardown after training
+        # finished and saved, which marked successful jobs FAILED; everything is on disk, so skip it.
+        import sys
+
+        if torch.cuda.is_available():
+            torch.cuda.synchronize()
+        sys.stdout.flush(), sys.stderr.flush()
+        os._exit(0)
 
 
 if __name__ == "__main__":
