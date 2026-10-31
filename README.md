@@ -74,6 +74,8 @@ tests/
 
 | Topic | Where |
 | --- | --- |
+| **SimpleNavSim simulator: quick start, weights, training, evaluation** | [`simplenavsim/README.md`](simplenavsim/README.md) |
+| Results (forecaster and navigation) | [`docs/results/README.md`](docs/results/README.md) |
 | TACC Horizon setup and jobs | [`docs/horizon.md`](docs/horizon.md) |
 | Multi-agent STARS design, phases, ablations | [`docs/stars_multiagent.md`](docs/stars_multiagent.md) |
 | Loader, preprocessing, OpenTraj analysis, paper tables, visualization | [`docs/data_pipeline.md`](docs/data_pipeline.md) |

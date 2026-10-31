@@ -35,3 +35,8 @@ htmlcov/
 .claude/*
 CLAUDE.md
 research-plan.md
+
+# Run outputs
+/checkpoints/
+/runs/
+/*-[0-9]*.out
