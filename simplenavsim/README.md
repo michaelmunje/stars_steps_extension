@@ -37,7 +37,7 @@ Results: [`docs/results/README.md`](../docs/results/README.md); reasoning: `docs
 | `core/scenarios.py` | Nine seeded, randomised scenario kinds plus recorded STEPS windows; split-disjoint seeds; batching |
 | `core/rollout.py`, `core/metrics.py` | Recorded episodes, the robot-absent counterfactual, task / comfort / disruption metrics |
 | `environments/lightweight/env.py` | Differential-drive robot (acceleration limits, exact arcs), collisions, success, timeout |
-| `pedestrians/` | `replay`, `social_force`, `reactive_replay`, `stars_crowd`, `stars_social` |
+| `pedestrians/` | `replay`, `social_force`, `reactive_replay`, `stars_crowd` |
 | `policies/` | `social_navigation` (arc scoring with a hard safety constraint), `goal_seeking`, `ppo` (learned subgoals) |
 | `predictors/stars.py` | The multi-agent STARS forecaster as the controller's pedestrian predictor |
 | `optimization/` | `evaluator` (batched candidates, objective), `cmaes` (pycma, resume), `ppo_search` |
@@ -53,8 +53,7 @@ seed) and `recorded` (a busy 30 s STEPS window). Train, validation and test use 
   `reactive_replay` tracks it while avoiding others with the same forces.
 - `stars_crowd`: after a 3.2 s warm-up on the reference, the STARS forecaster moves everyone
   (re-forecast every 0.4 s, seeded AR(1) CVAE intents); with `include_robot` the robot is one more
-  node in its graph. `stars_social`: the forecast sets each pedestrian's desired velocity and
-  social forces produce the motion.
+  node in its graph.
 
 The counterfactual run has identical inputs with the robot removed; disruption metrics compare the two.
 

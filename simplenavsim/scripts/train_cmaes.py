@@ -25,7 +25,7 @@ def main() -> None:
     parser.add_argument("--seed", type=int)
     parser.add_argument("--optimizer", choices=("cmaes", "ppo"))
     parser.add_argument("--policy", help="Start from a saved policy YAML (its values become the initial mean)")
-    parser.add_argument("--pedestrians", choices=("replay", "social_force", "reactive_replay", "stars_crowd", "stars_social"))
+    parser.add_argument("--pedestrians", choices=("replay", "social_force", "reactive_replay", "stars_crowd"))
     parser.add_argument("--device")
     parser.add_argument("--out-dir", type=Path, default=Path("checkpoints/simplenavsim/cmaes"))
     parser.add_argument("--resume", action="store_true")

@@ -4,7 +4,6 @@ from __future__ import annotations
 import math
 
 import numpy as np
-import pytest
 import torch
 
 from simplenavsim.core.metrics import all_metrics
@@ -149,10 +148,9 @@ def test_cmaes_runs_resumes_and_never_selects_worse_than_default(tmp_path):
     assert resumed["generations"] == 3
 
 
-@pytest.mark.parametrize("model_name", ["stars_crowd", "stars_social"])
-def test_learned_crowds_run_never_enter_the_robot_and_are_deterministic(tmp_path, model_name):
+def test_stars_crowd_runs_never_enters_the_robot_and_is_deterministic(tmp_path):
     from baselines.stars_ma_model import StarsMultiAgentForecaster
-    from simplenavsim.pedestrians.stars_crowd import StarsCrowdModel, StarsSocialModel
+    from simplenavsim.pedestrians.stars_crowd import StarsCrowdModel
 
     torch.manual_seed(0)
     model = StarsMultiAgentForecaster(8, 12, dt=0.4, encoder_recipe={"hidden_dim": 32, "latent_dim": 16,
@@ -164,7 +162,7 @@ def test_learned_crowds_run_never_enter_the_robot_and_are_deterministic(tmp_path
                 "graph": {"knn": 16, "radius": 10.0}, "window": {"observation_steps": 8, "prediction_steps": 12, "dt": 0.4},
                 "run_config": {"data_seed": 42}}, path)
     batch = collate(scenario_set("test", ["dense_flow", "head_on"], 1, duration=12.0))
-    env = LightweightEnv({"stars_crowd": StarsCrowdModel, "stars_social": StarsSocialModel}[model_name](path, seed=3))
+    env = LightweightEnv(StarsCrowdModel(path, seed=3))
     absent_a = rollout(env, batch, robot_present=False)
     absent_b = rollout(env, batch, robot_present=False)
     torch.testing.assert_close(absent_a.ped_pos, absent_b.ped_pos)               # seeded intents

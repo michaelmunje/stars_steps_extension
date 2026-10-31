@@ -6,7 +6,6 @@ Conditions (how pedestrians move):
     reactive_replay   scripted paths tracked with social forces (reactive demonstrations)
     stars_blind       STARS forecaster drives pedestrians, robot not in its graph
     stars_reactive    STARS forecaster, robot in its graph (the crowd every policy was trained in)
-    stars_social      STARS forecasts as intents, social forces for motion
 
 Policies (``POLICIES``): goal-seeking, the untuned social controller, v4 (the latest CMA-ES result)
 with a constant-velocity or STARS predictor, PPO over the same parameters, and learned subgoals.
@@ -48,7 +47,6 @@ CONDITIONS = {
     "reactive_replay": {"model": "reactive_replay", "social_force": FORCES},
     "stars_blind": {"model": "stars_crowd", "stars_crowd": {**STARS, "include_robot": False}},
     "stars_reactive": {"model": "stars_crowd", "stars_crowd": STARS},
-    "stars_social": {"model": "stars_social", "stars_crowd": STARS, "social_force": FORCES},
 }
 CKPT = "checkpoints/simplenavsim"
 POLICIES = {  # label: (controller, policy YAML, STARS predictor)
@@ -64,15 +62,15 @@ KIND_NAMES = {"crossing": "Crossing", "head_on": "Head-on", "overtaking": "Overt
               "stationary_group": "Standing group", "dense_flow": "Two-way corridor", "recorded": "Recorded STEPS crowd"}
 CONDITION_NAMES = {"replay": "Scripted paths\n(ignore robot)", "social_force": "Social forces",
                    "reactive_replay": "Scripted paths\n+ social forces", "stars_blind": "STARS forecaster\n(ignores robot)",
-                   "stars_reactive": "STARS forecaster\n(reacts to robot)", "stars_social": "STARS goals\n+ social forces"}
+                   "stars_reactive": "STARS forecaster\n(reacts to robot)"}
 POLICY_NAMES = {"v4": "CMA-ES\n(tuned controller)", "ppo_params": "PPO\n(same parameters)",
                 "subgoal_ppo": "PPO subgoals\n(tuned controller)"}
 ENCOUNTERS = ("crossing", "head_on", "overtaking", "following")
 CROWDS = ("group_toward", "stationary_group", "narrow_passage", "dense_flow", "recorded")
 FIGURES = {  # file: (title, rows ("conditions" or policies), scene kinds)
-    "cmaes_conditions_encounters": ("CMA-ES-tuned controller under six pedestrian models: one-on-one encounters",
+    "cmaes_conditions_encounters": ("CMA-ES-tuned controller under five pedestrian models: one-on-one encounters",
                                     "conditions", ENCOUNTERS),
-    "cmaes_conditions_crowds": ("CMA-ES-tuned controller under six pedestrian models: groups and crowds",
+    "cmaes_conditions_crowds": ("CMA-ES-tuned controller under five pedestrian models: groups and crowds",
                                 "conditions", CROWDS),
     "policies": ("Tuned policies in the STARS crowd they were trained in", ("v4", "ppo_params", "subgoal_ppo"),
                  ("head_on", "group_toward", "narrow_passage", "dense_flow", "recorded")),

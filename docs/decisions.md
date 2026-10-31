@@ -1652,7 +1652,8 @@ why, and how to undo it.
 100. **One evaluation: every policy under every pedestrian condition** (`simplenavsim/scripts/evaluate.py`,
     `docs/results/evaluation/`). It replaces `crowd_conditions.py`, `render_policies.py`,
     `compare_policies.py` and the old `evaluate.py`; ORCA, unused configs and the Isaac Lab stub are removed.
-    - **Setup:** six conditions (96) x six policies (goal-seeking, untuned social, v4 with a
+    - **Setup:** five conditions (96 without stars_social, removed as the least realistic crowd
+      and hardest to explain) x six policies (goal-seeking, untuned social, v4 with a
       constant-velocity or STARS predictor, PPO-params seed 42, subgoal PPO seed 1) x the v4
       config's 9 kinds x 30 test scenes. Each scene is scored by the config objective against a
       robot-absent run of the same condition. The latest CMA-ES re-tune (`cmaes_tol1`) kept v4
