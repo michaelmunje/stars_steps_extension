@@ -63,6 +63,26 @@ within `safety_margin` of a pedestrian within `safety_horizon` or touch a wall, 
 lowest weighted cost (goal progress, collision, personal space, disruption, clearance, speed,
 smoothness, waiting terms). CMA-ES tunes the weights (`cmaes.optimize`).
 
+Cost of an arc (lower is better), each term averaged over the arc's predicted steps:
+
+| Parameter | Role in the cost | Default | v4 |
+| --- | --- | --- | --- |
+| `goal_weight` | reward for getting closer to the goal over the horizon (relative to driving straight at full speed) | 2.0 | 0.5 (lower bound) |
+| `alignment_weight` | extra reward for ending the arc facing the goal (scaled by `goal_weight`) | 0.1 | 0.075 |
+| `pedestrian_weight` | penalty for predicted intrusion into personal space, `(1 - gap / personal_space_radius)^2` | 1.0 | 27.4 |
+| `personal_space_radius` | gap (m, surface to surface) below which that penalty starts | 0.8 | 0.55 |
+| `disruption_weight` | penalty for being in the zone ahead of a moving pedestrian (grows with their speed) | 1.0 | 0.01 (lower bound) |
+| `prediction_horizon` | how far ahead (s) arcs and forecasts are scored | 2.0 | 2.27 |
+| `preferred_speed` | cruise speed (m/s) the speed term pulls towards | 0.8 | 1.0 (upper bound) |
+| `speed_scale` | weight of that speed term; it fades out when a pedestrian is within 2x personal space, so slowing down near people is free | 1.0 | 5.0 |
+| `retreat_scale` | weight of the penalty for arcs that end farther from the goal (wait rather than back off or orbit) | 1.0 | 1.59 |
+| `smoothness_weight` | penalty for changing the command from the last one | 0.2 | 0.39 |
+| `turn_penalty` | penalty for turning rate | 0.1 | 0.0 (lower bound) |
+
+Not tuned (fixed at their defaults): `collision_weight` 5 (predicted overlap beyond the 1 s hard
+check) and `obstacle_weight` 1 (wall clearance below 0.6 m). The hard safety filter (0.05 m
+within 1 s) is not a cost: arcs that violate it are removed, and if none is left the robot stops.
+
 **Objective** (`objective:` in the config): success, collisions, a disruption metric
 (`robot_influence` in the STARS crowd), time, a comfort metric, detour, smoothness, loops and
 time to goal. Evaluation in the STARS crowd is not bit-for-bit reproducible (bf16 on GPU);
