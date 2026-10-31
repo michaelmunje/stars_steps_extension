@@ -28,6 +28,9 @@ def recording_pool(config: dict):
 
     path = Path(spec.get("path", "datasets/steps"))
     path = path if path.is_absolute() else ROOT / path
+    if not path.exists():
+        logging.getLogger(__name__).warning("%s not found: skipping recorded scenes", path)
+        return None
     options = {k: spec[k] for k in ("max_pedestrians", "min_pedestrians") if k in spec}
     return RecordingPool.from_steps(path, limit_per_split=spec.get("limit_per_split"), **options)
 

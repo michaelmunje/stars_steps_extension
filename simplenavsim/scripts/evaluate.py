@@ -151,8 +151,8 @@ def run_condition(name, args, config, device):
     env = make_env(config["simulator"], pedestrians)
     objective, cm, pool = Objective(**config["objective"]), config["cmaes"], recording_pool(config)
     scenes = scenario_set("test", cm["kinds"], args.per_kind, dt=cm["dt"], duration=cm["duration"], pool=pool)
-    fixed = [next(s for s in scenes if s.kind == kind) for kind in cm["kinds"]]
     kinds = [s.kind for s in scenes]
+    fixed = [next(s for s in scenes if s.kind == kind) for kind in dict.fromkeys(kinds)]
     batch, fixed_batch = collate(scenes, device), collate(fixed, device)
     cf, fixed_cf = rollout(env, batch, robot_present=False), rollout(env, fixed_batch, robot_present=False)
     out = {"policies": {}, "animations": {}}
@@ -163,12 +163,12 @@ def run_condition(name, args, config, device):
         metrics["objective"] = objective(metrics)
         out["policies"][label] = {"all": summarize(metrics),
                                   "per_kind": {k: summarize(metrics, torch.tensor([x == k for x in kinds]))
-                                               for k in cm["kinds"]}}
+                                               for k in dict.fromkeys(kinds)}}
         fixed_run, plans = recorded_rollout(policy, env, fixed_batch, values, device)
         out["animations"][label] = snapshot(fixed_batch, fixed_run, plans, fixed_cf)
         print(name, label, json.dumps({m: round(out["policies"][label]["all"][m], 3)
                                        for m in ("objective", "success", "collision")}), flush=True)
-    out["realism"] = realism(env, pool, args.realism_scenes, device)
+    out["realism"] = realism(env, pool, args.realism_scenes, device) if pool else {}
     return out
 
 
@@ -198,12 +198,12 @@ def render(out_dir: Path, docs_dir: Path) -> None:
     reference = results["stars_reactive"]
     docs_dir.mkdir(parents=True, exist_ok=True)
     (docs_dir / "original.md").write_text(
-        "# Policies in the training crowd (stars_reactive), 9 kinds x 30 test scenes\n\n"
+        f"# Policies in the training crowd (stars_reactive), {len(reference['policies']['v4']['per_kind'])} scene kinds\n\n"
         "The evaluation the policies were selected by (decision 99): the config objective and its terms.\n\n"
         + table([(p, r["all"]) for p, r in reference["policies"].items()], ("Policy",)) + "\n")
     v4_kinds = list(reference["policies"]["v4"]["per_kind"])
     keys = ("position_error", "error_at_5s", "error_at_10s", "speed_sim", "speed_real", "overlap_rate")
-    lines = ["# Policies x pedestrian conditions, 9 kinds x 30 test scenes\n",
+    lines = [f"# Policies x pedestrian conditions, {len(v4_kinds)} scene kinds\n",
              "`robot_influence` exists only in stars_reactive; elsewhere the objective has no disruption term.\n",
              table([(c, p, r["all"]) for c, res in results.items() for p, r in res["policies"].items()],
                    ("Condition", "Policy")),
@@ -213,11 +213,14 @@ def render(out_dir: Path, docs_dir: Path) -> None:
               + " |" for c, res in results.items()]
     lines += ["\n## Crowd realism (recorded STEPS test scenes, robot absent)\n",
               "| Condition | " + " | ".join(keys) + " |", "|" + " --- |" * (len(keys) + 1)]
-    lines += [f"| {c} | " + " | ".join(f"{res['realism'][k]:.3f}" for k in keys) + " |" for c, res in results.items()]
+    lines += [f"| {c} | " + " | ".join(f"{res['realism'][k]:.3f}" for k in keys) + " |" for c, res in results.items()
+              if res["realism"]]
     (docs_dir / "conditions.md").write_text("\n".join(lines) + "\n")
     (docs_dir / "results.json").write_text(json.dumps({c: {k: v for k, v in r.items() if k != "animations"}
                                                        for c, r in results.items()}, indent=1))
+    available = [name.rsplit("-", 1)[0] for name in reference["animations"]["v4"]["names"]]
     for name, (title, rows, kinds) in FIGURES.items():
+        kinds = [k for k in kinds if k in available]
         if rows == "conditions":
             snaps, labels = [res["animations"]["v4"] for res in results.values()], [CONDITION_NAMES[c] for c in results]
         else:

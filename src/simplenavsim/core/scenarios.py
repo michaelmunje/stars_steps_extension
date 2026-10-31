@@ -193,10 +193,11 @@ SYNTHETIC_KINDS = KINDS[:-1]
 
 def scenario_set(split: str, kinds, per_kind: int, *, start: int = 0, dt: float = DEFAULT_DT,
                  duration: float = 30.0, pool=None) -> list[Scenario]:
-    """``per_kind`` scenarios of each kind with seeds unique to ``split`` (``start`` shifts the window)."""
+    """``per_kind`` scenarios of each kind with seeds unique to ``split`` (``start`` shifts the window).
+    ``recorded`` is skipped without a ``pool`` (no STEPS data)."""
     offset = SPLIT_OFFSETS[split] + start
     return [make_scenario(kind, offset + i, dt=dt, duration=duration, pool=pool, split=split)
-            for kind in kinds for i in range(per_kind)]
+            for kind in kinds if kind != "recorded" or pool is not None for i in range(per_kind)]
 
 
 def collate(scenarios: list[Scenario], device="cpu") -> ScenarioBatch:
