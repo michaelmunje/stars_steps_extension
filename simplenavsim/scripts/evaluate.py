@@ -16,6 +16,7 @@ The GIFs show the first test scene of each kind. Crowd realism
 is measured on recorded STEPS test scenes with the robot absent.
 
     python simplenavsim/scripts/evaluate.py --conditions replay social_force --device cuda
+    python simplenavsim/scripts/evaluate.py --policy mine=checkpoints/simplenavsim/my_run/best_policy.yaml
     python simplenavsim/scripts/evaluate.py --render     # tables and GIF grids from the saved runs
 
 Runs are saved as ``condition_<name>.pkl``; ``--render`` writes ``original.md`` (stars_reactive, the
@@ -234,6 +235,8 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--config", type=Path, default=CONFIG_DIR / "cmaes_crowd_v4.yaml")
     parser.add_argument("--conditions", nargs="*", default=list(CONDITIONS), choices=list(CONDITIONS))
+    parser.add_argument("--policy", action="append", default=[], metavar="LABEL=YAML",
+                        help="Also evaluate a saved policy (social or subgoal YAML from train_cmaes / train_ppo)")
     parser.add_argument("--per-kind", type=int, default=30)
     parser.add_argument("--realism-scenes", type=int, default=30)
     parser.add_argument("--device", default="cuda")
@@ -246,6 +249,9 @@ def main() -> None:
     if args.render:
         return render(args.out_dir, args.docs_dir)
     config = load_config(args.config)
+    for item in args.policy:
+        label, path = item.split("=", 1)
+        POLICIES[label] = (load_yaml(Path(path))["policy"], str(Path(path).resolve()), True)
     for name in args.conditions:
         result = run_condition(name, args, config, torch.device(args.device))
         (args.out_dir / f"condition_{name}.pkl").write_bytes(pickle.dumps(result))

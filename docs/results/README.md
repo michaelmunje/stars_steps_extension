@@ -5,6 +5,7 @@ numbers here are copied from the files linked below. The reasoning behind each c
 [`../decisions.md`](../decisions.md); entry numbers are given in brackets.
 
 **Latest navigation evaluation, with animations:** [`evaluation/`](evaluation/) (all policies x pedestrian conditions) [100].
+**Weights** (forecasters and policies): GitHub release [`weights-v1`](https://github.com/michaelmunje/stars_steps_extension/releases/tag/weights-v1).
 **Latest forecaster, with per-dataset results:** [`../latest_forecaster/`](../latest_forecaster/README.md).
 
 ## Current references
@@ -13,7 +14,7 @@ numbers here are copied from the files linked below. The reasoning behind each c
 | --- | --- | --- |
 | STEPS forecaster, and the SimpleNavSim crowd and predictor | `experiments/stars_ma/runs/cvae_kl01_finetune/checkpoints/best.pt` | ADE / FDE 0.080 / 0.126 (constant velocity 0.276 / 0.518); realistic 20 s rollouts [48] |
 | All-dataset forecaster | `experiments/stars_ma/runs/cvae_all_lr3e-4_seed42/checkpoints/best.pt` | 2-3.5x better than constant velocity on all six datasets. Better than or level with a per-dataset model on every dataset, robust across seeds (pooled LR 3e-4) [86] |
-| Navigation policy | `checkpoints/simplenavsim/cmaes_crowd_v4/best_policy.yaml` | In the STARS crowd: 99% success, 0.7% collisions, 100% on recorded STEPS scenes [75] |
+| Navigation policy (v4) | `checkpoints/simplenavsim/cmaes_crowd_v4/best_policy.yaml` | In the STARS crowd: 98.5-98.9% success, 0.7-1.1% collisions [99, 100] |
 
 Closed questions: pooled training beats per-dataset training once its LR is lowered to 3e-4 [86];
 hyperparameter search has converged [61, 62]; closed-loop training does not
@@ -78,83 +79,31 @@ analysis are in [`stars_ma_all_test.md`](stars_ma_all_test.md).
 ![One model per dataset vs one for all](stars_ma_single_vs_all.png)
 - Feeding back its own predictions every step costs little on STEPS but 14–20% elsewhere.
 
-## Navigation (SimpleNavSim lightweight backend, 80 scripted test scenarios)
+## Navigation (SimpleNavSim, 270 test scenes: 9 kinds x 30) [94-100]
 
-Objective v1 = success − 2·collision − disruption − 0.3·time − 0.5·personal-zone rate.
+How to run it: [`../../simplenavsim/README.md`](../../simplenavsim/README.md). Full tables and
+GIFs: [`evaluation/`](evaluation/). Objective J as in that README; it has a disruption term only
+in the STARS crowd that sees the robot, so compare scores within a row, not across rows.
 
-**Same parameters, different pedestrian predictor** [37]:
+Objective / success / collisions:
 
-| Policy | Constant velocity | STARS forecaster |
-| --- | --- | --- |
-| Goal-seeking baseline | −0.572 (30% collisions) | — |
-| Social controller, default | 0.439 (2.5% collisions) | 0.536 (0 collisions) |
-| CMA-ES tuned v1 (`checkpoints/simplenavsim/cmaes/best_policy.yaml`) | 0.612 | **0.647** |
-
-**Robustness to the pedestrian model:** the v1 policy, tuned against reactive replay, has 0
-collisions and beats the default under ORCA, social force and replay pedestrians [29].
-
-**Controller fixes**, prompted by the rollout figures:
-- [43] Tuned policies orbited instead of waiting. A retreat penalty, a speed cost that fades near
-  pedestrians and slow reversing fixed this. Results above this point used the old controller.
-- [45] A warm-started policy scored 0.707 by circling pedestrians and driving around walls. This is
-  reward hacking. Objective v2 adds detour (path efficiency) and smoothness terms; reruns are in
-  progress.
-
-**Objective v2** adds detour (1 − path efficiency) and command smoothness terms [50]. Scripted
-test, best STARS predictor:
-
-| Policy | Objective v2 | Success | Path efficiency | Disruption (m) | Time (s) |
+| Pedestrians | Goal-seeking | Untuned controller | **v4 (CMA-ES)** | PPO, same weights | PPO subgoals |
 | --- | --- | --- | --- | --- | --- |
-| Default social | 0.425 | 100% | 0.98 | 0.206 | 13.6 |
-| v1 (cautious) | 0.354 | 91% | 0.85 | 0.067 | 13.5 |
-| **Warm start v2** (`cmaes_stars_best_warm_v2`) | **0.449** | 96% | 0.91 | 0.115 | 12.4 |
+| Scripted paths (ignore robot) | -1.89 / 37% / 63% | 0.28 / 89% / 7.4% | 0.66 / 96% / 0.4% | 0.63 / 96% / 1.1% | 0.62 / 96% / 0.7% |
+| Social forces | -0.63 / 67% / 33% | 0.71 / 99% / 0% | 0.63 / 95% / 0.7% | 0.64 / 96% / 0.4% | 0.62 / 96% / 0.7% |
+| Scripted paths + social forces | -0.49 / 70% / 30% | 0.70 / 100% / 0.4% | 0.63 / 95% / 0.4% | 0.64 / 96% / 0.4% | 0.65 / 97% / 0% |
+| STARS, ignores robot | -1.86 / 38% / 62% | 0.39 / 92% / 4.4% | 0.72 / 99% / 0.4% | 0.73 / 99% / 0.4% | 0.68 / 98% / 1.1% |
+| **STARS, sees robot (training crowd)** | -2.07 / 38% / 62% | 0.08 / 90% / 4.1% | 0.42 / 99% / 1.1% | 0.42 / 99% / 0.7% | 0.37 / 97% / 1.9% |
 
-**Figures:**
-- [`navigation_compare_warm_v2.png`](navigation_compare_warm_v2.png): default vs v1 vs warm start
-  v2, six scenarios.
-- [`navigation_compare_stars.png`](navigation_compare_stars.png): goal-seeking vs default vs tuned,
-  five scenarios.
-- [`navigation_compare_warm.png`](navigation_compare_warm.png): the reward-hacking policy.
-- Per-run GIFs are under `runs/simplenavsim/*/visualize/` (not in git).
-
-## Forecaster as the crowd
-
-`stars_crowd` moves the simulated pedestrians with the forecaster itself, with the robot as one
-more person in the graph [46].
-- Intents follow an AR(1) process, and recorded goals keep 1 m from pedestrians [55].
-- Pedestrians cannot walk through walls [64].
-- The comfort term counts time within 0.45 m of a pedestrian [58].
-
-Results on 270 test scenarios (30 per kind, including 30 recorded STEPS scenes). The objective
-charges 0.2 per extra loop, and the tuner also sets the controller's waiting costs [70, 75]:
-
-| Policy | Objective | Success | Collision | Time within 0.45 m | Loops / episode | Recorded success |
-| --- | --- | --- | --- | --- | --- | --- |
-| Goal-seeking | -2.149 | 38% | 62% | 11.4% | 0.00 | 27% |
-| Default social | -0.196 | 83% | 7.8% | 16.4% | 0.01 | 77% |
-| v1 (tuned against reactive replay) | 0.196 | 91% | 0.7% | 1.3% | 0.09 | 67% |
-| Tuned in the crowd, v2 | 0.276 | 96% | 1.5% | 5.4% | 0.10 | 87% |
-| Tuned in the crowd, v3 (wall-respecting crowd) | 0.321 | 97% | 0.4% | 1.4% | 0.19 | 77% |
-| **Tuned in the crowd, v4** (`cmaes_crowd_v4`) | **0.388** | **99%** | 0.7% | 2.6% | **0.08** | **100%** |
-
-Evaluation noise is about ±0.02 [72].
-
-Figures:
-- [`navigation_compare_crowd_v6.png`](navigation_compare_crowd_v6.png): v2 against v4. The loop in
-  the narrow passage is gone; dense flow still loops.
-- [`navigation_compare_crowd_v4.png`](navigation_compare_crowd_v4.png): v1, the first crowd run
-  and v2 in the wall-respecting crowd.
-
-### What did not beat v4 [68-92]
-
-All on the same 270 test scenes and objective, judged on the worst-case rule [88]:
-- **Controller cost terms and memory** (speed, retreat, idle turning, turn commitment, pass-side
-  memory, progress along the plan) [68-89] and **wait-then-go plans** [90]: none removes the
-  dense-flow loops without losing safety.
-- **Tuning in the less reactive pooled crowd** [88]: policies that cut closer to people and
-  collide 5-6x more in the STEPS crowd.
-- **A learned steering network** (behaviour cloning from v4, then evolution strategies, with a
-  safety shield) [91]: plateaus at 87-90% success and 7-10% collisions.
-- **A network that adjusts v4's settings per step** [92]: starts at v4 but ES only drifts away
-  from it.
-
+- **v4 is the reference.** Re-tuning with CMA-ES or PPO lands on v4 or ties with it; learned
+  subgoals are slightly worse [99, 100]. Differences under 0.02 are evaluation noise.
+- **v4's tuning is specific to the STARS crowd:** with social-force pedestrians the untuned
+  controller scores higher [100].
+- **The STARS crowd that sees the robot tends to walk with it** (twice as much following as when
+  it ignores the robot): it treats the robot as a companion, as walking groups do in STEPS.
+  Not a frame bug (forecasts are rotation-, translation- and order-equivariant to 1e-5 m).
+- **Weak spots:** head-on encounters in the STARS crowd (6.7% collisions) and narrow passages
+  with pedestrians that ignore the robot (27% timeouts) [100].
+- **Did not beat v4** [68-98]: extra controller cost terms and memory, wait-then-go plans,
+  tuning in a pooled-data crowd, a behaviour-cloned steering network, per-step parameter
+  adjustment, and PPO choosing arcs directly (4-5% collisions).

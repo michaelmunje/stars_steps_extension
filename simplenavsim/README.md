@@ -1,95 +1,135 @@
 # SimpleNavSim: social navigation simulation and policy tuning
 
-SimpleNavSim is a lightweight, batched 2-D social navigation simulator in PyTorch: a
-differential-drive robot navigates among pedestrians, and a parameterised navigation controller is
-tuned with CMA-ES (or PPO) to reach its goal while disturbing pedestrians as little as possible.
-Every environment is one row of a tensor batch, so a whole CMA-ES population × scenario set runs
-as one simulation on a GPU. It is new code; [SEAN 2.0](https://github.com/yale-sean/social_sim_unity)
-served only as a reference for behaviours and metric definitions.
+A batched 2-D social-navigation simulator in PyTorch. A differential-drive robot drives to a goal
+among pedestrians; a navigation controller with 11 tunable weights is tuned with CMA-ES (or PPO).
+Pedestrians can be scripted, driven by social forces, or driven by the multi-agent STARS
+trajectory forecaster. Every environment is one row of a tensor batch, so whole populations of
+candidate policies run as one simulation. New code; [SEAN 2.0](https://github.com/yale-sean/social_sim_unity)
+was only a reference for behaviours and metrics.
 
-Code: `src/simplenavsim/`. Configs: `simplenavsim/configs/`. Tools: `simplenavsim/scripts/`.
-Tests: `tests/test_simplenavsim.py`.
-
-## Usage
-
-From the repository root after `uv sync` (`source .venv/bin/activate`); the STARS crowd and
-predictor need a GPU (`sbatch scripts/horizon/gpu_jobs.slurm "<command>"` on TACC Horizon).
+## Quick start
 
 ```bash
-# Tune the controller in the STARS crowd (v4 recipe; --optimizer ppo for PPO on the same parameters)
-python simplenavsim/scripts/train_cmaes.py --config simplenavsim/configs/cmaes_crowd_v4.yaml --device cuda \
-  --policy checkpoints/simplenavsim/cmaes_crowd_v4/best_policy.yaml --out-dir checkpoints/simplenavsim/my_run
+uv sync && source .venv/bin/activate          # from the repository root (Python 3.12)
 
-# Learned subgoals for the tuned controller (PPO, decision 99)
-python simplenavsim/scripts/train_ppo.py --config simplenavsim/configs/cmaes_crowd_v4.yaml --device cuda \
-  --policy checkpoints/simplenavsim/cmaes_crowd_v4/best_policy.yaml --out-dir checkpoints/simplenavsim/subgoal
+# Trained weights: two STARS forecasters and the tuned policies, unpacked in place
+gh release download weights-v1 --repo michaelmunje/stars_steps_extension
+tar xzf simplenavsim_weights.tar.gz
 
-# Evaluate policies on the test split under every pedestrian condition, with GIF grids
-python simplenavsim/scripts/evaluate.py --help
+# Evaluate the tuned policies under every pedestrian model (needs a GPU for the STARS crowd)
+python simplenavsim/scripts/evaluate.py
+python simplenavsim/scripts/evaluate.py --render
 ```
 
-Results: [`docs/results/README.md`](../docs/results/README.md); reasoning: `docs/decisions.md`.
+The bundle contains:
 
-## Components
-
-| Module | Contents |
+| File | What it is |
 | --- | --- |
-| `core/scenarios.py` | Nine seeded, randomised scenario kinds plus recorded STEPS windows; split-disjoint seeds; batching |
-| `core/rollout.py`, `core/metrics.py` | Recorded episodes, the robot-absent counterfactual, task / comfort / disruption metrics |
-| `environments/lightweight/env.py` | Differential-drive robot (acceleration limits, exact arcs), collisions, success, timeout |
-| `pedestrians/` | `replay`, `social_force`, `reactive_replay`, `stars_crowd` |
-| `policies/` | `social_navigation` (arc scoring with a hard safety constraint), `goal_seeking`, `ppo` (learned subgoals) |
-| `predictors/stars.py` | The multi-agent STARS forecaster as the controller's pedestrian predictor |
-| `optimization/` | `evaluator` (batched candidates, objective), `cmaes` (pycma, resume), `ppo_search` |
-| `datasets/trajectory_loader.py` | Recorded STEPS traffic as scenarios, split by recording |
-| `visualization/plots.py` | GIF grids, CMA-ES convergence |
+| `experiments/stars_ma/runs/cvae_kl01_finetune/checkpoints/best.pt` | STARS forecaster trained on STEPS: moves the simulated crowd and is the robot's pedestrian predictor |
+| `experiments/stars_ma/runs/cvae_all_lr3e-4_seed42/checkpoints/best.pt` | STARS forecaster trained on six datasets (not used by the default configs) |
+| `checkpoints/simplenavsim/cmaes_crowd_v4/best_policy.yaml` | **v4**: the CMA-ES-tuned controller, the reference policy |
+| `checkpoints/simplenavsim/ppo_params_s42/best_policy.yaml` | PPO tuning the same 11 weights |
+| `checkpoints/simplenavsim/subgoal_s1/` | PPO network choosing subgoals for v4 |
 
-**Scenarios.** `empty`, `crossing`, `head_on`, `overtaking`, `following`, `group_toward`,
-`narrow_passage`, `stationary_group`, `dense_flow` (straight-line scripted walkers, randomised per
-seed) and `recorded` (a busy 30 s STEPS window). Train, validation and test use disjoint seeds.
+**STEPS data is optional.** With the processed dataset at `datasets/steps`, scenarios include
+recorded STEPS crowds and the evaluation measures crowd realism; without it both are skipped.
+On TACC Horizon, wrap any command in `sbatch scripts/horizon/gpu_jobs.slurm "<command>"`
+(see [`docs/horizon.md`](../docs/horizon.md)). `--device cpu` works for small runs.
 
-**Pedestrian models.** Every pedestrian has a scripted or recorded reference trajectory:
-- `replay` follows it exactly; `social_force` walks to its end with Helbing–Molnar forces;
-  `reactive_replay` tracks it while avoiding others with the same forces.
-- `stars_crowd`: after a 3.2 s warm-up on the reference, the STARS forecaster moves everyone
-  (re-forecast every 0.4 s, seeded AR(1) CVAE intents); with `include_robot` the robot is one more
-  node in its graph.
+## Evaluate
 
-The counterfactual run has identical inputs with the robot removed; disruption metrics compare the two.
+```bash
+python simplenavsim/scripts/evaluate.py                                    # all conditions, 30 test scenes per kind
+python simplenavsim/scripts/evaluate.py --conditions stars_reactive --per-kind 5
+python simplenavsim/scripts/evaluate.py --policy mine=checkpoints/simplenavsim/my_run/best_policy.yaml
+python simplenavsim/scripts/evaluate.py --render                           # tables and GIFs from the saved runs
+```
 
-**Controller.** Every 0.1 s it rolls out a grid of constant `(v, w)` arcs (6 × 11 plus reverse
-in the v4 config), predicts pedestrians (constant velocity or STARS), discards arcs that come
-within `safety_margin` of a pedestrian within `safety_horizon` or touch a wall, and picks the
-lowest weighted cost (goal progress, collision, personal space, disruption, clearance, speed,
-smoothness, waiting terms). CMA-ES tunes the weights (`cmaes.optimize`).
+Each run rolls out every policy in every pedestrian condition on the test split, saves
+`runs/simplenavsim/evaluation/condition_<name>.pkl`, and `--render` writes to `docs/results/evaluation/`:
 
-Cost of an arc (lower is better), each term averaged over the arc's predicted steps:
+- `original.md`: the policies in the crowd they were trained in (`stars_reactive`), scored by the training objective;
+- `conditions.md`: the same metrics under every condition, per scene kind, and crowd realism;
+- `results.json`: every metric, per condition, policy and scene kind;
+- GIF grids (with a PNG of the last frame) of the first test scene of each kind.
 
-| Parameter | Role in the cost | Default | v4 |
+| Condition | Pedestrians |
+| --- | --- |
+| `replay` | walk their scripted paths and ignore the robot |
+| `social_force` | walk to their scripted goal with social forces (avoid each other and the robot) |
+| `reactive_replay` | track their scripted paths, pushed off them by social forces |
+| `stars_blind` | moved by the STARS forecaster, which does not see the robot |
+| `stars_reactive` | moved by the STARS forecaster, with the robot as one more person in its graph (the training crowd) |
+
+STARS-driven pedestrians follow their scripted path for 3.2 s (the forecaster's history), then
+the forecaster takes over, re-forecasting every 0.4 s with seeded, slowly varying CVAE intents.
+
+## Train
+
+```bash
+# CMA-ES over the controller's 11 weights in the STARS crowd (the v4 recipe)
+python simplenavsim/scripts/train_cmaes.py --config simplenavsim/configs/cmaes_crowd_v4.yaml \
+    --policy checkpoints/simplenavsim/cmaes_crowd_v4/best_policy.yaml --device cuda \
+    --out-dir checkpoints/simplenavsim/my_run
+# The same search with PPO instead of CMA-ES
+python simplenavsim/scripts/train_cmaes.py ... --optimizer ppo
+# A PPO network that picks subgoals for a tuned controller
+python simplenavsim/scripts/train_ppo.py --config simplenavsim/configs/cmaes_crowd_v4.yaml \
+    --policy checkpoints/simplenavsim/cmaes_crowd_v4/best_policy.yaml --device cuda \
+    --out-dir checkpoints/simplenavsim/my_subgoals
+```
+
+`--policy` sets the starting point (omit it to start from the defaults). Training writes
+`best_policy.yaml` (selected on the validation split), `generations.jsonl` and
+`convergence.png`; `--resume` continues an interrupted CMA-ES run. Population, generations,
+scene counts and objective weights are in the config. Train, validation and test scenes never
+overlap (disjoint seeds; recorded scenes split by recording).
+
+| | CMA-ES | PPO on the weights | PPO subgoals |
 | --- | --- | --- | --- |
-| `goal_weight` | reward for getting closer to the goal over the horizon (relative to driving straight at full speed) | 2.0 | 0.5 (lower bound) |
-| `alignment_weight` | extra reward for ending the arc facing the goal (scaled by `goal_weight`) | 0.1 | 0.075 |
-| `pedestrian_weight` | penalty for predicted intrusion into personal space, `(1 - gap / personal_space_radius)^2` | 1.0 | 27.4 |
-| `personal_space_radius` | gap (m, surface to surface) below which that penalty starts | 0.8 | 0.55 |
-| `disruption_weight` | penalty for being in the zone ahead of a moving pedestrian (grows with their speed) | 1.0 | 0.01 (lower bound) |
-| `prediction_horizon` | how far ahead (s) arcs and forecasts are scored | 2.0 | 2.27 |
-| `preferred_speed` | cruise speed (m/s) the speed term pulls towards | 0.8 | 1.0 (upper bound) |
-| `speed_scale` | weight of that speed term; it fades out when a pedestrian is within 2x personal space, so slowing down near people is free | 1.0 | 5.0 |
-| `retreat_scale` | weight of the penalty for arcs that end farther from the goal (wait rather than back off or orbit) | 1.0 | 1.59 |
-| `smoothness_weight` | penalty for changing the command from the last one | 0.2 | 0.39 |
-| `turn_penalty` | penalty for turning rate | 0.1 | 0.0 (lower bound) |
+| Learns | the 11 weights, fixed per episode | the same 11 weights | a network: observation -> subgoal offset (up to 3 m) every 1 s; weights fixed at v4 |
+| Reward | episode objective J, averaged over training scenes | the same J per sampled weight set | J at episode end plus progress shaping that sums to a constant |
 
-Not tuned (fixed at their defaults): `collision_weight` 5 (predicted overlap beyond the 1 s hard
-check) and `obstacle_weight` 1 (wall clearance below 0.6 m). The hard safety filter (0.05 m
-within 1 s) is not a cost: arcs that violate it are removed, and if none is left the robot stops.
+**Objective** (`objective:` in the config):
+J = success - 2 collision - 1 robot_influence - 0.3 normalised time - 1 intimate-zone rate
+- 1 (1 - path efficiency) - 0.1 command jerkiness - 0.2 loops.
+`robot_influence` is how much the robot changes the STARS forecasts of the pedestrians (it
+exists only in `stars_reactive`). Scores in the STARS crowd vary by about 0.01-0.02 between
+identical runs (bf16 on GPU).
 
-**Objective** (`objective:` in the config): success, collisions, a disruption metric
-(`robot_influence` in the STARS crowd), time, a comfort metric, detour, smoothness, loops and
-time to goal. Evaluation in the STARS crowd is not bit-for-bit reproducible (bf16 on GPU);
-objective differences below about 0.01–0.02 are noise.
+## The controller
 
-## Status
+Every 0.1 s the robot scores a grid of constant-speed, constant-turn arcs (6 speeds x 11 turn
+rates plus reversing) over the next ~2 s against forecasts of the pedestrians (STARS or constant
+velocity), removes arcs that come within 0.05 m of a pedestrian within 1 s or touch a wall, and
+drives the cheapest remaining arc. If none remains it stops.
 
-Reference policy: `checkpoints/simplenavsim/cmaes_crowd_v4/best_policy.yaml` (v4). Neither
-re-tuning with CMA-ES nor PPO (on the same parameters, or as learned subgoals) improves on it
-(decision 99). Isaac Sim / Isaac Lab and ROS 2 backends are not implemented.
+| Weight | Role in an arc's cost | Default | v4 |
+| --- | --- | --- | --- |
+| `goal_weight` | reward for getting closer to the goal | 2.0 | 0.5 (lower bound) |
+| `alignment_weight` | extra reward for ending the arc facing the goal | 0.1 | 0.075 |
+| `pedestrian_weight` | penalty for intruding into personal space, `(1 - gap / radius)^2` | 1.0 | 27.4 |
+| `personal_space_radius` | gap (m, edge to edge) where that penalty starts | 0.8 | 0.55 |
+| `disruption_weight` | penalty for being in the space ahead of a moving pedestrian | 1.0 | 0.01 (lower bound) |
+| `prediction_horizon` | how far ahead (s) arcs are scored | 2.0 | 2.27 |
+| `preferred_speed` | cruise speed (m/s) | 0.8 | 1.0 (upper bound) |
+| `speed_scale` | pull towards that speed; off when a pedestrian is within 2x personal space | 1.0 | 5.0 |
+| `retreat_scale` | penalty for arcs ending farther from the goal (wait rather than back off) | 1.0 | 1.59 |
+| `smoothness_weight` | penalty for changing the command | 0.2 | 0.39 |
+| `turn_penalty` | penalty for turning | 0.1 | 0.0 (lower bound) |
+
+## Code
+
+| Path | Contents |
+| --- | --- |
+| `src/simplenavsim/core/` | scenarios (`crossing`, `head_on`, `overtaking`, `following`, `group_toward`, `narrow_passage`, `stationary_group`, `dense_flow`, `recorded`), rollout, metrics, config |
+| `src/simplenavsim/environments/lightweight/env.py` | robot dynamics, collisions, success (within 1 m of the goal), timeout (30 s) |
+| `src/simplenavsim/pedestrians/` | `replay`, `social_force`, `reactive_replay`, `stars_crowd` |
+| `src/simplenavsim/policies/` | `social_navigation` (the controller), `goal_seeking` (baseline), `ppo` (subgoals) |
+| `src/simplenavsim/predictors/stars.py` | STARS as the controller's pedestrian predictor |
+| `src/simplenavsim/optimization/` | objective and batched evaluator, CMA-ES, PPO search |
+| `simplenavsim/configs/` | `cmaes_crowd_v4.yaml` (everything above) and the files it includes |
+| `simplenavsim/scripts/` | `train_cmaes.py`, `train_ppo.py`, `evaluate.py` |
+
+Results: [`docs/results/evaluation/`](../docs/results/evaluation/). Reasoning behind every
+choice: [`docs/decisions.md`](../docs/decisions.md).

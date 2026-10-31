@@ -1678,3 +1678,21 @@ why, and how to undo it.
       100% and 93% there, and head_on has 6.7% collisions. Narrow passage fails in scripted crowds
       (replay: 27% timeouts, 0.66 loops): a non-reactive pedestrian walking down the corridor
       blocks it.
+
+101. **Pedestrians following the robot in the STARS crowd: learned, not a bug.**
+    - **Frame and indexing checks:** with the robot in the graph, rotating and shifting the whole
+      scene moves the forecasts identically (max error 2.4e-5 m, fp32), and reversing the
+      pedestrian order returns the same forecasts (2.4e-6 m).
+    - **How often** (v4, 270 test scenes; share of time within 2.5 m of the moving robot that a
+      pedestrian is behind it, faster than 0.3 m/s, within 30 deg of its heading): STARS seeing
+      the robot 6.6%, STARS ignoring it 2.5%, social forces 8.5%. Crossing 20.8% / 10.6% / 4.6%;
+      overtaking 34.7% / 17.0% / 35.5% (there it is mostly geometry: the passed walker ends up behind).
+    - **Reading:** the forecaster treats the robot as one more person, and in STEPS a close
+      person walking the same way is usually a group member, so pedestrians near the robot fall
+      in with it. The robot (about 1 m/s) is also faster than 90% of STEPS pedestrians. This
+      makes the training crowd somewhat friendlier than real people.
+    - **Options, not done:** keep the robot out of the graph and add a social-force repulsion
+      from it; or retrain with the robot as a separate node type.
+    - **Weights** for the forecasters and policies are published as the GitHub release
+      `weights-v1`; `simplenavsim/README.md` is now a quick start. Without `datasets/steps`,
+      recorded scenes and crowd realism are skipped.
