@@ -166,6 +166,7 @@ def principles_metrics(run: Rollout, batch: ScenarioBatch, robot_radius: float, 
 def all_metrics(run: Rollout, counterfactual: Rollout | None, batch: ScenarioBatch, robot_radius: float,
                 max_speed: float = 1.0, goal_tolerance: float = 0.0) -> dict:
     out = robot_metrics(run, batch, robot_radius, max_speed, goal_tolerance)
+    out.update(principles_metrics(run, batch, robot_radius, goal_tolerance))
     if run.ped_influence is not None:
         out.update(influence_metrics(run, batch))
     if counterfactual is not None:

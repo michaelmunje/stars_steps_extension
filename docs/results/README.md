@@ -29,11 +29,11 @@ Objective / success / collisions:
 
 | Pedestrians | Random weights | Default weights | **CMA-ES (v4)** | PPO subgoals |
 | --- | --- | --- | --- | --- |
-| Scripted paths (ignore robot) | -0.72 / 57% / 21.5% | 0.28 / 89% / 7.4% | 0.66 / 96% / 0.4% | 0.62 / 96% / 0.7% |
-| Social forces | 0.17 / 77% / 0.7% | 0.71 / 99% / 0.0% | 0.63 / 95% / 0.7% | 0.62 / 96% / 0.7% |
-| Scripted paths + social forces | 0.23 / 80% / 0.7% | 0.70 / 100% / 0.4% | 0.63 / 95% / 0.4% | 0.65 / 97% / 0.0% |
-| STARS, ignores robot | -0.52 / 59% / 13.0% | 0.40 / 92% / 4.1% | 0.73 / 99% / 0.0% | 0.68 / 98% / 1.1% |
-| **STARS, sees robot (training crowd)** | -0.72 / 61% / 11.5% | 0.08 / 90% / 3.7% | 0.43 / 99% / 0.7% | 0.36 / 97% / 1.9% |
+| Scripted paths (ignore robot) | -0.65 / 60% / 20.4% | 0.39 / 92% / 4.8% | 0.71 / 98% / 0.4% | 0.69 / 99% / 0.7% |
+| Social forces | 0.19 / 78% / 0.7% | 0.71 / 99% / 0.0% | 0.68 / 97% / 0.7% | 0.69 / 98% / 0.7% |
+| Scripted paths + social forces | 0.25 / 80% / 0.7% | 0.71 / 100% / 0.4% | 0.68 / 97% / 0.4% | 0.68 / 98% / 0.0% |
+| STARS, ignores robot | -0.49 / 61% / 13.0% | 0.43 / 93% / 3.3% | 0.73 / 99% / 0.4% | 0.70 / 99% / 0.7% |
+| **STARS, sees robot (training crowd)** | -0.72 / 61% / 11.1% | 0.08 / 90% / 4.1% | 0.42 / 99% / 1.1% | 0.38 / 97% / 1.5% |
 
 All four use the same trajectory-rollout planner; only the cost-function weights (or, for PPO
 subgoals, where it aims) differ. Random weights are drawn per scene from the CMA-ES search range.
@@ -46,4 +46,15 @@ weights as CMA-ES (0.42 / 99% / 0.7%).
   controller scores higher.
 - The STARS crowd that sees the robot follows it about twice as often as one that ignores it.
 - Weak spots: head-on encounters in the STARS crowd (6.7% collisions) and narrow passages with
-  pedestrians that ignore the robot (27% timeouts).
+  pedestrians that ignore the robot (10% timeouts; 27% before the passage was widened to 2.0-2.8 m).
+
+## Random vs CMA-ES-tuned weights, 10 seeds each ([`seed_study/`](seed_study/))
+
+Objective J = SPL - 2 C + SC - 0.3 time / 30 s (Principles metrics, Francis et al. Table I); CMA-ES from the
+default weights, 200 generations. Test split, STARS crowd, mean ± standard error over seeds:
+
+| | Success | Collisions | SPL | Personal space (>= 0.5 m) | Time to goal |
+| --- | --- | --- | --- | --- | --- |
+| Random weights | 58% ± 9% | 9.0% ± 1.4% | 0.55 ± 0.09 | 0.88 ± 0.03 | 15.8 ± 1.4 s |
+| CMA-ES | 98.8% ± 0.2% | 0.4% ± 0.1% | 0.89 ± 0.00 | 0.98 ± 0.00 | 11.2 ± 0.1 s |
+| v4 (earlier objective) | 98.1% | 1.5% | 0.88 | 0.94 | 10.9 s |

@@ -11,6 +11,9 @@ Objective per episode (weights from YAML, ``objective:``):
         - w_time * normalized_time - w_comfort * <comfort_metric>
         - w_detour * (1 - path_efficiency) - w_smoothness * command_smoothness - w_circling * loops
 
+or, with ``weights: {metric: weight}``, a weighted sum of any metrics, e.g. the Principles metrics
+of ``principles_metrics`` (``cmaes_crowd_principles.yaml``).
+
 A candidate's J is the mean over its scenarios; CMA-ES minimises -J.
 """
 from __future__ import annotations
@@ -36,8 +39,11 @@ class Objective:
     circling: float = 0.0        # weight on loops (full turns beyond half a turn per episode)
     disruption_metric: str = "robot_influence"
     comfort_metric: str = "intimate_violation_rate"
+    weights: dict[str, float] | None = None   # if set, J = sum of weight * metric instead of the terms above
 
     def __call__(self, metrics: dict[str, torch.Tensor]) -> torch.Tensor:
+        if self.weights:
+            return sum(w * torch.nan_to_num(metrics[k]) for k, w in self.weights.items())
         zero = torch.zeros_like(metrics["success"])
         disruption = metrics.get(self.disruption_metric, zero)
         return (self.success * metrics["success"] - self.collision * metrics["collision"]

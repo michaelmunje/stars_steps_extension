@@ -101,6 +101,10 @@ def render(out_dir: Path, docs_dir: Path) -> None:
     groups = {g: [results[f"{g}_s{s}"] for s in SEEDS if f"{g}_s{s}" in results] for g in GROUPS}
     cell = lambda m, se: "—" if math.isnan(m) else f"{m:.3f} ± {se:.3f}"
     lines = ["# Random vs CMA-ES-tuned controller weights (STARS crowd, test split)\n",
+             "Random seed s: one weight set drawn uniformly from the CMA-ES search range. CMA-ES seed s: "
+             "`train_cmaes.py --config cmaes_crowd_principles.yaml --seed s` from the default weights (200 generations, "
+             "population 32, about 2 h on one GPU), objective J = SPL - 2 C + SC - 0.3 time/30 s. v4 was tuned for the "
+             "earlier objective. Narrow passages are 2.0-2.8 m wide.\n",
              f"{len(groups['random'])} random and {len(groups['cmaes'])} CMA-ES seeds; each seed is evaluated on "
              "the same 270 test scenes (9 kinds x 30). Cells: mean over seeds ± standard error. v4 is one policy "
              "(no error). Metrics from Table I of Francis et al., *Principles and Guidelines for Evaluating Social "

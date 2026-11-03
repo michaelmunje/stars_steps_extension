@@ -130,7 +130,14 @@ Results: [`results/README.md`](results/README.md).
 - v4's tuning is specific to the STARS crowd: with social-force pedestrians the untuned controller
   scores higher.
 - Weak spots: head-on in the STARS crowd (6.7% collisions); narrow passages with pedestrians that
-  ignore the robot (27% timeouts).
+  ignore the robot (10% timeouts once widened to 2.0-2.8 m, a band-aid for STARS pedestrians pressed
+  into the walls; 27% at 1.4-2.2 m).
+- **Principles objective and seed study** (`cmaes_crowd_principles.yaml`, `docs/results/seed_study/`):
+  J = SPL - 2 C + SC - 0.3 time/30 s from Table I of Francis et al. (four terms instead of eight).
+  10 CMA-ES seeds from the default weights (200 generations, ~2 h each) all reach v4's level:
+  98.8 ± 0.2% success, 0.4 ± 0.1% collisions, personal-space compliance 0.98, against 58 ± 9%,
+  9.0 ± 1.4% and 0.88 for 10 random weight sets (v4: 98.1%, 1.5%, 0.94). The seeds are faster to
+  converge than to differ: validation J flattens by ~generation 70 at 1.67-1.74 (v4 1.68).
 - **Pedestrians following the robot is learned, not a bug.** Forecasts are rotation-, translation-
   and order-equivariant to 1e-5 m. Pedestrians follow the robot about twice as often when STARS
   sees it (6.6% vs 2.5% of near-robot time): in STEPS a close person walking the same way is

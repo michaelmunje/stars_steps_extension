@@ -1,0 +1,33 @@
+# The v4 recipe with a simpler objective built from the Principles metrics (Francis et al.,
+# Table I; core.metrics.principles_metrics) and a longer search (200 generations, ~2.5 h on one GPU).
+simulator: simulator.yaml
+pedestrians: pedestrians_stars.yaml
+policy: policy_stars_best.yaml
+recorded:
+  path: datasets/steps
+  limit_per_split: 40      # recordings loaded per split
+  max_pedestrians: 40
+  min_pedestrians: 6
+cmaes:
+  optimize: [goal_weight, pedestrian_weight, disruption_weight, preferred_speed, speed_scale, retreat_scale, alignment_weight,
+             personal_space_radius, prediction_horizon, smoothness_weight, turn_penalty]
+  population_size: 32
+  num_generations: 200
+  sigma0: 0.1
+  seed: 42
+  kinds: [crossing, head_on, overtaking, following, group_toward, narrow_passage,
+          stationary_group, dense_flow, recorded]
+  train_per_kind: 8
+  val_per_kind: 24       # validation noise was +-0.05 between generations at 12
+  validate_every: 5
+  train_refresh_every: 10
+  duration: 30.0
+  dt: 0.1
+test_per_kind: 30       # 30 recorded test scenes; 10 were too few to rank policies
+max_envs: 4096
+objective:                # J = SPL - 2 C + SC - 0.3 time / limit
+  weights:
+    SPL: 1.0                # success weighted by path length: success, detours and loops in one term
+    C: -2.0                 # a collision costs twice a success
+    SC: 1.0                 # personal-space compliance: share of time >= 0.5 m from every pedestrian
+    normalized_time: -0.3   # episode time / 30 s (1 on failure); SPL alone does not penalise crawling
