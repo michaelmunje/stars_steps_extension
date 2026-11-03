@@ -125,13 +125,14 @@ def render(out_dir: Path, docs_dir: Path) -> None:
                                                        for k, v in results.items()}, indent=1))
     for label, res in results.items():
         group, _, seed = label.partition("_s")
-        if group not in GROUPS:
-            continue
         snap = res["animation"]
         kinds = [n.rsplit("-", 1)[0] for n in snap["names"]]
-        (docs_dir / group).mkdir(exist_ok=True)
-        animate_grid([snap], [f"{GROUPS[group]}\nseed {seed}"], [KIND_NAMES[k] for k in kinds],
-                     docs_dir / group / f"seed_{seed}.gif", title=f"{GROUPS[group]}, seed {seed} (STARS crowd)")
+        if group in GROUPS:
+            (docs_dir / group).mkdir(exist_ok=True)
+            name, row, path = f"{GROUPS[group]}, seed {seed}", f"{GROUPS[group]}\nseed {seed}", docs_dir / group / f"seed_{seed}.gif"
+        else:
+            name, row, path = "CMA-ES v4 (reference policy)", "CMA-ES\nv4", docs_dir / "v4.gif"
+        animate_grid([snap], [row], [KIND_NAMES[k] for k in kinds], path, title=f"{name} (STARS crowd)")
     print(f"saved {docs_dir}")
 
 
