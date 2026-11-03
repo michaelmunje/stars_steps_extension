@@ -6,7 +6,7 @@ import math
 import numpy as np
 import torch
 
-from simplenavsim.core.metrics import all_metrics
+from simplenavsim.core.metrics import all_metrics, principles_metrics
 from simplenavsim.core.rollout import rollout
 from simplenavsim.core.scenarios import SPLIT_OFFSETS, Scenario, collate, make_scenario, scenario_set
 from simplenavsim.core.state import Observation
@@ -125,6 +125,9 @@ def test_collision_is_detected_and_ends_the_episode():
     run = rollout(env, batch, policy, policy.parameter_tensor({}, 1))
     assert bool(run.ped_collision[0]) and not bool(run.success[0])
     assert float(run.robot_pose[0, -1, 0]) < 3.0
+    m = principles_metrics(run, batch, env.robot.radius, env.sim.goal_tolerance)
+    assert (float(m["S"]), float(m["HC"]), float(m["SPL"])) == (0.0, 1.0, 0.0)
+    assert float(m["DHmin"]) <= 0.0 and float(m["TTC"]) == 0.0 and float(m["SC"]) < 1.0
 
 
 # ----------------------------------------------------------------------------- data

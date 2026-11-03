@@ -138,7 +138,7 @@ def make_scenario(kind: str, seed: int, *, dt: float = DEFAULT_DT, duration: flo
                    for o in offsets]
         return _finish(name, kind, seed, dt, duration, start, goal, walkers, [speed] * size)
     if kind == "narrow_passage":
-        width = rng.uniform(1.4, 2.2)
+        width = rng.uniform(2.0, 2.8)  # wider than first used (1.4-2.2): STARS pedestrians pressed into the walls
         x0, x1 = 0.35 * length, 0.65 * length
         segments = [[x0, width / 2, x1, width / 2], [x0, -width / 2, x1, -width / 2],
                     [x0, width / 2, x0, width / 2 + 3.0], [x0, -width / 2, x0, -width / 2 - 3.0],

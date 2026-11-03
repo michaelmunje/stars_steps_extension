@@ -19,11 +19,12 @@ import math
 
 import torch
 
-from simplenavsim.core.geometry import wrap_angle
+from simplenavsim.core.geometry import FAR, obstacle_clearance, wrap_angle
 from simplenavsim.core.rollout import Rollout
 from simplenavsim.core.state import ScenarioBatch
 
 INTIMATE_DISTANCE = 0.45
+TTC_CAP = 10.0
 
 
 def robot_metrics(run: Rollout, batch: ScenarioBatch, robot_radius: float, max_speed: float = 1.0,
@@ -97,6 +98,69 @@ def influence_metrics(run: Rollout, batch: ScenarioBatch) -> dict[str, torch.Ten
     per_ped = value.sum(-1) / record.float().sum(-1).clamp(min=1)                # mean over re-forecasts
     n = seen.float().sum(-1).clamp(min=1)
     return {"robot_influence": (per_ped * seen).sum(-1) / n}
+
+
+def principles_metrics(run: Rollout, batch: ScenarioBatch, robot_radius: float, goal_tolerance: float = 0.0,
+                       space_threshold: float = 0.5) -> dict[str, torch.Tensor]:
+    """Table I of Francis et al., "Principles and Guidelines for Evaluating Social Robot Navigation
+    Algorithms" (2023), per episode. Distances to people are surface to surface. ``SC`` is the share
+    of the robot's steps with every pedestrian at least ``space_threshold`` away (personal space
+    compliance at 0.5 m); ``TTC`` assumes constant velocities and is capped at 10 s (never on a
+    collision course); ``FP`` counts 5 s windows with under 0.1 m of progress; ``ST`` is time below
+    0.05 m/s; ``Aavg`` / ``Javg`` / ``CDavg`` average magnitudes (signed ones cancel out)."""
+    B, K = run.robot_v.shape
+    device, dt = run.robot_v.device, run.dt
+    live = torch.arange(K, device=device)[None] <= run.end_step[:, None]
+    nan = torch.full((B,), float("nan"), device=device)
+    finite = lambda x: torch.where(torch.isfinite(x), x, nan)
+
+    def stats(x, mask):                                      # min, mean magnitude, max over steps (NaN if none)
+        lo = torch.where(mask, x, torch.full_like(x, math.inf)).amin(-1)
+        hi = torch.where(mask, x, torch.full_like(x, -math.inf)).amax(-1)
+        mean = (x.abs() * mask).sum(-1) / mask.sum(-1).clamp(min=1)
+        return finite(lo), torch.where(mask.any(-1), mean, nan), finite(hi)
+
+    xy = run.robot_pose[..., :2]
+    path = (torch.linalg.norm(xy[:, 1:] - xy[:, :-1], dim=-1) * live[:, 1:]).sum(-1)
+    straight = (torch.linalg.norm(batch.robot_goal - batch.robot_start[:, :2], dim=-1) - goal_tolerance).clamp(min=1e-3)
+    success = run.success.float()
+    out = {"S": success, "C": (run.ped_collision | run.obstacle_collision).float(),
+           "WC": run.obstacle_collision.float(), "HC": run.ped_collision.float(),
+           "TO": (~run.success & ~run.ped_collision & ~run.obstacle_collision).float(),
+           "T": torch.where(run.success, run.end_step.float() * dt, nan), "PL": path,
+           "SPL": success * straight / torch.maximum(straight, path)}
+    to_goal = torch.linalg.norm(xy - batch.robot_goal[:, None], dim=-1)
+    W = int(round(5.0 / dt))
+    starts = torch.arange(0, K - W, W, device=device)
+    out["FP"] = ((to_goal[:, starts] - to_goal[:, starts + W] < 0.1) & live[:, starts + W]).float().sum(-1)
+    out["ST"] = ((run.robot_v.abs() < 0.05) & live).float().sum(-1) * dt
+    acc = (run.robot_v[:, 1:] - run.robot_v[:, :-1]) / dt
+    jerk = (acc[:, 1:] - acc[:, :-1]) / dt
+    for name, x, mask in (("V", run.robot_v, live), ("A", acc, live[:, 1:]), ("J", jerk, live[:, 2:])):
+        out[f"{name}min"], out[f"{name}avg"], out[f"{name}max"] = stats(x, mask)
+    clearance = obstacle_clearance(xy, batch.circles, batch.circle_mask, batch.segments, batch.segment_mask)[0]
+    has_obstacle = live & (clearance < FAR / 2)
+    out["CDmin"], out["CDavg"], _ = stats(clearance - robot_radius, has_obstacle)
+    Kp = min(K, run.ped_pos.shape[2])
+    ped, active = run.ped_pos[:, :, :Kp], run.ped_active[:, :, :Kp] & live[:, None, :Kp]
+    rel = ped - xy[:, None, :Kp]                                                # [B, P, K, 2]
+    radius = batch.ped_radius[:, :, None] + robot_radius
+    gap = torch.where(active, torch.linalg.norm(rel, dim=-1) - radius, torch.full_like(radius.expand_as(active), math.inf))
+    nearest = gap.amin(1)                                                       # [B, K]
+    out["DHmin"] = finite(torch.where(live[:, :Kp], nearest, torch.full_like(nearest, math.inf)).amin(-1))
+    out["SC"] = ((nearest >= space_threshold) & live[:, :Kp]).float().sum(-1) / live[:, :Kp].float().sum(-1)
+    theta = run.robot_pose[:, None, :Kp, 2]
+    robot_vel = run.robot_v[:, None, :Kp, None] * torch.stack([torch.cos(theta), torch.sin(theta)], -1)
+    ped_vel = torch.zeros_like(ped)
+    ped_vel[:, :, 1:] = (ped[:, :, 1:] - ped[:, :, :-1]) / dt
+    v = ped_vel - robot_vel
+    a, b = (v * v).sum(-1), 2 * (rel * v).sum(-1)
+    c = (rel * rel).sum(-1) - radius ** 2
+    disc = b * b - 4 * a * c
+    t = (-b - disc.clamp(min=0).sqrt()) / (2 * a).clamp(min=1e-9)
+    ttc = torch.where(c <= 0, torch.zeros_like(t), torch.where((disc >= 0) & (t >= 0) & (a > 1e-9), t, torch.full_like(t, math.inf)))
+    out["TTC"] = torch.where(active, ttc, torch.full_like(ttc, math.inf)).amin(-1).amin(-1).clamp(max=TTC_CAP)
+    return out
 
 
 def all_metrics(run: Rollout, counterfactual: Rollout | None, batch: ScenarioBatch, robot_radius: float,
