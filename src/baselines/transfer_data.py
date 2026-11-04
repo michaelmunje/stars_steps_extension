@@ -15,10 +15,11 @@ from data import SceneDataset
 
 ROOT = Path(__file__).resolve().parents[2]
 ETH_UCY_FOLDS = ("eth", "hotel", "univ", "zara1", "zara2")
-TARGET_DATASETS = ("eth_ucy", "grand_central", "madras")
+TARGET_DATASETS = ("eth_ucy", "grand_central", "madras", "steps")
 TARGET_PATHS = {
     "grand_central": ROOT / "datasets" / "grand_central",
     "madras": ROOT / "datasets" / "madras",
+    "steps": ROOT / "datasets" / "steps",   # the multi-agent STARS forecasters' test population
 }
 
 

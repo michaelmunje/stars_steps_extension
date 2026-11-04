@@ -51,7 +51,7 @@ def main():
     p=argparse.ArgumentParser();p.add_argument("--stage",required=True,choices=["pretrain","scratch","finetune"])
     p.add_argument("--fold",choices=["eth","hotel","univ","zara1","zara2"]);p.add_argument("--checkpoint")
     p.add_argument("--allow-legacy-checkpoint",action="store_true",help="Explicitly allow a checkpoint without the frozen transfer recipe metadata")
-    p.add_argument("--target-dataset",choices=["eth_ucy","grand_central","madras"]);p.add_argument("--target-fraction",type=float,default=1.0)
+    p.add_argument("--target-dataset",choices=["eth_ucy","grand_central","madras","steps"]);p.add_argument("--target-fraction",type=float,default=1.0)
     p.add_argument("--run-dir",required=True,type=Path);p.add_argument("--device",default="cuda")
     add_resume_argument(p)
     p.add_argument("--iterations",type=int)

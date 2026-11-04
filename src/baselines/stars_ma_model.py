@@ -18,13 +18,17 @@ Architecture (pedestrian history -> STARS graph encoder -> temporal dynamics -> 
   then a GRU emits per-step displacements in the agent's local frame. ``latent_dim=0`` is the
   deterministic baseline; ``latent_dim>0`` is a CVAE whose prior and posterior are learnt for the
   *future* (not the representation VAE's latent), and whose ``z`` is an agent's intent: sampled
-  once per rollout and held across autoregressive rounds.
+  once per rollout and held across autoregressive rounds. ``diffusion=True`` replaces the GRU with
+  a per-agent denoising diffusion model over the future (``DiffusionDecoder``; teacher-forced
+  forecasting only, no closed-loop rollout).
 
 Node type 0 is reserved for a robot agent; pedestrians are type 1. A robot node (with its own
 features and, later, its planned trajectory) can join the same graph without changing the
 pedestrian pathway.
 """
 from __future__ import annotations
+
+import math
 
 import torch
 import torch.nn.functional as F
@@ -51,6 +55,11 @@ DECODER_RECIPE = {
     "social_layer": True,
     "representation": "mu",  # STARS's node representation (encode_nodes); "hidden" uses the pre-head state
     "dropout": 0.1,
+    "diffusion": False,       # True = DiffusionDecoder (latent_dim must be 0)
+    "diffusion_steps": 100,   # DDPM training steps T (cosine schedule)
+    "sample_steps": 10,       # DDIM steps at sampling time
+    "diffusion_scale": 0.1,   # metres; constant-velocity residual steps / this have ~unit scale on STEPS
+    "diffusion_social_layers": 0,  # > 0: joint (scene-level) diffusion, social layers inside the denoiser
 }
 
 
@@ -274,6 +283,130 @@ class TrajectoryDecoder(nn.Module):
             return torch.stack(steps, dim=1).cumsum(dim=1)
 
 
+class DiffusionDecoder(nn.Module):
+    """Per-agent DDPM over the future (MID-style, Gu et al. CVPR 2022), on TrajectoryDecoder's context.
+
+    The context and the one social ``TransformerConv`` round are TrajectoryDecoder's, giving a
+    per-agent hidden ``h``. The diffused variable ``x0`` is the agent's 12 per-step displacements in
+    its local frame minus constant-velocity steps (``last_velocity * dt``), divided by
+    ``diffusion_scale``. Cosine noise schedule (Nichol & Dhariwal 2021) with ``diffusion_steps``
+    steps, epsilon prediction by a residual MLP on ``[x_t, t embedding, h]``, masked MSE loss;
+    deterministic DDIM sampling (eta 0) with ``sample_steps`` steps. Agents are sampled
+    independently given their socially mixed ``h``.
+
+    With ``diffusion_social_layers`` N > 0 the decoder is *joint* (MotionDiffuser-style, Jiang et
+    al. CVPR 2023): N social ``TransformerConv`` layers over the scene graph (encoder edge
+    embeddings) sit inside the denoiser, after the first N MLP blocks, so every agent's noisy future
+    attends to its neighbours' at every step. Training draws one noise level per graph (the scene
+    is denoised coherently); sampling runs each of the K chains over the whole scene at once, so
+    sample k is one mutually consistent joint future.
+    """
+
+    def __init__(self, representation_dim: int, edge_dim: int, prediction_steps: int, *, num_heads: int,
+                 recipe: dict | None = None) -> None:
+        super().__init__()
+        recipe = {**DECODER_RECIPE, **(recipe or {})}
+        self.recipe, self.latent_dim = recipe, 0
+        hidden, self.prediction_steps = int(recipe["hidden_dim"]), int(prediction_steps)
+        self.scale, self.sample_steps = float(recipe["diffusion_scale"]), int(recipe["sample_steps"])
+        self.input = nn.Linear(representation_dim + NODE_FEATURE_DIM, hidden)
+        if recipe["social_layer"]:
+            from torch_geometric.nn import TransformerConv
+
+            self.social = TransformerConv(hidden, hidden // num_heads, heads=num_heads, concat=True, beta=True,
+                                          dropout=recipe["dropout"], edge_dim=edge_dim)
+            self.social_norm = nn.LayerNorm(hidden)
+        else:
+            self.social = None
+        size = 2 * self.prediction_steps
+        self.time = nn.Sequential(nn.Linear(hidden, hidden), nn.GELU(), nn.Linear(hidden, hidden))
+        self.denoise_in = nn.Linear(size + 2 * hidden, hidden)
+        self.blocks = nn.ModuleList(nn.Sequential(nn.LayerNorm(hidden), nn.Linear(hidden, hidden), nn.GELU(),
+                                                  nn.Linear(hidden, hidden)) for _ in range(3))
+        self.denoise_out = nn.Linear(hidden, size)
+        self.joint = int(recipe["diffusion_social_layers"])
+        if self.joint:
+            from torch_geometric.nn import TransformerConv
+
+            self.denoise_social = nn.ModuleList(
+                TransformerConv(hidden, hidden // num_heads, heads=num_heads, concat=True, beta=True,
+                                dropout=recipe["dropout"], edge_dim=edge_dim) for _ in range(self.joint))
+            self.denoise_social_norm = nn.ModuleList(nn.LayerNorm(hidden) for _ in range(self.joint))
+        steps = int(recipe["diffusion_steps"])
+        f = torch.cos((torch.arange(steps + 1, dtype=torch.float64) / steps + 0.008) / 1.008 * math.pi / 2) ** 2
+        betas = (1 - f[1:] / f[:-1]).clamp(max=0.999)
+        self.register_buffer("alpha_bar", torch.cumprod(1 - betas, 0).float(), persistent=False)
+
+    def context(self, representation: torch.Tensor, node_attr: torch.Tensor) -> torch.Tensor:
+        return torch.cat([representation, node_attr[:, -1]], dim=-1)
+
+    def hidden(self, context: torch.Tensor, edge_index: torch.Tensor, edge_emb: torch.Tensor) -> torch.Tensor:
+        hidden = F.gelu(self.input(context))
+        if self.social is not None and edge_index.numel():
+            hidden = self.social_norm(hidden + self.social(hidden, edge_index, edge_attr=edge_emb))
+        return hidden.float()
+
+    def epsilon(self, x: torch.Tensor, t: torch.Tensor, hidden: torch.Tensor, edge_index: torch.Tensor | None = None,
+                edge_emb: torch.Tensor | None = None) -> torch.Tensor:
+        """Predicted noise ``[M, 2P]`` for noisy futures ``x [M, 2P]`` at integer steps ``t [M]`` (the
+        joint decoder also mixes agents over ``edge_index`` / ``edge_emb``)."""
+        half = hidden.shape[-1] // 2
+        freq = torch.exp(-math.log(10000.0) * torch.arange(half, device=x.device, dtype=x.dtype) / half)
+        angle = t.to(x.dtype)[:, None] * freq[None]
+        y = self.denoise_in(torch.cat([x, self.time(torch.cat([angle.sin(), angle.cos()], -1)), hidden], -1))
+        for i, block in enumerate(self.blocks):
+            y = y + block(y)
+            if i < self.joint and edge_index is not None and edge_index.numel():
+                y = self.denoise_social_norm[i](y + self.denoise_social[i](y, edge_index, edge_attr=edge_emb.float()))
+        return self.denoise_out(F.gelu(y))
+
+    def loss(self, hidden: torch.Tensor, future_local: torch.Tensor, future_valid: torch.Tensor,
+             last_velocity: torch.Tensor, dt: float, edge_index: torch.Tensor | None = None,
+             edge_emb: torch.Tensor | None = None, graph: torch.Tensor | None = None) -> torch.Tensor:
+        """Masked epsilon MSE over valid displacement steps (both ends of a step observed)."""
+        with torch.autocast(device_type=hidden.device.type, enabled=False):
+            future = torch.nan_to_num(future_local.float())
+            previous = torch.cat([torch.zeros_like(future[:, :1]), future[:, :-1]], dim=1)
+            valid = future_valid & torch.cat([torch.ones_like(future_valid[:, :1]), future_valid[:, :-1]], dim=1)
+            mask = valid[..., None].expand_as(future).flatten(1).float()
+            x0 = ((future - previous - last_velocity.float()[:, None] * dt) / self.scale).flatten(1) * mask
+            if self.joint and graph is not None:   # one noise level per scene
+                t = torch.randint(0, len(self.alpha_bar), (int(graph.max()) + 1,), device=x0.device)[graph]
+            else:
+                t = torch.randint(0, len(self.alpha_bar), (len(x0),), device=x0.device)
+            noise = torch.randn_like(x0)
+            a = self.alpha_bar[t][:, None]
+            x_t = a.sqrt() * x0 + (1 - a).sqrt() * noise
+            error = (self.epsilon(x_t, t, hidden, edge_index, edge_emb) - noise).square() * mask
+            return error.sum() / mask.sum().clamp(min=1)
+
+    @torch.no_grad()
+    def sample(self, hidden: torch.Tensor, last_velocity: torch.Tensor, dt: float, samples: int,
+               edge_index: torch.Tensor | None = None, edge_emb: torch.Tensor | None = None,
+               noise: torch.Tensor | None = None) -> torch.Tensor:
+        """Local-frame future positions ``[K, N, P, 2]`` from K DDIM chains (per agent, or per scene for
+        the joint decoder: the K copies of the graph are batched as one disconnected graph)."""
+        with torch.autocast(device_type=hidden.device.type, enabled=False):
+            N, P = len(hidden), self.prediction_steps
+            h = hidden.repeat(samples, 1)
+            x = noise.reshape(samples * N, 2 * P).clone() if noise is not None else torch.randn(samples * N, 2 * P, device=h.device)
+            if self.joint and edge_index is not None:
+                offset = (torch.arange(samples, device=h.device) * N).repeat_interleave(edge_index.shape[1])
+                edge_index = edge_index.repeat(1, samples) + offset
+                edge_emb = edge_emb.float().repeat(samples, 1)
+            else:
+                edge_index = edge_emb = None
+            times = torch.linspace(len(self.alpha_bar) - 1, 0, self.sample_steps, device=h.device).round().long().unique_consecutive()
+            for i, t in enumerate(times):
+                a = self.alpha_bar[t]
+                eps = self.epsilon(x, t.expand(len(x)), h, edge_index, edge_emb)
+                x0 = ((x - (1 - a).sqrt() * eps) / a.sqrt()).clamp(-10.0, 10.0)
+                a_next = self.alpha_bar[times[i + 1]] if i + 1 < len(times) else torch.ones_like(a)
+                x = a_next.sqrt() * x0 + (1 - a_next).sqrt() * eps
+            steps = x.view(samples, N, P, 2) * self.scale + last_velocity.float()[None, :, None] * dt
+            return steps.cumsum(dim=2)
+
+
 class StarsMultiAgentForecaster(nn.Module):
     """STARS encoder -> per-agent temporal decoder; predicts every node of the graph."""
 
@@ -285,13 +418,22 @@ class StarsMultiAgentForecaster(nn.Module):
         self.decoder_recipe = {**DECODER_RECIPE, **(decoder_recipe or {})}
         representation_dim = (self.encoder.latent_dim if self.decoder_recipe["representation"] == "mu"
                               else self.encoder.hidden_dim)
-        self.decoder = TrajectoryDecoder(representation_dim, self.encoder.hidden_dim, prediction_steps,
-                                         num_heads=self.encoder.recipe["num_heads"], recipe=self.decoder_recipe)
+        self.diffusion = bool(self.decoder_recipe["diffusion"])
+        if self.diffusion and self.decoder_recipe["latent_dim"]:
+            raise ValueError("The diffusion decoder has no CVAE latent (latent_dim must be 0)")
+        decoder = DiffusionDecoder if self.diffusion else TrajectoryDecoder
+        self.decoder = decoder(representation_dim, self.encoder.hidden_dim, prediction_steps,
+                               num_heads=self.encoder.recipe["num_heads"], recipe=self.decoder_recipe)
         self.freeze_encoder = False
 
     @property
     def latent_dim(self) -> int:
         return self.decoder.latent_dim
+
+    @property
+    def stochastic(self) -> bool:
+        """Whether ``predict`` draws K different futures (CVAE or diffusion)."""
+        return self.diffusion or bool(self.latent_dim)
 
     def encode(self, data) -> dict[str, torch.Tensor]:
         with torch.set_grad_enabled(torch.is_grad_enabled() and not self.freeze_encoder):
@@ -310,6 +452,8 @@ class StarsMultiAgentForecaster(nn.Module):
 
     def decode(self, data, encoded: dict, z: torch.Tensor | None) -> torch.Tensor:
         """Local-frame predictions ``[K, N, P, 2]`` for latents ``z [K, N, Z]`` (K=1 if deterministic)."""
+        if self.diffusion:
+            raise ValueError("The diffusion decoder only supports predict() (no closed-loop rollout or crowd)")
         velocity = data.node_attr[:, -1, 2:4]
         latents = [None] if z is None else list(z)
         return torch.stack([
@@ -320,6 +464,12 @@ class StarsMultiAgentForecaster(nn.Module):
     def training_forward(self, data, future_local: torch.Tensor, future_valid: torch.Tensor) -> dict[str, torch.Tensor]:
         """Teacher-forced prediction with posterior latents; returns ``prediction [N, P, 2]`` and ``kl [N]``."""
         encoded = self.encode(data)
+        if self.diffusion:
+            hidden = self.decoder.hidden(encoded["context"], data.edge_index, encoded["edge_emb"])
+            graph = getattr(data, "batch", None)
+            denoise = self.decoder.loss(hidden, future_local, future_valid, data.node_attr[:, -1, 2:4], self.dt,
+                                        data.edge_index, encoded["edge_emb"], graph)
+            return {"prediction": None, "kl": None, "z": None, "denoise": denoise}
         if not self.latent_dim:
             return {"prediction": self.decode(data, encoded, None)[0], "kl": None, "z": None}
         q_mu, q_logvar = self.decoder.posterior_params(encoded["context"], future_local, future_valid)
@@ -336,6 +486,10 @@ class StarsMultiAgentForecaster(nn.Module):
     def predict(self, data, samples: int = 1) -> torch.Tensor:
         """Local-frame predictions ``[K, N, P, 2]``; the deterministic decoder always returns K=1."""
         encoded = self.encode(data)
+        if self.diffusion:
+            hidden = self.decoder.hidden(encoded["context"], data.edge_index, encoded["edge_emb"])
+            return self.decoder.sample(hidden, data.node_attr[:, -1, 2:4], self.dt, samples, data.edge_index,
+                                       encoded["edge_emb"])
         return self.decode(data, encoded, self.sample_latent(encoded["context"], samples))
 
 
@@ -362,6 +516,8 @@ def rollout(model: StarsMultiAgentForecaster, batch, *, rounds: int, exec_steps:
     Returns scene-frame positions ``[N, rounds * exec_steps, 2]``. With ``keep_graph`` the rollout
     is differentiable (multi-step training); otherwise it runs without gradients.
     """
+    if model.diffusion:
+        raise ValueError("Closed-loop rollout is not implemented for the diffusion decoder")
     if not 1 <= exec_steps <= model.prediction_steps:
         raise ValueError("exec_steps must be between 1 and the decoder horizon")
     with torch.set_grad_enabled(keep_graph and torch.is_grad_enabled()):

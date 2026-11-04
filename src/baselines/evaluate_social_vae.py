@@ -39,7 +39,7 @@ from forecasting_config import config_as_dict
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--fold", choices=("eth", "hotel", "univ", "zara1", "zara2"))
-    parser.add_argument("--target-dataset", choices=("eth_ucy", "grand_central", "madras"))
+    parser.add_argument("--target-dataset", choices=("eth_ucy", "grand_central", "madras", "steps"))
     parser.add_argument("--checkpoint", required=True)
     parser.add_argument("--run-dir", required=True, type=Path)
     parser.add_argument("--device", default="cuda")

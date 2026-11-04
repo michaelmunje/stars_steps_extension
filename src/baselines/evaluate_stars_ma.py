@@ -105,8 +105,10 @@ def main() -> None:
     parser.add_argument("--cache-dir", type=Path, default=Path("datasets/.cache/stars_ma"))
     parser.add_argument("--cache-workers", type=int, default=16)
     parser.add_argument("--max-nodes", type=int, default=16384)
-    parser.add_argument("--samples", type=int, default=20, help="K for best-of-K (CVAE)")
-    parser.add_argument("--rollout-exec-steps", type=int, nargs="*", default=[1, 4, 12])
+    parser.add_argument("--samples", type=int, default=20, help="K for best-of-K (CVAE / diffusion)")
+    parser.add_argument("--rollout-exec-steps", type=int, nargs="*", default=[1, 4, 12],
+                        help="Closed-loop rollouts (none for the diffusion decoder)")
+    parser.add_argument("--sample-steps", type=int, help="Diffusion decoder: DDIM steps (default: the trained value)")
     parser.add_argument("--sim-seconds", type=float, default=20.0)
     parser.add_argument("--sim-exec-steps", type=int, default=4)
     parser.add_argument("--max-plausible-speed", type=float, default=3.0, help="m/s")
@@ -120,6 +122,10 @@ def main() -> None:
 
     torch.manual_seed(args.seed + args.rank)
     model, payload = load_forecaster(args.checkpoint, args.device_realized)
+    if model.diffusion:
+        args.rollout_exec_steps = []
+        if args.sample_steps:
+            model.decoder.sample_steps = args.sample_steps
     model.eval()
     graph, window = payload["graph"], payload["window"]
     args.knn, args.radius = graph["knn"], graph["radius"]
@@ -138,7 +144,7 @@ def main() -> None:
     batches = node_budget_batches(store.sizes, args.max_nodes, shuffle=False)[args.rank::args.world_size]
     if args.max_batches:
         batches = batches[: args.max_batches]
-    samples = args.samples if model.latent_dim else 1
+    samples = args.samples if model.stochastic else 1
 
     teacher, constant_velocity = MetricAccumulator(), MetricAccumulator()
     closed = {steps: MetricAccumulator() for steps in args.rollout_exec_steps}
@@ -177,7 +183,7 @@ def main() -> None:
         "constant_velocity": constant_velocity.result(),
         "closed_loop": {f"exec_{steps}": accumulator.result() for steps, accumulator in closed.items()},
     }
-    if args.sim_seconds > 0:
+    if args.sim_seconds > 0 and not model.diffusion:   # no closed-loop rollout for the diffusion decoder
         report["simulation"] = simulation_report(
             model, store, batches, args, seconds=args.sim_seconds, exec_steps=args.sim_exec_steps,
             max_speed=args.max_plausible_speed, collision_distance=args.collision_distance)

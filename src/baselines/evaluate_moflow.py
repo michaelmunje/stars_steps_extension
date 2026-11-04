@@ -23,7 +23,7 @@ from baselines.transfer_data import downstream_test_dataset,resolve_target_name
 
 def main():
     p=argparse.ArgumentParser();p.add_argument("--fold",choices=["eth","hotel","univ","zara1","zara2"])
-    p.add_argument("--target-dataset",choices=["eth_ucy","grand_central","madras"])
+    p.add_argument("--target-dataset",choices=["eth_ucy","grand_central","madras","steps"])
     p.add_argument("--checkpoint",required=True);p.add_argument("--run-dir",required=True,type=Path)
     p.add_argument("--device",default="cuda");p.add_argument("--batch-size",type=int,default=256);p.add_argument("--max-scenes",type=int)
     p.add_argument("--data-seed",type=int,default=42);p.add_argument("--visual-scenes",type=int,default=10);p.add_argument("--visual-seed",type=int,default=42);add_preprocessing_arguments(p);handle_preprocessing_introspection()

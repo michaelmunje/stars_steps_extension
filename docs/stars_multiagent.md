@@ -8,11 +8,11 @@ probe (`baselines.train_stars`, `baselines.stars`) is unchanged and remains the 
 | Module | Contents |
 |---|---|
 | `src/baselines/stars_ma_graph.py` | Torch graph builder: node selection, local-frame node motion features, STARS SE(2) edge features, kNN/radius topology; differentiable in positions |
-| `src/baselines/stars_ma_model.py` | `StarsMotionEncoder`, phase-1 `StarsMotionVAE`, `TrajectoryDecoder` (deterministic / CVAE), `StarsMultiAgentForecaster`, closed-loop `rollout` |
+| `src/baselines/stars_ma_model.py` | `StarsMotionEncoder`, phase-1 `StarsMotionVAE`, `TrajectoryDecoder` (deterministic / CVAE), `DiffusionDecoder`, `StarsMultiAgentForecaster`, closed-loop `rollout` |
 | `src/baselines/stars_ma_data.py` | `StarsMultiAgentDataset`: one graph per scene window over the shared `Scene` samples |
 | `src/baselines/stars_ma_batch.py` | Training data path: cached `WindowStore` per split (GPU-resident), batched on-device graph construction (`build_batch`, `GraphBatch.rebuild` for rollouts), node-budget batching |
 | `src/baselines/stars_ma_metrics.py` | Best-of-K ADE/FDE (target / agent / joint), interacting vs isolated, density bins, collisions, closest approach, diversity, motion distributions |
-| `src/baselines/train_stars_ma.py` | `--phase ssl` and `--phase forecast` (frozen / finetune / scratch, deterministic / CVAE, multi-step rollout loss); dataset configs, DDP, bf16, resume, `--benchmark` |
+| `src/baselines/train_stars_ma.py` | `--phase ssl` and `--phase forecast` (frozen / finetune / scratch, deterministic / CVAE / diffusion / joint diffusion, multi-step rollout loss); dataset configs, DDP, bf16, resume, `--benchmark` |
 | `configs/stars_ma/*.yaml` | Dataset lists: `steps`, `ptdpes`, `all` (every converted dataset), `steps_plus_ptdpes` (weighted mixture) |
 | `src/baselines/evaluate_stars_ma.py` | Teacher-forced, closed-loop and long-horizon simulation report (JSON) |
 | `tests/test_stars_ma.py` | Contracts below |
@@ -58,6 +58,20 @@ to the scene frame. Permutation-equivariant and size-agnostic (tested).
   per agent, trained with reconstruction + KL (warm-up). This is a new latent for future
   diversity, not the representation VAE's latent. `z` joins the context before the social round,
   so a joint draw of all agents' `z` decodes into mutually consistent futures.
+- *Diffusion* (`--decoder diffusion`, MID-style; Gu et al., CVPR 2022): the same context and social
+  round give a per-agent hidden `h`; a residual MLP denoises the agent's 12 local-frame steps minus
+  constant-velocity steps (scaled by `diffusion_scale` = 0.1 m). DDPM, cosine schedule, T = 100
+  (`--diffusion-steps`), epsilon prediction, masked MSE; DDIM sampling (eta 0, `--sample-steps`,
+  default 10), K independent chains per agent for best-of-K. Teacher-forced forecasting only: no
+  closed-loop rollout or SimpleNavSim crowd.
+- *Joint diffusion* (`--decoder joint_diffusion`, MotionDiffuser-style; Jiang et al., CVPR 2023):
+  the same model with `--diffusion-social-layers` (default 2) social `TransformerConv` layers over
+  the scene graph inside the denoiser, so every agent's noisy future attends to its neighbours'
+  at each denoising step. One noise level per scene during training; at sampling time each of the
+  K chains denoises the whole scene, so sample k is one consistent joint future (per-agent
+  diffusion samples agents independently: test joint ADE 0.137 m vs the CVAE's 0.097 m). Training
+  is ~10% slower and sampling ~2x slower than per-agent diffusion; validate every 3 epochs.
+  50 DDIM steps are needed (10 gave test ADE 0.268 m vs 0.078 m for the per-agent model).
 
 **Closed loop (`rollout`).** Encode scene -> predict 12 steps -> execute the first `exec_steps` for
 every agent -> shift the 8-step window -> rebuild graph -> repeat. A CVAE agent's `z` is its intent:
@@ -105,7 +119,7 @@ python -m baselines.evaluate_stars_ma --checkpoint experiments/stars_ma/cvae_fin
 | STARS representation vs scratch | `--encoder-mode frozen` / `finetune` vs `scratch` |
 | Edge-only vs node + edge | `--edge-only` on both phases vs default |
 | Frozen vs fine-tuned | `--encoder-mode frozen` vs `finetune` |
-| Deterministic vs multimodal | `--decoder deterministic` vs `cvae` |
+| Deterministic vs multimodal | `--decoder deterministic` vs `cvae` vs `diffusion` vs `joint_diffusion` |
 | One-step vs multi-step training | `--rollout-exec-steps 0` vs `4` (or `1`) |
 | STARS topology | `--fully-connected` on both phases |
 
@@ -140,7 +154,7 @@ frame round trip; metrics on known predictions; window de-duplication.
 5. **Agents entering / leaving** in long rollouts: the simulated set is fixed at the first round.
 6. **Baseline tables.** Not wired into `scripts/pretrain_transfer_model.sh`, `run_transfer_experiment.sh`
    or the aggregate tables; no `--resume`; no transfer (`--target-dataset`) stage yet.
-7. **Diffusion decoder** (after the CVAE baseline).
+7. **Diffusion decoder**: implemented, per agent (`--decoder diffusion`) and joint (`--decoder joint_diffusion`); closed-loop rollouts are not.
 8. **Robot conditioning** (not implemented, by design): add a type-0 node whose features include
    its planned trajectory over the prediction horizon (an extra robot-only temporal branch,
    injected like the pedestrian node branch), and condition the rollout on a supplied robot plan

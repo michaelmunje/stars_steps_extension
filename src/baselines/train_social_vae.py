@@ -221,7 +221,7 @@ def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--stage", required=True, choices=("pretrain", "scratch", "finetune"))
     parser.add_argument("--fold", choices=("eth", "hotel", "univ", "zara1", "zara2"))
-    parser.add_argument("--target-dataset", choices=("eth_ucy", "grand_central", "madras"))
+    parser.add_argument("--target-dataset", choices=("eth_ucy", "grand_central", "madras", "steps"))
     parser.add_argument("--target-fraction", type=float, default=1.0)
     parser.add_argument("--checkpoint")
     parser.add_argument("--allow-legacy-checkpoint", action="store_true", help="Explicitly allow a checkpoint without the frozen transfer recipe metadata")

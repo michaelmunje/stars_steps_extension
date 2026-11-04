@@ -156,7 +156,14 @@ def _parser() -> argparse.ArgumentParser:
     forecast.add_argument("--encoder-mode", choices=("frozen", "finetune", "scratch"), default="frozen")
     forecast.add_argument("--decoder-hidden-dim", type=int)
     forecast.add_argument("--decoder-dropout", type=float)
-    forecast.add_argument("--decoder", choices=("deterministic", "cvae"), default="deterministic")
+    forecast.add_argument("--decoder", choices=("deterministic", "cvae", "diffusion", "joint_diffusion"),
+                          default="deterministic")
+    forecast.add_argument("--diffusion-social-layers", type=int, default=2,
+                          help="joint_diffusion: social layers inside the denoiser")
+    forecast.add_argument("--diffusion-steps", type=int, default=DECODER_RECIPE["diffusion_steps"],
+                          help="diffusion: DDPM training steps")
+    forecast.add_argument("--sample-steps", type=int, default=DECODER_RECIPE["sample_steps"],
+                          help="diffusion: DDIM steps when sampling")
     forecast.add_argument("--cvae-latent-dim", type=int, default=32)
     forecast.add_argument("--no-social-layer", action="store_true", help="Decoder without its social message-passing round")
     forecast.add_argument("--representation", choices=("mu", "hidden"), default=DECODER_RECIPE["representation"])
@@ -202,6 +209,8 @@ def parse_args(argv=None) -> argparse.Namespace:
             parser.error("--encoder-mode scratch does not take --encoder-checkpoint")
         if args.rollout_exec_steps < 0:
             parser.error("--rollout-exec-steps must be >= 0")
+        if args.rollout_exec_steps and args.decoder in ("diffusion", "joint_diffusion"):
+            parser.error("--rollout-exec-steps is not supported with --decoder diffusion")
     elif args.encoder_checkpoint or args.rollout_exec_steps:
         parser.error("--encoder-checkpoint/--rollout-exec-steps apply to --phase forecast")
     return args
@@ -308,6 +317,9 @@ def forecast_loss(model, batch, args, kl_weight: float) -> dict[str, torch.Tenso
     future_local = to_local(batch.future, batch.origin, batch.heading)
     valid = batch.future_valid.to(future_local.dtype)
     out = model.training_forward(batch, future_local, batch.future_valid)
+    if "denoise" in out:  # diffusion decoder: the forecast loss is the denoising (epsilon) MSE
+        zero = out["denoise"].new_zeros(())
+        return {"forecast": out["denoise"], "kl": zero, "rollout": zero, "loss": out["denoise"]}
     losses = {"forecast": _masked_distance(out["prediction"], future_local, valid)}
     losses["kl"] = out["kl"].float().sum() / batch.future_valid.any(dim=-1).sum().clamp(min=1) \
         if out["kl"] is not None else losses["forecast"].new_zeros(())
@@ -516,6 +528,10 @@ def train(args) -> None:
     args.decoder_recipe = {
         **DECODER_RECIPE,
         "latent_dim": args.cvae_latent_dim if args.decoder == "cvae" else 0,
+        "diffusion": args.decoder in ("diffusion", "joint_diffusion"),
+        "diffusion_social_layers": args.diffusion_social_layers if args.decoder == "joint_diffusion" else 0,
+        "diffusion_steps": args.diffusion_steps,
+        "sample_steps": args.sample_steps,
         "social_layer": not args.no_social_layer,
         "representation": args.representation,
         **({"hidden_dim": args.decoder_hidden_dim} if args.decoder_hidden_dim else {}),
@@ -589,7 +605,7 @@ def train(args) -> None:
         run.update(stage=args.phase, parameters=sum(p.numel() for p in model.parameters()),
                    trainable_parameters=sum(p.numel() for p in trainable), steps_per_epoch=steps_per_epoch,
                    peak_learning_rate=args.recipe["learning_rate"], world_size=args.world_size)
-        samples = args.samples if (args.phase == "forecast" and model.latent_dim) else 1
+        samples = args.samples if (args.phase == "forecast" and model.stochastic) else 1
         checkpoint = args.run_dir / "checkpoints" / "best.pt"
 
         for epoch in range(start_epoch, args.recipe["max_epochs"] + 1):

@@ -154,6 +154,80 @@ def test_cvae_training_and_sampling_shapes():
     assert samples.shape == (5, 18, 12, 2) and samples.std(dim=0).mean() > 0
 
 
+def test_diffusion_decoder_trains_samples_and_is_permutation_equivariant():
+    torch.manual_seed(0)
+    model = StarsMultiAgentForecaster(8, 12, dt=DT, encoder_recipe=SMALL, decoder_recipe={
+        "hidden_dim": 32, "dropout": 0.0, "diffusion": True, "sample_steps": 5}).eval()
+    batch = Batch.from_data_list([_graph(_walkers(seed=s), np.ones((20, 6), dtype=bool), knn=4, radius=None)
+                                  for s in range(3)])
+    future_local = to_local(batch.future, batch.origin, batch.heading)
+    optimizer = torch.optim.Adam(model.decoder.parameters(), lr=3e-3)
+    losses = []
+    for _ in range(100):
+        torch.manual_seed(1)  # the same noise and steps each time: a fixed objective that must fall
+        loss = model.training_forward(batch, future_local, batch.future_valid)["denoise"]
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+        losses.append(loss.item())
+    assert losses[-1] < 0.5 * losses[0]
+    samples = model.predict(batch, samples=4)
+    assert samples.shape == (4, 18, 12, 2) and bool(torch.isfinite(samples).all()) and samples.std(dim=0).mean() > 0
+
+    xy, valid, order = _walkers(), np.ones((20, 6), dtype=bool), np.array([3, 0, 5, 1, 4, 2])
+    hidden = lambda data: model.decoder.hidden(model.encode(data)["context"], data.edge_index, model.encode(data)["edge_emb"])
+    data, permuted = _graph(xy, valid, knn=4, radius=None), _graph(xy[:, order], valid[:, order], knn=4, radius=None)
+    h, h_perm = hidden(data), hidden(permuted)
+    index = torch.from_numpy(order)
+    torch.testing.assert_close(h_perm, h[index], atol=1e-5, rtol=1e-4)
+    x, t = torch.randn(6, 24), torch.randint(0, 100, (6,))
+    torch.testing.assert_close(model.decoder.epsilon(x[index], t[index], h_perm),
+                               model.decoder.epsilon(x, t, h)[index], atol=1e-5, rtol=1e-4)
+    with pytest.raises(ValueError):
+        rollout(model, Batch.from_data_list([data]), rounds=1, exec_steps=4, knn=4, radius=None)
+
+
+def test_joint_diffusion_couples_agents_and_stays_permutation_equivariant():
+    torch.manual_seed(0)
+    model = StarsMultiAgentForecaster(8, 12, dt=DT, encoder_recipe=SMALL, decoder_recipe={
+        "hidden_dim": 32, "dropout": 0.0, "diffusion": True, "sample_steps": 5, "diffusion_social_layers": 2}).eval()
+    batch = Batch.from_data_list([_graph(_walkers(seed=s), np.ones((20, 6), dtype=bool), knn=4, radius=None)
+                                  for s in range(3)])
+    future_local = to_local(batch.future, batch.origin, batch.heading)
+    optimizer = torch.optim.Adam(model.decoder.parameters(), lr=3e-3)
+    losses = []
+    for _ in range(100):
+        torch.manual_seed(1)
+        loss = model.training_forward(batch, future_local, batch.future_valid)["denoise"]
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+        losses.append(loss.item())
+    assert losses[-1] < 0.5 * losses[0]
+    samples = model.predict(batch, samples=4)
+    assert samples.shape == (4, 18, 12, 2) and bool(torch.isfinite(samples).all()) and samples.std(dim=0).mean() > 0
+
+    data = _graph(_walkers(), np.ones((20, 6), dtype=bool), knn=4, radius=None)
+    encoded = model.encode(data)
+    h = model.decoder.hidden(encoded["context"], data.edge_index, encoded["edge_emb"])
+    velocity = data.node_attr[:, -1, 2:4]
+    noise = torch.randn(1, 6, 24)
+    other = noise.clone()
+    other[0, 1] = torch.randn(24)            # change only agent 1's noise ...
+    sample = lambda n: model.decoder.sample(h, velocity, DT, 1, data.edge_index, encoded["edge_emb"], noise=n)
+    neighbour = int(data.edge_index[1][data.edge_index[0] == 1][0])
+    assert not torch.allclose(sample(noise)[0, neighbour], sample(other)[0, neighbour])   # ... and a neighbour moves
+
+    order = np.array([3, 0, 5, 1, 4, 2])
+    permuted = _graph(_walkers()[:, order], np.ones((20, 6), dtype=bool), knn=4, radius=None)
+    encoded_p = model.encode(permuted)
+    h_p = model.decoder.hidden(encoded_p["context"], permuted.edge_index, encoded_p["edge_emb"])
+    x, t, index = torch.randn(6, 24), torch.full((6,), 37), torch.from_numpy(order)
+    torch.testing.assert_close(
+        model.decoder.epsilon(x[index], t, h_p, permuted.edge_index, encoded_p["edge_emb"]),
+        model.decoder.epsilon(x, t, h, data.edge_index, encoded["edge_emb"])[index], atol=1e-5, rtol=1e-4)
+
+
 def test_closed_loop_rollout_is_differentiable_and_supports_long_rounds():
     model = _model(latent_dim=4).train()
     batch = Batch.from_data_list([_graph(_walkers(seed=s), np.ones((20, 6), dtype=bool), knn=3, radius=8.0)
