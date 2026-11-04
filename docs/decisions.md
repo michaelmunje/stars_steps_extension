@@ -143,3 +143,9 @@ Results: [`results/README.md`](results/README.md).
   sees it (6.6% vs 2.5% of near-robot time): in STEPS a close person walking the same way is
   usually a group member. Not fixed; options are keeping the robot out of the graph with a
   social-force repulsion, or retraining with the robot as its own node type.
+- **Diffusion decoders and official baselines** (`--decoder diffusion` / `joint_diffusion`, STEPS test,
+  best-of-20 target ADE/FDE in m): SocialVAE 0.078/0.116, joint diffusion 0.079/0.107, per-agent
+  diffusion 0.079/0.106, CVAE 0.081/0.128, MoFlow 0.085/0.126 (official recipes, one seed). Joint ADE:
+  CVAE 0.097, joint diffusion 0.124, per-agent diffusion 0.137. Diffusion is the best per-agent
+  forecaster at the final position; the CVAE stays best for consistent multi-agent futures and is
+  still the crowd model. Diffusion needs ~50 DDIM steps (10 steps: ADE 0.268).

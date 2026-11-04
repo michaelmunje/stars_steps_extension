@@ -58,3 +58,25 @@ starts from random seed s's weights (200 generations). Test split, STARS crowd, 
 | Random weights | 58% ± 9% | 9.0% ± 1.4% | 0.55 ± 0.09 | 0.88 ± 0.03 | 15.8 ± 1.4 s |
 | CMA-ES from those weights | 97.7% ± 0.3% | 1.2% ± 0.2% | 0.89 ± 0.00 | 0.97 ± 0.00 | 11.2 ± 0.1 s |
 | Paired change | +39 ± 9 points | -7.7 ± 1.3 points | +0.34 ± 0.09 | +0.09 ± 0.03 | -4.6 ± 1.5 s |
+
+## Forecasting decoders vs official baselines (STEPS test, 12,500 samples, best-of-20, m)
+
+All on the same `steps_default` test samples, frame and best-of-20 definition; one seed each,
+trained from scratch on STEPS (MoFlow, SocialVAE: official recipes; ours: STEPS encoder fine-tuned
+as `cvae_kl01_finetune`). *Joint ADE* scores whole scenes from one sample (the baselines predict one
+target per sample, so it does not apply). ± is the standard error over test samples.
+
+| Model | Target ADE | Target FDE | Joint ADE |
+| --- | --- | --- | --- |
+| Constant velocity | 0.279 | 0.527 | 0.279 |
+| MoFlow (official, CVPR 2025) | 0.085 ± 0.0014 | 0.126 ± 0.0026 | — |
+| SocialVAE (official) | 0.078 ± 0.0014 | 0.116 ± 0.0028 | — |
+| CVAE (`cvae_kl01_finetune`) | 0.081 | 0.128 | 0.097 |
+| Per-agent diffusion (50 DDIM steps) | 0.079 | 0.106 | 0.137 |
+| Joint diffusion (50 DDIM steps) | 0.079 | 0.107 | 0.124 |
+
+- Target accuracy is a near tie: SocialVAE 0.078, both diffusion decoders 0.079, CVAE 0.081;
+  MoFlow 0.085 (its best validation came at epoch 13 of 150).
+- The diffusion decoders have the best final positions (0.106-0.107 vs 0.116 SocialVAE, 0.126 MoFlow).
+- Joint consistency: the CVAE is best (0.097); social layers inside the diffusion denoiser help
+  (0.137 -> 0.124) but do not catch up. Diffusion needs ~50 DDIM steps (10 steps: ADE 0.268).
