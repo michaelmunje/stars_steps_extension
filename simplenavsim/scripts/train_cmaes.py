@@ -13,7 +13,7 @@ import json
 from pathlib import Path
 
 from simplenavsim.cli import DEFAULT_CONFIG, build, cmaes_config, setup_logging
-from simplenavsim.optimization.cmaes import CMAESTrainer
+from simplenavsim.optimization.cmaes import CMAESTrainer, random_weights
 from simplenavsim.visualization.plots import plot_convergence
 
 
@@ -25,6 +25,8 @@ def main() -> None:
     parser.add_argument("--seed", type=int)
     parser.add_argument("--optimizer", choices=("cmaes", "ppo"))
     parser.add_argument("--policy", help="Start from a saved policy YAML (its values become the initial mean)")
+    parser.add_argument("--random-init", type=int, metavar="SEED",
+                        help="Start from random weights (the seed_study.py random baseline with this seed)")
     parser.add_argument("--pedestrians", choices=("replay", "social_force", "reactive_replay", "stars_crowd"))
     parser.add_argument("--device")
     parser.add_argument("--out-dir", type=Path, default=Path("checkpoints/simplenavsim/cmaes"))
@@ -37,6 +39,8 @@ def main() -> None:
                        seed=args.seed, optimizer=args.optimizer)
     if args.policy:
         cfg.initial = {**config["policy_parameters"], **cfg.initial}
+    if args.random_init is not None:
+        cfg.initial = {**cfg.initial, **random_weights(policy.parameters, cfg.optimize, args.random_init)}
     print(f"device {device}, pedestrians {env.pedestrians.name}, policy {policy.name}, optimizing {cfg.optimize}")
     trainer = CMAESTrainer(cfg, evaluator, args.out_dir, pool=pool)
     summary = trainer.run(resume=args.resume)

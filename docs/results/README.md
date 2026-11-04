@@ -48,13 +48,13 @@ weights as CMA-ES (0.42 / 99% / 0.7%).
 - Weak spots: head-on encounters in the STARS crowd (6.7% collisions) and narrow passages with
   pedestrians that ignore the robot (10% timeouts; 27% before the passage was widened to 2.0-2.8 m).
 
-## Random vs CMA-ES-tuned weights, 10 seeds each ([`seed_study/`](seed_study/))
+## Random vs CMA-ES-tuned weights, 10 paired seeds ([`seed_study/`](seed_study/))
 
-Objective J = SPL - 2 C + SC - 0.3 time / 30 s (Principles metrics, Francis et al. Table I); CMA-ES from the
-default weights, 200 generations. Test split, STARS crowd, mean ± standard error over seeds:
+Objective J = SPL - 2 C + SC - 0.3 time / 30 s (Principles metrics, Francis et al. Table I). CMA-ES seed s
+starts from random seed s's weights (200 generations). Test split, STARS crowd, mean ± standard error over seeds:
 
 | | Success | Collisions | SPL | Personal space (>= 0.5 m) | Time to goal |
 | --- | --- | --- | --- | --- | --- |
 | Random weights | 58% ± 9% | 9.0% ± 1.4% | 0.55 ± 0.09 | 0.88 ± 0.03 | 15.8 ± 1.4 s |
-| CMA-ES | 98.8% ± 0.2% | 0.4% ± 0.1% | 0.89 ± 0.00 | 0.98 ± 0.00 | 11.2 ± 0.1 s |
-| v4 (earlier objective) | 98.1% | 1.5% | 0.88 | 0.94 | 10.9 s |
+| CMA-ES from those weights | 97.7% ± 0.3% | 1.2% ± 0.2% | 0.89 ± 0.00 | 0.97 ± 0.00 | 11.2 ± 0.1 s |
+| Paired change | +39 ± 9 points | -7.7 ± 1.3 points | +0.34 ± 0.09 | +0.09 ± 0.03 | -4.6 ± 1.5 s |

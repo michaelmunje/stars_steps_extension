@@ -18,6 +18,7 @@ from __future__ import annotations
 import json
 import logging
 import pickle
+import random
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -30,6 +31,13 @@ from simplenavsim.optimization.evaluator import Evaluator
 from simplenavsim.policies.base import save_policy
 
 log = logging.getLogger("simplenavsim.cmaes")
+
+
+def random_weights(parameters, names, seed: int) -> dict[str, float]:
+    """One weight set drawn uniformly from the search range of ``names`` (log-uniform for log-scale
+    parameters): the random baseline, and the starting point of ``train_cmaes.py --random-init``."""
+    rng = random.Random(seed)
+    return {spec.name: spec.from_unit(rng.random()) for spec in parameters if spec.name in names}
 
 
 @dataclass

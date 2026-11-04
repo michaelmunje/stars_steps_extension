@@ -1,13 +1,15 @@
 """Random vs CMA-ES-tuned controller weights, 10 seeds each, scored with standard social-navigation metrics.
 
 Random, seed s: one weight set drawn uniformly from the CMA-ES search range (log-uniform for
-log-scale weights) with seed s. CMA-ES, seed s: ``train_cmaes.py --seed s`` from the default
-weights, saved under ``checkpoints/simplenavsim/seeds/cmaes_s<s>/``. v4 is a reference row.
+log-scale weights) with seed s. CMA-ES, seed s: ``train_cmaes.py --seed s --random-init s``, i.e.
+CMA-ES started from random seed s's weights (a paired before/after comparison), saved under
+``checkpoints/simplenavsim/seeds_random_init/cmaes_s<s>/``.
 
 Every policy runs on the test split (the config's 9 kinds x 30 scenes) in the STARS crowd it is
 tuned in. Metrics are Table I of Francis et al., "Principles and Guidelines for Evaluating Social
 Robot Navigation Algorithms" (``core.metrics.principles_metrics``); the table gives the mean over
-seeds of each seed's scene average, with its standard error. One GIF per policy and seed shows the
+seeds of each seed's scene average, with its standard error, and the paired change (CMA-ES minus
+random, per seed) with its standard error. One GIF per policy and seed shows the
 first test scene of six kinds.
 
     python simplenavsim/scripts/seed_study.py --policies random_s0 cmaes_s0 --device cuda
@@ -20,7 +22,6 @@ import copy
 import json
 import math
 import pickle
-import random
 import sys
 from pathlib import Path
 
@@ -34,11 +35,12 @@ from simplenavsim.core.config import CONFIG_DIR, load_config, make_env
 from simplenavsim.core.metrics import all_metrics, principles_metrics, summarize
 from simplenavsim.core.rollout import rollout
 from simplenavsim.core.scenarios import collate, scenario_set
+from simplenavsim.optimization.cmaes import random_weights
 from simplenavsim.optimization.evaluator import Objective
 
 SEEDS = range(10)
 GROUPS = {"random": "Random weights", "cmaes": "CMA-ES"}
-POLICIES = [f"{g}_s{s}" for g in GROUPS for s in SEEDS] + ["v4"]
+POLICIES = [f"{g}_s{s}" for g in GROUPS for s in SEEDS]
 FIXED = ("crossing", "head_on", "group_toward", "narrow_passage", "dense_flow", "recorded")
 METRICS = [  # (key, name, unit, better)
     ("S", "Success rate", "", "high"), ("C", "Collision rate", "", "low"), ("HC", "Human collisions", "", "low"),
@@ -59,19 +61,12 @@ METRICS = [  # (key, name, unit, better)
 ]
 
 
-def random_weights(seed, controller, names):
-    """One weight set drawn uniformly from the search range (log-uniform for log-scale weights)."""
-    rng = random.Random(seed)
-    return {spec.name: spec.from_unit(rng.random()) for spec in controller.parameters if spec.name in names}
-
-
 def run_policy(label, config, env, scenes, fixed, device):
     group, _, seed = label.partition("_s")
-    path = {"v4": "checkpoints/simplenavsim/cmaes_crowd_v4/best_policy.yaml",
-            "cmaes": f"checkpoints/simplenavsim/seeds/cmaes_s{seed}/best_policy.yaml"}.get(group)
+    path = f"checkpoints/simplenavsim/seeds_random_init/cmaes_s{seed}/best_policy.yaml" if group == "cmaes" else None
     policy, values = make_policy("social", path, True, env, config["policy"], device)
     if group == "random":
-        values = {**values, **random_weights(int(seed), policy, config["cmaes"]["optimize"])}
+        values = {**values, **random_weights(policy.parameters, config["cmaes"]["optimize"], int(seed))}
     batch, fixed_batch = collate(scenes, device), collate(fixed, device)
     run = rollout(env, batch, policy, policy.parameter_tensor(values, batch.size, device))
     metrics = principles_metrics(run, batch, env.robot.radius, env.sim.goal_tolerance)
@@ -100,30 +95,31 @@ def render(out_dir: Path, docs_dir: Path) -> None:
     docs_dir.mkdir(parents=True, exist_ok=True)
     groups = {g: [results[f"{g}_s{s}"] for s in SEEDS if f"{g}_s{s}" in results] for g in GROUPS}
     cell = lambda m, se: "—" if math.isnan(m) else f"{m:.3f} ± {se:.3f}"
+    paired = [s for s in SEEDS if f"random_s{s}" in results and f"cmaes_s{s}" in results]
     lines = ["# Random vs CMA-ES-tuned controller weights (STARS crowd, test split)\n",
              "Random seed s: one weight set drawn uniformly from the CMA-ES search range. CMA-ES seed s: "
-             "`train_cmaes.py --config cmaes_crowd_principles.yaml --seed s` from the default weights (200 generations, "
-             "population 32, about 2 h on one GPU), objective J = SPL - 2 C + SC - 0.3 time/30 s. v4 was tuned for the "
-             "earlier objective. Narrow passages are 2.0-2.8 m wide.\n",
+             "`train_cmaes.py --config cmaes_crowd_principles.yaml --seed s --random-init s`, i.e. CMA-ES started "
+             "from random seed s's weights (200 generations, population 32, about 2 h on one GPU), objective "
+             "J = SPL - 2 C + SC - 0.3 time/30 s. Narrow passages are 2.0-2.8 m wide.\n",
              f"{len(groups['random'])} random and {len(groups['cmaes'])} CMA-ES seeds; each seed is evaluated on "
-             "the same 270 test scenes (9 kinds x 30). Cells: mean over seeds ± standard error. v4 is one policy "
-             "(no error). Metrics from Table I of Francis et al., *Principles and Guidelines for Evaluating Social "
-             "Robot Navigation Algorithms* (2023); distances are measured edge to edge; T averages successful "
-             "episodes only; CD averages scenes with walls only. Aggregated time (AT) is omitted: our pedestrians "
-             "have no cooperative goals.\n",
-             "| Metric | Unit | Better | " + " | ".join(GROUPS.values()) + " | v4 |", "| --- | --- | --- | --- | --- | --- |"]
+             "the same 270 test scenes (9 kinds x 30). Cells: mean over seeds ± standard error; *Change* is the "
+             "per-seed difference CMA-ES minus its own random start, averaged over seeds. Metrics from Table I of "
+             "Francis et al., *Principles and Guidelines for Evaluating Social Robot Navigation Algorithms* (2023); "
+             "distances are measured edge to edge; T averages successful episodes only; CD averages scenes with "
+             "walls only. Aggregated time (AT) is omitted: our pedestrians have no cooperative goals.\n",
+             "| Metric | Unit | Better | " + " | ".join(GROUPS.values()) + " | Change (paired) |",
+             "| --- | --- | --- | --- | --- | --- |"]
     for key, name, unit, better in METRICS:
         cells = [cell(*mean_se([r["all"][key] for r in groups[g]])) for g in GROUPS]
-        v4 = results["v4"]["all"][key] if "v4" in results else float("nan")
-        lines.append(f"| {name} (`{key}`) | {unit} | {better} | " + " | ".join(cells) + f" | {'—' if math.isnan(v4) else f'{v4:.3f}'} |")
-    kinds = list(results["v4"]["per_kind"]) if "v4" in results else []
+        change = mean_se([results[f"cmaes_s{s}"]["all"][key] - results[f"random_s{s}"]["all"][key] for s in paired])
+        lines.append(f"| {name} (`{key}`) | {unit} | {better} | " + " | ".join(cells) + f" | {cell(*change)} |")
+    kinds = list(groups["random"][0]["per_kind"]) if groups["random"] else []
     lines += ["\n## Success / collision rate by scene kind (mean over seeds)\n",
-              "| Kind | " + " | ".join(GROUPS.values()) + " | v4 |", "| --- | --- | --- | --- |"]
+              "| Kind | " + " | ".join(GROUPS.values()) + " |", "| --- | --- | --- |"]
     for k in kinds:
         cells = [f"{mean_se([r['per_kind'][k]['S'] for r in groups[g]])[0]:.2f} / "
                  f"{mean_se([r['per_kind'][k]['C'] for r in groups[g]])[0]:.2f}" if groups[g] else "—" for g in GROUPS]
-        v4 = results["v4"]["per_kind"][k]
-        lines.append(f"| {KIND_NAMES[k]} | " + " | ".join(cells) + f" | {v4['S']:.2f} / {v4['C']:.2f} |")
+        lines.append(f"| {KIND_NAMES[k]} | " + " | ".join(cells) + " |")
     (docs_dir / "README.md").write_text("\n".join(lines) + "\n")
     (docs_dir / "results.json").write_text(json.dumps({k: {f: v[f] for f in ("weights", "all", "per_kind")}
                                                        for k, v in results.items()}, indent=1))
@@ -131,18 +127,16 @@ def render(out_dir: Path, docs_dir: Path) -> None:
         group, _, seed = label.partition("_s")
         snap = res["animation"]
         kinds = [n.rsplit("-", 1)[0] for n in snap["names"]]
-        if group in GROUPS:
-            (docs_dir / group).mkdir(exist_ok=True)
-            name, row, path = f"{GROUPS[group]}, seed {seed}", f"{GROUPS[group]}\nseed {seed}", docs_dir / group / f"seed_{seed}.gif"
-        else:
-            name, row, path = "CMA-ES v4 (reference policy)", "CMA-ES\nv4", docs_dir / "v4.gif"
-        animate_grid([snap], [row], [KIND_NAMES[k] for k in kinds], path, title=f"{name} (STARS crowd)")
+        (docs_dir / group).mkdir(exist_ok=True)
+        start = " (from random seed {seed})".format(seed=seed) if group == "cmaes" else ""
+        animate_grid([snap], [f"{GROUPS[group]}\nseed {seed}"], [KIND_NAMES[k] for k in kinds],
+                     docs_dir / group / f"seed_{seed}.gif", title=f"{GROUPS[group]}, seed {seed}{start} (STARS crowd)")
     print(f"saved {docs_dir}")
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--config", type=Path, default=CONFIG_DIR / "cmaes_crowd_v4.yaml")
+    parser.add_argument("--config", type=Path, default=CONFIG_DIR / "cmaes_crowd_principles.yaml")
     parser.add_argument("--policies", nargs="*", default=POLICIES, choices=POLICIES)
     parser.add_argument("--per-kind", type=int, default=30)
     parser.add_argument("--device", default="cuda")
