@@ -62,7 +62,7 @@ DATASETS = {
     "madras": {"path": "datasets/madras"},
     "grand_central": {"path": "datasets/grand_central", "split_strategy": "temporal"},
     "ptdpes": {"path": "datasets/PTDPES"},
-    "atc": {"path": "datasets/atc"},
+    "atc": {"path": "datasets/atc_subset", "split_strategy": "held_out_recording"},
 }
 # STARS's phase-1 optimisation recipe (stars.VAE_RECIPE), at STARS's batch of 32 windows.
 SSL_RECIPE = {key: VAE_RECIPE[key] for key in
@@ -165,6 +165,9 @@ def _parser() -> argparse.ArgumentParser:
     forecast.add_argument("--sample-steps", type=int, default=DECODER_RECIPE["sample_steps"],
                           help="diffusion: DDIM steps when sampling")
     forecast.add_argument("--cvae-latent-dim", type=int, default=32)
+    forecast.add_argument("--goal", action="store_true",
+                          help="Goal-conditioned decoder: each agent's oracle goal (its track's last observed "
+                               "position in the recording) joins the decoder context")
     forecast.add_argument("--no-social-layer", action="store_true", help="Decoder without its social message-passing round")
     forecast.add_argument("--representation", choices=("mu", "hidden"), default=DECODER_RECIPE["representation"])
     forecast.add_argument("--kl-weight", type=float, default=FORECAST_RECIPE["kl_weight"])
@@ -271,8 +274,17 @@ def load_stores(entries: list[dict], split: str, args, forecasting, *, windows: 
         source = SceneDataset(DatasetSpec(entry["name"], path), split, cfg)
         if not len(source):
             continue
+        cap = entry.get("max_windows")
+        cap = cap.get(split) if isinstance(cap, dict) else cap
+        if cap and len(source.rows) > int(cap):
+            # Seeded subset of the index rows, before window extraction (ATC has millions of heavily
+            # overlapping windows). The cache key includes the row count.
+            keep = np.sort(np.random.default_rng(args.data_seed).choice(len(source.rows), int(cap), replace=False))
+            source.rows = [source.rows[i] for i in keep]
+            args.run.log(f"{entry['name']}/{split}: capped to {int(cap)} windows")
         options = dict(windows=windows, forecasting=config_as_dict(forecasting), cache_dir=args.cache_dir,
-                       workers=args.cache_workers, log=lambda message: args.run.log(message))
+                       workers=args.cache_workers, log=lambda message: args.run.log(message),
+                       goals=bool(getattr(args, "goals", False)))
         if args.main:
             store = cached_store(source, entry["name"], split, args.obs, args.pred, **options)
         barrier(args)
@@ -284,6 +296,19 @@ def load_stores(entries: list[dict], split: str, args, forecasting, *, windows: 
     if not stores:
         raise RuntimeError(f"No {split} windows in {[entry['name'] for entry in entries]}")
     return concat_stores(stores)
+
+
+def goal_stats(store: WindowStore) -> dict:
+    """How often a goal is available and how often it is reached within the forecast horizon (the goal
+    then equals a supervised future position), for benchmark targets and for all nodes."""
+    goal, targets = store.goal.cpu(), store.ptr[:-1].cpu()
+    future = store.future_valid.shape[1]
+    stats = {}
+    for name, rows in (("targets", goal[targets]), ("all_nodes", goal)):
+        valid = rows[:, 2] > 0
+        stats[name] = {"count": int(len(rows)), "goal_valid": float(valid.float().mean()),
+                       "track_ends_in_future": float((valid & (rows[:, 3] <= future)).float().mean())}
+    return stats
 
 
 def epoch_batches(store: WindowStore, args, epoch: int, *, train: bool, weights=None) -> list[torch.Tensor]:
@@ -534,9 +559,11 @@ def train(args) -> None:
         "sample_steps": args.sample_steps,
         "social_layer": not args.no_social_layer,
         "representation": args.representation,
+        "goal": args.goal,
         **({"hidden_dim": args.decoder_hidden_dim} if args.decoder_hidden_dim else {}),
         **({"dropout": args.decoder_dropout} if args.decoder_dropout is not None else {}),
     }
+    args.goals = args.goal
     base_recipe = SSL_RECIPE if args.phase == "ssl" else FORECAST_RECIPE
     args.recipe = {**base_recipe, **({"max_epochs": args.epochs} if args.epochs else {})}
     args.recipe["learning_rate"] = _scaled_lr(base_recipe["learning_rate"], args)
@@ -575,6 +602,8 @@ def train(args) -> None:
         run.update(stage="datasets_ready", n_train_windows=len(train_store), n_val_windows=len(val_store),
                    n_train_nodes=int(train_store.ptr[-1]), train_windows_per_dataset=counts,
                    val_datasets=val_store.names)
+        if train_store.goal is not None:
+            run.update(train_goal_stats=goal_stats(train_store))
 
         model, groups = _build_model(args, payload)
         model = model.to(device)

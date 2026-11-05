@@ -132,6 +132,7 @@ def main() -> None:
     args.obs, args.pred = window["observation_steps"], window["prediction_steps"]
     args.data_seed = payload["run_config"]["data_seed"]
     args.run = _NullRun()
+    args.goals = bool(model.decoder_recipe.get("goal"))
     if args.datasets:
         entries = dataset_entries(args.datasets)
     elif args.config:

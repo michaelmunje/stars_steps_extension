@@ -1,0 +1,9 @@
+# Pooled training without ETH or UCY (they stay fully held out for the zero-shot ETH/UCY benchmark).
+datasets:
+  - steps
+  - ptdpes
+  - madras
+  - grand_central      # temporal split (registered default)
+  - name: atc          # datasets/atc_subset, held-out recording (2013-09-29 = test)
+    max_windows: {train: 80000, val: 10000, test: 50000}
+learning_rate: 3.0e-4

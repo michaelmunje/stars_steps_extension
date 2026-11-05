@@ -130,3 +130,117 @@ def test_config_datasets_and_flag_precedence(tmp_path):
     config.write_text("datasets: [steps]\nmax_nodez: 1\n")
     with pytest.raises(SystemExit):
         parse_args(["--config", str(config), "--phase", "ssl", "--run-dir", str(tmp_path / "r")])
+
+
+# ----------------------------------------------------------------------------- goal conditioning
+
+
+def _with_goals(store: WindowStore, seed: int = 1) -> WindowStore:
+    rng = np.random.default_rng(seed)
+    nodes = int(store.ptr[-1])
+    goal = np.zeros((nodes, 4), dtype=np.float32)
+    goal[:, :2] = store.future[:, -1].numpy() + rng.normal(0, 2.0, (nodes, 2))
+    goal[:, 2] = rng.random(nodes) > 0.2
+    goal[:, 3] = rng.integers(0, 40, nodes)
+    return WindowStore(store.obs_xy, store.obs_valid, store.future, store.future_valid, store.ptr, store.dataset,
+                       store.sample_index, list(store.names), goal=torch.from_numpy(goal))
+
+
+def _goal_model(goal: bool, latent_dim: int = 8) -> StarsMultiAgentForecaster:
+    torch.manual_seed(0)
+    small = {"hidden_dim": 32, "latent_dim": 16, "edge_transformer_layers": 1, "node_transformer_layers": 1,
+             "num_heads": 4, "dropout": 0.0}
+    return StarsMultiAgentForecaster(8, 12, dt=DT, encoder_recipe=small, decoder_recipe={
+        "hidden_dim": 32, "latent_dim": latent_dim, "dropout": 0.0, "goal": goal}).eval()
+
+
+def test_goal_off_is_the_old_model_and_ignores_goals():
+    """Without ``goal`` the parameters are the pre-goal ones (old checkpoints load strictly) and a
+    store's goals change nothing."""
+    from baselines.stars_ma_model import DECODER_RECIPE
+
+    assert DECODER_RECIPE["goal"] is False
+    old = {k: v for k, v in DECODER_RECIPE.items() if k != "goal"}
+    torch.manual_seed(0)
+    reference = StarsMultiAgentForecaster(8, 12, dt=DT, decoder_recipe={**old, "latent_dim": 8})
+    model = StarsMultiAgentForecaster(8, 12, dt=DT, decoder_recipe={"latent_dim": 8})
+    model.load_state_dict(reference.state_dict(), strict=True)
+    store = _store()
+    plain, goals = (build_batch(s, torch.arange(len(s)), dt=DT, knn=4, radius=None) for s in (store, _with_goals(store)))
+    model.eval()
+    torch.manual_seed(3)
+    a = model.predict(plain, samples=2)
+    torch.manual_seed(3)
+    b = model.predict(goals, samples=2)
+    assert torch.equal(a, b)
+
+
+def test_goal_features_are_local_and_condition_the_prediction():
+    from baselines.stars_ma_model import GOAL_SCALE, goal_features
+
+    store = _with_goals(_store())
+    batch = build_batch(store, torch.arange(len(store)), dt=DT, knn=4, radius=None)
+    assert batch.goal.shape == (batch.num_nodes, 3)
+    features = goal_features(batch)
+    valid = batch.goal[:, 2] > 0
+    distance = torch.linalg.norm(batch.goal[:, :2] - batch.origin, dim=-1) / GOAL_SCALE
+    torch.testing.assert_close(features[valid, 2], distance[valid], atol=1e-5, rtol=1e-5)
+    assert bool((features[~valid] == 0).all()) and bool((features[:, 3] == valid.float()).all())
+
+    # Rotating and shifting the whole scene (goals included) leaves the local features unchanged.
+    angle, shift = 0.7, torch.tensor([3.0, -2.0])
+    turn = lambda xy: torch.stack([xy[..., 0] * np.cos(angle) - xy[..., 1] * np.sin(angle),
+                                   xy[..., 0] * np.sin(angle) + xy[..., 1] * np.cos(angle)], -1) + shift
+    moved_goal = store.goal.clone()
+    moved_goal[:, :2] = turn(store.goal[:, :2])
+    moved = WindowStore(torch.where(store.obs_valid[..., None], turn(store.obs_xy), 0.0), store.obs_valid,
+                        turn(store.future), store.future_valid, store.ptr, store.dataset, store.sample_index,
+                        list(store.names), goal=moved_goal)
+    other = build_batch(moved, torch.arange(len(moved)), dt=DT, knn=4, radius=None)
+    # (stationary agents have heading 0 in any frame, so only moving agents are frame-invariant)
+    moving = (batch.obs_xy[:, 1:] - batch.obs_xy[:, :-1]).abs().sum(-1).amax(-1) > 1e-3
+    torch.testing.assert_close(goal_features(other)[moving], features[moving], atol=1e-4, rtol=1e-4)
+
+    model = _goal_model(True)
+    model.train()
+    from baselines.stars_ma_graph import to_local
+
+    out = model.training_forward(batch, to_local(batch.future, batch.origin, batch.heading), batch.future_valid)
+    (out["prediction"].square().mean() + out["kl"].mean()).backward()
+    model.eval()
+    torch.manual_seed(1)
+    with_goal = model.predict(batch, samples=2)
+    batch.goal = None  # missing goals = all invalid
+    torch.manual_seed(1)
+    assert not torch.allclose(model.predict(batch, samples=2), with_goal)
+    simulated = rollout(model, build_batch(store, torch.arange(len(store)), dt=DT, knn=4, radius=None),
+                        rounds=2, exec_steps=4, knn=4, radius=None)
+    assert simulated.shape == (int(store.ptr[-1]), 8, 2)
+
+
+def test_goal_stores_select_concatenate_and_round_trip():
+    store = _with_goals(_store())
+    picked = store.select(torch.tensor([3, 1]))
+    nodes = torch.cat([torch.arange(store.ptr[3], store.ptr[4]), torch.arange(store.ptr[1], store.ptr[2])])
+    assert torch.equal(picked.goal, store.goal[nodes])
+    both = concat_stores([store, _with_goals(_store(seed=2), seed=3)])
+    assert both.goal.shape == (int(both.ptr[-1]), 4)
+    assert torch.equal(WindowStore.from_state(store.state()).goal, store.goal)
+    assert WindowStore.from_state(_store().state()).goal is None
+    with pytest.raises(ValueError):
+        concat_stores([store, _store(seed=2)])
+
+
+def test_scene_goals_are_track_ends_in_the_scene_frame():
+    from types import SimpleNamespace
+
+    from baselines.stars_ma_batch import scene_goals
+    from normalization import theta_rotation
+
+    scene = SimpleNamespace(primary_track_id="rec:7", neighbor_track_ids=["rec:3", "rec:9"], center=np.array([1.0, 2.0]),
+                            rotation=0.5, observation_end_step=100, augmentation={"applied": False})
+    ends = {"7": (130, 4.0, 6.0), "9": (105, -1.0, 0.0)}
+    goal = scene_goals(scene, np.array([0, 1, 2]), ends)
+    expected = theta_rotation(np.array([[[3.0, 4.0]]], dtype=np.float32), 0.5)[0, 0]
+    np.testing.assert_allclose(goal[0], [*expected, 1.0, 30.0], atol=1e-5)
+    assert goal[1].tolist() == [0.0, 0.0, 0.0, 0.0] and goal[2, 2:].tolist() == [1.0, 5.0]

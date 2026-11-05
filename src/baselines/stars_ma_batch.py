@@ -46,6 +46,10 @@ class WindowStore:
     dataset: torch.Tensor       # [W] long, index into ``names``
     sample_index: torch.Tensor  # [W] long, index of the window's sample in its source split
     names: list[str] = field(default_factory=list)
+    # Optional oracle goal per node (``build_store(goals=True)``): scene-frame x, y of the last observed
+    # position of the node's track in its recording, valid, and that position's step after the last
+    # observed step (``GOAL_COLUMNS``). None for stores built without goals.
+    goal: torch.Tensor | None = None  # [M, 4] float32
 
     def __len__(self) -> int:
         return int(self.ptr.numel() - 1)
@@ -59,7 +63,8 @@ class WindowStore:
         return self.obs_xy.device
 
     def to(self, device) -> "WindowStore":
-        return WindowStore(*(getattr(self, name).to(device) for name in _TENSORS), names=list(self.names))
+        return WindowStore(*(getattr(self, name).to(device) for name in _TENSORS), names=list(self.names),
+                           goal=None if self.goal is None else self.goal.to(device))
 
     def select(self, windows: torch.Tensor) -> "WindowStore":
         """A store of only ``windows`` (in that order)."""
@@ -69,17 +74,22 @@ class WindowStore:
         ptr = torch.zeros(len(windows) + 1, dtype=torch.long, device=self.ptr.device)
         ptr[1:] = sizes.cumsum(0)
         return WindowStore(self.obs_xy[nodes], self.obs_valid[nodes], self.future[nodes], self.future_valid[nodes],
-                           ptr, self.dataset[windows], self.sample_index[windows], list(self.names))
+                           ptr, self.dataset[windows], self.sample_index[windows], list(self.names),
+                           goal=None if self.goal is None else self.goal[nodes])
 
     def state(self) -> dict:
-        return {**{name: getattr(self, name).cpu() for name in _TENSORS}, "names": list(self.names)}
+        state = {**{name: getattr(self, name).cpu() for name in _TENSORS}, "names": list(self.names)}
+        if self.goal is not None:
+            state["goal"] = self.goal.cpu()
+        return state
 
     @classmethod
     def from_state(cls, state: dict) -> "WindowStore":
-        return cls(*(state[name] for name in _TENSORS), names=list(state["names"]))
+        return cls(*(state[name] for name in _TENSORS), names=list(state["names"]), goal=state.get("goal"))
 
 
 _TENSORS = ("obs_xy", "obs_valid", "future", "future_valid", "ptr", "dataset", "sample_index")
+GOAL_COLUMNS = ("x", "y", "valid", "steps_ahead")
 
 
 def concat_stores(stores: list[WindowStore]) -> WindowStore:
@@ -94,8 +104,11 @@ def concat_stores(stores: list[WindowStore]) -> WindowStore:
         remap = torch.tensor([names.index(name) for name in store.names], dtype=torch.long)
         datasets.append(remap[store.dataset.cpu()])
     cat = lambda name: torch.cat([getattr(store, name).cpu() for store in stores])
+    goals = [store.goal is not None for store in stores]
+    if any(goals) and not all(goals):
+        raise ValueError("Cannot concatenate stores with and without goals")
     return WindowStore(cat("obs_xy"), cat("obs_valid"), cat("future"), cat("future_valid"), torch.cat(ptr),
-                       torch.cat(datasets), cat("sample_index"), names)
+                       torch.cat(datasets), cat("sample_index"), names, goal=cat("goal") if all(goals) else None)
 
 
 def _ranges(starts: torch.Tensor, sizes: torch.Tensor) -> torch.Tensor:
@@ -110,8 +123,12 @@ def _ranges(starts: torch.Tensor, sizes: torch.Tensor) -> torch.Tensor:
 # ----------------------------------------------------------------------------- extraction and cache
 
 
-def extract_window(scene, observation_steps: int, prediction_steps: int):
-    """One sample's forecast nodes (target first) as numpy arrays, or None if the target is not a node."""
+def extract_window(scene, observation_steps: int, prediction_steps: int, track_ends: dict | None = None):
+    """One sample's forecast nodes (target first) as numpy arrays, or None if the target is not a node.
+
+    With ``track_ends`` (``{track id: (last step, x, y)}`` of the scene's recording, world frame) a
+    fifth array holds each node's goal (``GOAL_COLUMNS``) in the scene's coordinate frame.
+    """
     xy = np.asarray(scene.xy, dtype=np.float32)
     valid = np.asarray(scene.valid, dtype=bool)
     obs = observation_steps
@@ -122,25 +139,66 @@ def extract_window(scene, observation_steps: int, prediction_steps: int):
     if not len(agents) or agents[0] != 0:
         return None
     xy = np.where(valid[..., None], np.nan_to_num(xy), 0.0).astype(np.float32)
-    return (xy[:obs, agents].transpose(1, 0, 2), observed[:, agents].T,
-            xy[obs:, agents].transpose(1, 0, 2), valid[obs:, agents].T)
+    window = (xy[:obs, agents].transpose(1, 0, 2), observed[:, agents].T,
+              xy[obs:, agents].transpose(1, 0, 2), valid[obs:, agents].T)
+    if track_ends is None:
+        return window
+    return (*window, scene_goals(scene, agents, track_ends))
+
+
+def scene_goals(scene, agents: np.ndarray, track_ends: dict) -> np.ndarray:
+    """``[len(agents), 4]`` goals (``GOAL_COLUMNS``): each agent's track end, in the scene's frame."""
+    from normalization import theta_rotation
+
+    if (scene.augmentation or {}).get("applied"):
+        raise ValueError("Goals assume no training augmentation (the steps_default preset has none)")
+    ids = [scene.primary_track_id, *scene.neighbor_track_ids]
+    goal = np.zeros((len(agents), 4), dtype=np.float32)
+    for row, agent in enumerate(agents):
+        end = track_ends.get(ids[agent].rsplit(":", 1)[1])
+        if end is None:
+            continue
+        step, x, y = end
+        world = np.array([[[x, y]]], dtype=np.float32) - np.asarray(scene.center, dtype=np.float32)
+        goal[row, :2] = theta_rotation(world, scene.rotation)[0, 0]
+        goal[row, 2:] = 1.0, float(step - scene.observation_end_step)
+    return goal
+
+
+def recording_track_ends(source, recording: str) -> dict:
+    """``{track id: (last step, x, y)}`` for every track of one of ``source``'s recordings (world frame)."""
+    track_ids, steps, xs, ys = source._window_cache._columns(source.recordings[recording])
+    order = np.lexsort((steps, track_ids))
+    ordered = np.asarray(track_ids)[order]
+    last = order[np.r_[ordered[1:] != ordered[:-1], True]]
+    return {str(track_ids[i]): (int(steps[i]), float(xs[i]), float(ys[i])) for i in last}
 
 
 class _Extract(torch.utils.data.Dataset):
-    def __init__(self, source, indices, obs, pred):
+    def __init__(self, source, indices, obs, pred, goals=False):
         self.source, self.indices, self.obs, self.pred = source, indices, obs, pred
+        self.goals, self.ends = goals, {}
 
     def __len__(self):
         return len(self.indices)
 
     def __getitem__(self, position):
         index = self.indices[position]
-        return index, extract_window(self.source[index], self.obs, self.pred)
+        scene = self.source[index]
+        ends = None
+        if self.goals:
+            if scene.recording not in self.ends:
+                self.ends[scene.recording] = recording_track_ends(self.source, scene.recording)
+            ends = self.ends[scene.recording]
+        return index, extract_window(scene, self.obs, self.pred, ends)
 
 
 def build_store(source, name: str, observation_steps: int, prediction_steps: int, *, windows: str = "unique",
-                workers: int = 0, limit: int | None = None, progress=None) -> WindowStore:
-    """Extract a split's windows from a ``SceneDataset`` (``windows`` as in ``StarsMultiAgentDataset``)."""
+                workers: int = 0, limit: int | None = None, progress=None, goals: bool = False) -> WindowStore:
+    """Extract a split's windows from a ``SceneDataset`` (``windows`` as in ``StarsMultiAgentDataset``).
+
+    ``goals`` also stores every node's oracle goal (``WindowStore.goal``).
+    """
     from baselines.stars_ma_data import unique_window_indices
 
     if windows not in {"unique", "all"}:
@@ -148,10 +206,10 @@ def build_store(source, name: str, observation_steps: int, prediction_steps: int
     indices = unique_window_indices(source) if windows == "unique" else list(range(len(source)))
     if limit is not None:
         indices = indices[:limit]
-    loader = torch.utils.data.DataLoader(_Extract(source, indices, observation_steps, prediction_steps),
+    loader = torch.utils.data.DataLoader(_Extract(source, indices, observation_steps, prediction_steps, goals),
                                          batch_size=64, num_workers=workers, collate_fn=list,
                                          prefetch_factor=4 if workers else None)
-    parts = {key: [] for key in ("obs_xy", "obs_valid", "future", "future_valid")}
+    parts = {key: [] for key in ("obs_xy", "obs_valid", "future", "future_valid", "goal")[:5 if goals else 4]}
     sizes, sample_index = [], []
     for chunk in (progress(loader) if progress else loader):
         for index, window in chunk:
@@ -168,11 +226,12 @@ def build_store(source, name: str, observation_steps: int, prediction_steps: int
     cat = lambda key, dtype: torch.from_numpy(np.concatenate(parts[key]).astype(dtype))
     return WindowStore(cat("obs_xy", np.float32), cat("obs_valid", bool), cat("future", np.float32),
                        cat("future_valid", bool), ptr, torch.zeros(len(sizes), dtype=torch.long),
-                       torch.tensor(sample_index, dtype=torch.long), [name])
+                       torch.tensor(sample_index, dtype=torch.long), [name],
+                       goal=cat("goal", np.float32) if goals else None)
 
 
 def cache_key(source, name: str, split: str, observation_steps: int, prediction_steps: int, windows: str,
-              forecasting: dict) -> str:
+              forecasting: dict, goals: bool = False) -> str:
     """Hash of everything a cached store depends on: source index, split, window and preset config."""
     from data import _index_path
 
@@ -185,18 +244,21 @@ def cache_key(source, name: str, split: str, observation_steps: int, prediction_
                "fraction": spec.fraction, "split_strategy": cfg.split_strategy, "data_seed": cfg.seeds.data_seed,
                "index": [index.name, stat.st_size, stat.st_mtime_ns], "windows": windows,
                "obs": observation_steps, "pred": prediction_steps, "forecasting": forecasting, "rows": len(source)}
+    if goals:  # only then, so stores cached before goals existed keep their keys
+        payload["goals"] = True
     return hashlib.sha256(json.dumps(payload, sort_keys=True, default=str).encode()).hexdigest()[:16]
 
 
 def cached_store(source, name: str, split: str, observation_steps: int, prediction_steps: int, *, windows: str,
-                 forecasting: dict, cache_dir: Path, workers: int = 0, log=print) -> WindowStore:
+                 forecasting: dict, cache_dir: Path, workers: int = 0, log=print, goals: bool = False) -> WindowStore:
     """Load a split's store from ``cache_dir`` or build and save it (atomically)."""
-    key = cache_key(source, name, split, observation_steps, prediction_steps, windows, forecasting)
+    key = cache_key(source, name, split, observation_steps, prediction_steps, windows, forecasting, goals)
     path = Path(cache_dir) / f"{name}-{split}-{windows}-{key}.pt"
     if path.exists():
         return WindowStore.from_state(torch.load(path, map_location="cpu", weights_only=False))
     log(f"building window cache {path.name} ({len(source)} samples, {workers} workers)")
-    store = build_store(source, name, observation_steps, prediction_steps, windows=windows, workers=workers)
+    store = build_store(source, name, observation_steps, prediction_steps, windows=windows, workers=workers,
+                        goals=goals)
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_name(f".{path.name}.{os.getpid()}.tmp")
     torch.save(store.state(), temporary)
@@ -264,6 +326,7 @@ class GraphBatch:
     knn: int | None = None
     radius: float | None = None
     dt: float = 0.4
+    goal: torch.Tensor | None = None  # [Nt, 3] scene-frame goal x, y and valid (None: no goals)
 
     @property
     def num_graphs(self) -> int:
@@ -287,7 +350,7 @@ class GraphBatch:
                               dt=self.dt, knn=self.knn, radius=self.radius)
         return GraphBatch(**graph, future=self.future, future_valid=self.future_valid, is_target=self.is_target,
                           batch=self.batch, ptr=self.ptr, node_mask=self.node_mask, dataset=self.dataset,
-                          windows=self.windows, knn=self.knn, radius=self.radius, dt=self.dt)
+                          windows=self.windows, knn=self.knn, radius=self.radius, dt=self.dt, goal=self.goal)
 
 
 def batched_graph(xy: torch.Tensor, valid: torch.Tensor, node_mask: torch.Tensor, *, dt: float,
@@ -373,15 +436,17 @@ def build_batch(store: WindowStore, windows: torch.Tensor, *, dt: float, knn: in
     return GraphBatch(**graph, future=store.future[nodes], future_valid=store.future_valid[nodes], is_target=is_target,
                       batch=torch.repeat_interleave(torch.arange(B, device=store.ptr.device), sizes), ptr=ptr,
                       node_mask=node_mask, dataset=store.dataset[windows], windows=windows, knn=knn, radius=radius,
-                      dt=dt)
+                      dt=dt, goal=None if store.goal is None else store.goal[nodes, :3])
 
 
 def graph_batch_from_padded(xy: torch.Tensor, valid: torch.Tensor, node_mask: torch.Tensor, *, dt: float,
-                            knn: int | None, radius: float | None, prediction_steps: int = 12) -> GraphBatch:
+                            knn: int | None, radius: float | None, prediction_steps: int = 12,
+                            goal: torch.Tensor | None = None) -> GraphBatch:
     """A ``GraphBatch`` from padded observed windows ``xy [B, N, T, 2]`` / ``valid [B, N, T]``.
 
     Used for inference outside the datasets (e.g. pedestrians in a simulator); futures are empty.
-    Every masked-in node must be valid at the last step.
+    Every masked-in node must be valid at the last step. ``goal [B, N, 3]``: optional scene-frame
+    goal x, y and valid per node (for goal-conditioned models).
     """
     B, N = node_mask.shape
     graph = batched_graph(xy, valid, node_mask, dt=dt, knn=knn, radius=radius)
@@ -394,7 +459,8 @@ def graph_batch_from_padded(xy: torch.Tensor, valid: torch.Tensor, node_mask: to
                       future_valid=torch.zeros(nodes, prediction_steps, dtype=torch.bool, device=xy.device),
                       is_target=is_target, batch=torch.repeat_interleave(torch.arange(B, device=xy.device), sizes),
                       ptr=ptr, node_mask=node_mask, dataset=torch.zeros(B, dtype=torch.long, device=xy.device),
-                      windows=torch.arange(B, device=xy.device), knn=knn, radius=radius, dt=dt)
+                      windows=torch.arange(B, device=xy.device), knn=knn, radius=radius, dt=dt,
+                      goal=None if goal is None else goal[node_mask].to(xy.dtype))
 
 
 def _scatter_padded(values: torch.Tensor, node_mask: torch.Tensor, fill) -> torch.Tensor:

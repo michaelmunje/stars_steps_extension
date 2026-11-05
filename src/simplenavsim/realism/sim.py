@@ -5,8 +5,8 @@ Every simulator maps padded inputs ``obs [B, N, OBS, 2]``, ``obs_valid [B, N, OB
 jointly; only ``Window.inputs()`` is used, so the ground-truth future cannot leak in. SFM and ORCA
 integrate at 0.1 s; STARS re-forecasts every 0.4 s from its own simulated history and executes the
 forecast's first step (closed loop). The ``goal`` adapter steers STARS' executed steps toward the
-oracle goal at the forecast's own speed (an inference-time adapter: the checkpoints are not
-goal-conditioned).
+oracle goal at the forecast's own speed (an inference-time adapter). A goal-conditioned checkpoint
+(``decoder_recipe["goal"]``, ``stars_noethucy_goal``) instead reads every agent's oracle goal as an input.
 """
 from __future__ import annotations
 
@@ -25,7 +25,10 @@ from .data import DT, OBS
 
 REPO = Path(__file__).resolve().parents[3]
 CHECKPOINTS = {"stars_steps": REPO / "experiments/stars_ma/runs/cvae_kl01_finetune/checkpoints/best.pt",
-               "stars_pooled": REPO / "experiments/stars_ma/runs/cvae_all_lr3e-4_seed42/checkpoints/best.pt"}
+               "stars_pooled": REPO / "experiments/stars_ma/runs/cvae_all_lr3e-4_seed42/checkpoints/best.pt",
+               # Trained without ETH or UCY (configs/stars_ma/all_no_ethucy.yaml): zero-shot on every scene.
+               "stars_noethucy": REPO / "experiments/stars_ma/runs/cvae_noethucy_nogoal/checkpoints/best.pt",
+               "stars_noethucy_goal": REPO / "experiments/stars_ma/runs/cvae_noethucy_goal/checkpoints/best.pt"}
 RADIUS = 0.2              # pedestrian body radius (m) used by SFM / ORCA
 ARRIVAL = 0.3             # goal-directed models stop within this distance of the goal (m)
 DEFAULT_SPEED = 1.0       # desired speed of an agent with a single observed position (context agents only)
@@ -182,8 +185,11 @@ class Stars:
             nxt = cur.clone()
             if bool(node_mask.any()):
                 packed = torch.gather(node_mask, 1, order)
+                goals = None
+                if self.model.decoder_recipe.get("goal"):   # goal-conditioned checkpoint: oracle goal as input
+                    goals = take(torch.cat([goal, torch.ones_like(goal[..., :1])], -1))
                 graph = graph_batch_from_padded(take(xy), take(valid), packed, dt=DT, knn=self.knn, radius=self.radius,
-                                                prediction_steps=self.model.prediction_steps)
+                                                prediction_steps=self.model.prediction_steps, goal=goals)
                 encoded = self.model.encode(graph)
                 z = None
                 if self.model.latent_dim:

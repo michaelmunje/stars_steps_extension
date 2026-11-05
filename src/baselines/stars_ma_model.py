@@ -36,7 +36,7 @@ from torch import nn
 
 from baselines.stars import upstream_model_module
 from baselines.stars_data import EDGE_FEATURE_DIM
-from baselines.stars_ma_graph import NODE_FEATURE_DIM, build_graph, to_scene
+from baselines.stars_ma_graph import NODE_FEATURE_DIM, build_graph, to_local, to_scene
 
 # STARS "homo" recipe sizes (stars.VAE_RECIPE) plus the new node-motion branch.
 ENCODER_RECIPE = {
@@ -60,7 +60,22 @@ DECODER_RECIPE = {
     "sample_steps": 10,       # DDIM steps at sampling time
     "diffusion_scale": 0.1,   # metres; constant-velocity residual steps / this have ~unit scale on STEPS
     "diffusion_social_layers": 0,  # > 0: joint (scene-level) diffusion, social layers inside the denoiser
+    "goal": False,            # True: the decoder context also holds each agent's goal (goal_features)
 }
+GOAL_DIM = 4
+GOAL_SCALE = 10.0  # metres per unit of the goal features
+
+
+def goal_features(data) -> torch.Tensor:
+    """``[N, 4]`` goal input: goal minus current position in the agent's local frame (dx, dy), its
+    distance (all / ``GOAL_SCALE``) and valid; zeros where ``data.goal`` is missing or invalid."""
+    goal = getattr(data, "goal", None)
+    if goal is None:
+        return data.origin.new_zeros(data.origin.shape[0], GOAL_DIM)
+    valid = goal[:, 2:3] > 0
+    local = to_local(goal[:, None, :2].to(data.origin.dtype), data.origin, data.heading)[:, 0]
+    local = torch.where(valid, local / GOAL_SCALE, torch.zeros_like(local))
+    return torch.cat([local, torch.linalg.norm(local, dim=-1, keepdim=True), valid.to(local.dtype)], dim=-1)
 
 
 def _retime(transformer: nn.Module, steps: int) -> nn.Module:
@@ -231,7 +246,7 @@ class TrajectoryDecoder(nn.Module):
         self.recipe = recipe
         hidden, self.latent_dim = int(recipe["hidden_dim"]), int(recipe["latent_dim"])
         self.prediction_steps = int(prediction_steps)
-        context = representation_dim + NODE_FEATURE_DIM
+        context = representation_dim + NODE_FEATURE_DIM + (GOAL_DIM if recipe["goal"] else 0)
         if self.latent_dim:
             self.prior = _mlp(context, hidden, 2 * self.latent_dim, recipe["dropout"])
             self.future_encoder = _mlp(3 * prediction_steps, hidden, hidden, recipe["dropout"])
@@ -309,7 +324,7 @@ class DiffusionDecoder(nn.Module):
         self.recipe, self.latent_dim = recipe, 0
         hidden, self.prediction_steps = int(recipe["hidden_dim"]), int(prediction_steps)
         self.scale, self.sample_steps = float(recipe["diffusion_scale"]), int(recipe["sample_steps"])
-        self.input = nn.Linear(representation_dim + NODE_FEATURE_DIM, hidden)
+        self.input = nn.Linear(representation_dim + NODE_FEATURE_DIM + (GOAL_DIM if recipe["goal"] else 0), hidden)
         if recipe["social_layer"]:
             from torch_geometric.nn import TransformerConv
 
@@ -439,7 +454,10 @@ class StarsMultiAgentForecaster(nn.Module):
         with torch.set_grad_enabled(torch.is_grad_enabled() and not self.freeze_encoder):
             out = self.encoder(data)
         representation = out["mu"] if self.decoder_recipe["representation"] == "mu" else out["hidden"]
-        return {"context": self.decoder.context(representation, data.node_attr), "edge_emb": out["edge_emb"]}
+        context = self.decoder.context(representation, data.node_attr)
+        if self.decoder_recipe["goal"]:
+            context = torch.cat([context, goal_features(data).to(context.dtype)], dim=-1)
+        return {"context": context, "edge_emb": out["edge_emb"]}
 
     def sample_latent(self, context: torch.Tensor, samples: int, *, mean: bool = False) -> torch.Tensor | None:
         """``[K, N, Z]`` prior samples (or the prior mean), or None for the deterministic decoder."""

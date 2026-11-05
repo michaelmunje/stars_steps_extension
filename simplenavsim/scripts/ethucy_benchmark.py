@@ -38,13 +38,19 @@ from simplenavsim.realism import render as R
 from simplenavsim.realism import sim as S
 
 REPO = Path(__file__).resolve().parents[2]
-STARS = ["stars_steps", "stars_pooled", "stars_steps_goal", "stars_pooled_goal"]
+# Adapter rows: name -> checkpoint it steers (inference-time goal-steering adapter, weight calibrated).
+ADAPTERS = {"stars_steps_goal": "stars_steps", "stars_pooled_goal": "stars_pooled",
+            "stars_noethucy_goal_adapter": "stars_noethucy_goal"}
+STARS = ["stars_steps", "stars_pooled", "stars_steps_goal", "stars_pooled_goal",
+         "stars_noethucy", "stars_noethucy_goal", "stars_noethucy_goal_adapter"]
 BASELINES = ["cv", "goal_straight", "sfm", "orca", "sfm_default", "orca_default"]
 METHODS = ["ground_truth", *STARS, *BASELINES]
 STUDY_MODELS = ["ground_truth", *STARS, "cv", "goal_straight", "sfm", "orca"]   # preference export (schema v1.0)
 LABEL = {"ground_truth": "Ground truth", "stars_steps": "STARS (STEPS-only, zero-shot)",
          "stars_pooled": "STARS (pooled, in-domain)", "stars_steps_goal": "STARS STEPS + goal adapter",
-         "stars_pooled_goal": "STARS pooled + goal adapter", "cv": "Constant velocity", "goal_straight": "Straight to goal",
+         "stars_pooled_goal": "STARS pooled + goal adapter",
+         "stars_noethucy": "STARS (no ETH/UCY, zero-shot)", "stars_noethucy_goal": "STARS goal-conditioned (no ETH/UCY, zero-shot)",
+         "stars_noethucy_goal_adapter": "STARS goal-conditioned + goal adapter", "cv": "Constant velocity", "goal_straight": "Straight to goal",
          "sfm": "Social force (calibrated)", "orca": "ORCA (calibrated)", "sfm_default": "Social force (defaults)",
          "orca_default": "ORCA (published defaults)"}
 CAL_HORIZON = 20                       # calibrate on ADE at 8 s
@@ -69,10 +75,12 @@ def simulators(cal: dict, device: str) -> dict:
     sims = {"cv": S.cv, "goal_straight": S.goal_straight, "sfm_default": S.sfm,
             "sfm": lambda x, n, **k: S.sfm(x, n, params=sfm_p), "orca_default": S.orca,
             "orca": lambda x, n, **k: S.orca(x, n, params=orca_p, radius=orca_r)}
-    for name in ("stars_steps", "stars_pooled"):
-        model = S.Stars(S.CHECKPOINTS[name], device=device)
-        sims[name] = model
-        sims[f"{name}_goal"] = model.with_goal(cal.get("goal_weight", {}).get(name, 0.3))
+    for name, path in S.CHECKPOINTS.items():
+        if path.exists():
+            sims[name] = S.Stars(path, device=device)
+    for name, base in ADAPTERS.items():
+        if base in sims:
+            sims[name] = sims[base].with_goal(cal.get("goal_weight", {}).get(base, 0.3))
     return sims
 
 
@@ -123,6 +131,8 @@ def calibrate(args) -> dict:
     horizon = {8.0: CAL_HORIZON}
     log, best = [], {}
     for kind in ("sfm", "orca"):
+        if args.append:
+            break
         grid = GRIDS[kind]
         combos = [dict(zip(grid, v)) for v in itertools.product(*grid.values())][:args.max_grid or None]
         results = []
@@ -134,7 +144,7 @@ def calibrate(args) -> dict:
             log.append({"model": kind, **combo, "ade_8s": results[-1][0], "hacs_8s": micro(rows, "hacs")})
         best[kind] = min(results, key=lambda r: r[0])[1]
     best["goal_weight"] = {}
-    for name in ("stars_steps", "stars_pooled"):
+    for name in [ADAPTERS[m] for m in args.methods if m in ADAPTERS and S.CHECKPOINTS[ADAPTERS[m]].exists()]:
         model, results = S.Stars(S.CHECKPOINTS[name], device=args.device), []
         for weight in GRIDS["goal_weight"][:args.max_grid or None]:
             ade = np.mean([micro(score(simulate(model.with_goal(weight), wins, seed)[0], wins, horizon))
@@ -142,6 +152,10 @@ def calibrate(args) -> dict:
             results.append((ade, weight))
             log.append({"model": f"{name}_goal", "goal_weight": weight, "ade_8s": ade})
         best["goal_weight"][name] = min(results)[1]
+    if args.append and (args.run / "calibration.json").exists():   # keep the earlier entries (same recordings)
+        old = json.loads((args.run / "calibration.json").read_text())
+        best = {**{k: old[k] for k in ("sfm", "orca")}, "goal_weight": {**old["goal_weight"], **best["goal_weight"]}}
+        log = old["grid"] + [row for row in log if row["model"] not in ("sfm", "orca")]
     out = {"recordings": D.CALIBRATION, "windows": len(wins), "objective": "micro ADE at 8 s (seed 0; adapter: mean of seeds 0-1)",
            **best, "grid": log}
     (args.run / "calibration.json").write_text(json.dumps(out, indent=1))
@@ -176,9 +190,21 @@ def run(args) -> None:
                   flush=True)
     mdir = args.run / "metrics"
     mdir.mkdir(exist_ok=True)
-    pd.DataFrame(rows).to_csv(mdir / "per_rollout.csv", index=False)
-    pd.DataFrame(agents).to_csv(mdir / "per_agent.csv.gz", index=False)
-    pd.DataFrame(runtime).to_csv(mdir / "runtime.csv", index=False)
+    rows, agents, runtime = pd.DataFrame(rows), pd.DataFrame(agents), pd.DataFrame(runtime)
+    if args.append:   # keep the other methods' results (same windows: checked through the scenario manifest)
+        old = [json.loads(line)["init_hash"] for line in open(args.run / "scenario_manifest.jsonl")]
+        assert old == [R.init_hash(w.agent_ids, w.obs, w.goal) for w in wins], "--append needs the same windows"
+        keep = lambda f: f[~f.method.isin(args.methods)]
+        rows = pd.concat([keep(pd.read_csv(mdir / "per_rollout.csv")), rows])
+        agents = pd.concat([keep(pd.read_csv(mdir / "per_agent.csv.gz")), agents])
+        runtime = pd.concat([keep(pd.read_csv(mdir / "runtime.csv")), runtime])
+        previous = np.load(mdir / "kinematics_8s.npz")
+        for key in previous.files:
+            if key.split("/")[0] not in args.methods:
+                kin.setdefault(key.split("/")[0], {})[key.split("/")[1]] = [previous[key]]
+    rows.to_csv(mdir / "per_rollout.csv", index=False)
+    agents.to_csv(mdir / "per_agent.csv.gz", index=False)
+    runtime.to_csv(mdir / "runtime.csv", index=False)
     pd.DataFrame(D.horizon_counts(wins)).to_csv(mdir / "counts.csv", index=False)
     np.savez_compressed(mdir / "kinematics_8s.npz", **{f"{m}/{k}": np.concatenate(v) for m, d in kin.items() for k, v in d.items()})
     manifest = [{"scene_id": w.scene_id, "dataset": w.dataset, "recording": w.recording, "start_step": w.start,
@@ -268,7 +294,9 @@ def aggregate(args) -> None:
 def comparisons(stats):
     have = set(stats)
     pairs = [(s, b) for s in STARS for b in ("cv", "goal_straight", "sfm", "orca")]
-    pairs += [("stars_steps_goal", "stars_steps"), ("stars_pooled_goal", "stars_pooled"), ("stars_pooled", "stars_steps")]
+    pairs += [("stars_steps_goal", "stars_steps"), ("stars_pooled_goal", "stars_pooled"), ("stars_pooled", "stars_steps"),
+              ("stars_noethucy_goal", "stars_noethucy"), ("stars_noethucy", "stars_steps"),
+              ("stars_noethucy_goal", "stars_steps_goal"), ("stars_noethucy_goal_adapter", "stars_noethucy_goal")]
     return [(a, b) for a, b in pairs if a in have and b in have]
 
 
@@ -303,7 +331,8 @@ def kinematics_table(args) -> None:
 
 
 COLORS = {"ground_truth": "#222222", "stars_steps": "#2b6cb0", "stars_pooled": "#6b46c1", "stars_steps_goal": "#63a4e0",
-          "stars_pooled_goal": "#a78bdb", "cv": "#c05621", "goal_straight": "#d69e2e", "sfm": "#2f855a", "orca": "#c53030",
+          "stars_pooled_goal": "#a78bdb",
+          "stars_noethucy": "#319795", "stars_noethucy_goal": "#b83280", "stars_noethucy_goal_adapter": "#ed64a6", "cv": "#c05621", "goal_straight": "#d69e2e", "sfm": "#2f855a", "orca": "#c53030",
           "sfm_default": "#9ae6b4", "orca_default": "#feb2b2"}
 
 
@@ -530,7 +559,8 @@ def provenance(args) -> None:
     meta = {"run_id": args.run.name, "created_utc": dt.datetime.now(dt.timezone.utc).isoformat(),
             "git_commit": git("rev-parse", "HEAD"), "git_branch": git("rev-parse", "--abbrev-ref", "HEAD"),
             "git_dirty": bool(git("status", "--porcelain", "--", "src", "simplenavsim")), "command": sys.argv,
-            "checkpoints": {k: {"path": str(v.relative_to(REPO)), "sha256": sha256(v)} for k, v in S.CHECKPOINTS.items()},
+            "checkpoints": {k: {"path": str(v.relative_to(REPO)), "sha256": sha256(v)} for k, v in S.CHECKPOINTS.items()
+                            if v.exists()},
             "data": {str(f.relative_to(REPO)): sha256(f) for f in files},
             "pooled_checkpoint_exposure": D.POOLED_SPLIT}
     (args.run / "metadata.json").write_text(json.dumps(meta, indent=1))
@@ -574,7 +604,9 @@ def report(args) -> None:
            f"{REPS} reps); STARS rows are expected values over {int(runtime[runtime.method == 'stars_steps'].seed.nunique() or 0)} seeds "
            "(not best-of-K). **stars_pooled is in-domain, not zero-shot**: it trained on hotel, zara1 and students001 and "
            "used students003 for checkpoint selection; only eth and zara2 are held out (`heldout_eth_zara2` rows). "
-           "The `_goal` rows use an inference-time goal-steering adapter; the checkpoints are not goal-conditioned.", "",
+           "The `stars_steps_goal`, `stars_pooled_goal` and `*_adapter` rows use an inference-time goal-steering adapter. "
+           "`stars_noethucy` and `stars_noethucy_goal` trained without any ETH or UCY data (zero-shot on every scene); "
+           "`stars_noethucy_goal` is goal-conditioned (the oracle goal is a model input).", "",
            "## Headline", ""]
     for h, r in best.iterrows():
         out.append(f"- {h:g} s: lowest micro ADE is {LABEL[r.method]} ({fmt(r)} m).")
@@ -647,6 +679,8 @@ def main(argv=None) -> None:
     parser.add_argument("--scenarios", type=int, default=10, help="random media / preference scenarios")
     parser.add_argument("--case-studies", type=int, default=3)
     parser.add_argument("--media-seed", type=int, default=2026)
+    parser.add_argument("--append", action="store_true",
+                        help="calibrate/run: add --methods to an existing --run (other methods' rows and calibration kept)")
     args = parser.parse_args(argv)
     if args.stage == "smoke":
         return smoke(args)
