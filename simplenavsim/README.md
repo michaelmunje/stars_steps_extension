@@ -133,3 +133,37 @@ drives the cheapest remaining arc. If none remains it stops.
 
 Results: [`docs/results/README.md`](../docs/results/README.md). Reasoning: the last section of
 [`docs/decisions.md`](../docs/decisions.md).
+
+## Judged CMA-ES (labels from an agent instead of a hand-written reward)
+
+AutoEval's loop (Zhou et al. 2025) with the success classifier replaced by an agent: each CMA-ES
+candidate drives the same scenes, every episode is drawn top-down (paths with 1 s ticks, closest
+approach, goal circle; no simulator flags), a judge labels each picture `excellent` (+1),
+`acceptable` (+0.5), `stalled` (0) or `unsafe` (-1) against the rubric in
+`src/simplenavsim/optimization/judge.py`, and a candidate's fitness is its mean label. The
+hand-written J is still computed for every episode, only to compare the two.
+
+```bash
+S=simplenavsim/scripts/judged_cmaes.py C=simplenavsim/configs/judged_cmaes_stars.yaml R=runs/simplenavsim/judged_stars
+V4=checkpoints/simplenavsim/cmaes_crowd_v4/best_policy.yaml
+python $S run --config $C --out-dir $R --policy $V4 --device cuda --judge claude-code   # all generations
+python $S report --out-dir $R --device cuda      # convergence.png, judge vs J, held-out test sheet + GIF
+# or one step at a time:
+python $S ask   --config $C --out-dir $R --policy $V4 --device cuda   # rollouts -> gen_01/sheet.png
+python $S judge --out-dir $R --judge claude-code                      # -> gen_01/labels.json
+python $S tell  --out-dir $R                                          # labels -> CMA-ES update
+```
+
+Judges: `claude-code` (a headless `claude -p` agent that may only read the pictures and write
+`labels.json`; uses the logged-in Claude Code account), `claude` (Claude API, `ANTHROPIC_API_KEY`,
+`uv pip install anthropic`), `file` (you or another agent write `labels.json`), `rule` (thresholds
+on simulator metrics, for dry runs). `judge` and `tell` need no GPU and no weights; on Horizon,
+whose compute nodes have no internet, `scripts/horizon/judged_loop.sh OUT_DIR` runs each
+generation's rollouts as a GPU job and judges on the login node.
+
+`judged_cmaes_stars.yaml`: STARS crowd and STARS predictor (v4 setting), 7 weights, population 8,
+3 scenes per generation, 10 generations, `common_crowd: true` (one batch per candidate, so every
+candidate meets the same STARS intent draws; the crowd draws them per batch row).
+`judged_cmaes_poc.yaml`: CPU-sized, reactive-replay crowd and constant-velocity predictor.
+`labels.jsonl` holds one line per episode: the candidate's parameters, the label, the reason and the
+simulator metrics.

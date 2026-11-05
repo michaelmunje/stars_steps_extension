@@ -1,0 +1,16 @@
+policy: social
+parameters:
+  goal_weight: 3.707762325836845
+  collision_weight: 5.0
+  pedestrian_weight: 116.6839992178795
+  disruption_weight: 1.0
+  obstacle_weight: 1.0
+  preferred_speed: 0.7501727925469653
+  personal_space_radius: 0.7876035449757841
+  prediction_horizon: 2.142944651600379
+  turn_penalty: 0.1
+  smoothness_weight: 0.0724808244306852
+  speed_scale: 1.0
+  retreat_scale: 1.0
+  alignment_weight: 0.1
+generation: 60

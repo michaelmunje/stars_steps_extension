@@ -1,0 +1,346 @@
+{
+ "start": {
+  "weights": {
+   "goal_weight": 2.0,
+   "collision_weight": 5.0,
+   "pedestrian_weight": 1.0,
+   "disruption_weight": 1.0,
+   "obstacle_weight": 1.0,
+   "preferred_speed": 0.8,
+   "personal_space_radius": 0.8,
+   "prediction_horizon": 2.0,
+   "turn_penalty": 0.1,
+   "smoothness_weight": 0.2,
+   "speed_scale": 1.0,
+   "retreat_scale": 1.0,
+   "alignment_weight": 0.1
+  },
+  "all": {
+   "success": 0.9952380657196045,
+   "collision": 0.004761904943734407,
+   "timeout": 0.0,
+   "normalized_time": 0.3530793786048889,
+   "path_efficiency": 0.9679734110832214,
+   "loops": 0.01963702216744423,
+   "min_ped_clearance": 0.34151560068130493,
+   "intimate_violation_rate": 0.08945795148611069,
+   "command_smoothness": 0.5388307571411133,
+   "S": 0.9952380657196045,
+   "C": 0.004761904943734407,
+   "WC": 0.0,
+   "HC": 0.004761904943734407,
+   "TO": 0.0,
+   "T": 10.499521255493164,
+   "PL": 9.255205154418945,
+   "SPL": 0.9679734110832214,
+   "FP": 0.0,
+   "ST": 0.10857143998146057,
+   "Vavg": 0.8777548670768738,
+   "Vmax": 1.0,
+   "Amin": -1.0000001192092896,
+   "Aavg": 0.19513095915317535,
+   "Amax": 1.0000001192092896,
+   "Jmin": -11.238096237182617,
+   "Javg": 0.933056116104126,
+   "Jmax": 12.523809432983398,
+   "CDmin": 0.9637174606323242,
+   "CDavg": 1.568758487701416,
+   "DHmin": 0.34151560068130493,
+   "SC": 0.8923569321632385,
+   "TTC": 3.6871860027313232,
+   "hand_objective": 0.7004954218864441,
+   "principles_J": 1.744882583618164
+  },
+  "judge_test": {
+   "fitness": 0.5714285714285714,
+   "labels": {
+    "head_on-2000000": [
+     "acceptable",
+     "Reaches the goal but passes the pedestrian at only 0.25 m, who swerves up and away."
+    ],
+    "crossing-2000000": [
+     "excellent",
+     "Nearly straight path to the goal with a 0.46 m closest gap to the crossing pedestrian."
+    ],
+    "group_toward-2000000": [
+     "acceptable",
+     "Reaches the goal after a sharp swerve upward through the group, with a 0.40 m close pass and 16.5 s arrival."
+    ],
+    "narrow_passage-2000000": [
+     "acceptable",
+     "Reaches the goal but passes the pedestrian at 0.31 m in the narrow passage, who swerves aside."
+    ],
+    "stationary_group-2000000": [
+     "acceptable",
+     "Reaches the goal but passes the group at 0.35 m, below comfortable clearance."
+    ],
+    "dense_flow-2000000": [
+     "acceptable",
+     "Reaches the goal but with a very close 0.12 m pass to a pedestrian early on."
+    ],
+    "overtaking-2000000": [
+     "acceptable",
+     "Reaches the goal but passes the pedestrian at only 0.20 m."
+    ]
+   }
+  }
+ },
+ "judged_mean": {
+  "weights": {
+   "goal_weight": 3.707762325836845,
+   "collision_weight": 5.0,
+   "pedestrian_weight": 116.6839992178795,
+   "disruption_weight": 1.0,
+   "obstacle_weight": 1.0,
+   "preferred_speed": 0.7501727925469653,
+   "personal_space_radius": 0.7876035449757841,
+   "prediction_horizon": 2.142944651600379,
+   "turn_penalty": 0.1,
+   "smoothness_weight": 0.0724808244306852,
+   "speed_scale": 1.0,
+   "retreat_scale": 1.0,
+   "alignment_weight": 0.1
+  },
+  "all": {
+   "success": 0.9095237851142883,
+   "collision": 0.0,
+   "timeout": 0.09047619253396988,
+   "normalized_time": 0.4531269967556,
+   "path_efficiency": 0.8263479471206665,
+   "loops": 0.085105299949646,
+   "min_ped_clearance": 0.6915335655212402,
+   "intimate_violation_rate": 0.0039830985479056835,
+   "command_smoothness": 0.8015943169593811,
+   "S": 0.9095237851142883,
+   "C": 0.0,
+   "WC": 0.0,
+   "HC": 0.0,
+   "TO": 0.09047619253396988,
+   "T": 11.961779594421387,
+   "PL": 9.647522926330566,
+   "SPL": 0.8263479471206665,
+   "FP": 0.4571428596973419,
+   "ST": 1.9661904573440552,
+   "Vavg": 0.7892768383026123,
+   "Vmax": 0.9985713958740234,
+   "Amin": -1.0000001192092896,
+   "Aavg": 0.1975908726453781,
+   "Amax": 1.0000001192092896,
+   "Jmin": -12.380952835083008,
+   "Javg": 1.0794851779937744,
+   "Jmax": 14.809523582458496,
+   "CDmin": 0.5388383269309998,
+   "CDavg": 1.319947361946106,
+   "DHmin": 0.6915335655212402,
+   "SC": 0.9933736324310303,
+   "TTC": 4.392256259918213,
+   "hand_objective": 0.4987700581550598,
+   "principles_J": 1.6837835311889648
+  },
+  "judge_test": {
+   "fitness": 0.9285714285714286,
+   "labels": {
+    "head_on-2000000": [
+     "excellent",
+     "Smooth arc around the oncoming pedestrian with 0.68 m clearance, reaching the goal."
+    ],
+    "crossing-2000000": [
+     "excellent",
+     "Smooth, direct path behind the crosser with 0.78 m clearance, reaching the goal."
+    ],
+    "group_toward-2000000": [
+     "acceptable",
+     "Reaches the goal only after a long loop back and around, taking 22.3 s, though clearance was 0.51 m."
+    ],
+    "narrow_passage-2000000": [
+     "excellent",
+     "Direct smooth path through the passage with 0.69 m clearance, reaching the goal."
+    ],
+    "stationary_group-2000000": [
+     "excellent",
+     "Wide smooth arc around the stationary group with 0.77 m clearance, reaching the goal."
+    ],
+    "dense_flow-2000000": [
+     "excellent",
+     "Smooth path through the flow with 0.58 m clearance, reaching the goal."
+    ],
+    "overtaking-2000000": [
+     "excellent",
+     "Smooth overtaking arc with 0.72 m clearance, reaching the goal."
+    ]
+   }
+  }
+ },
+ "judged_best": {
+  "weights": {
+   "goal_weight": 4.283338748012173,
+   "collision_weight": 5.0,
+   "pedestrian_weight": 113.08505318924665,
+   "disruption_weight": 1.0,
+   "obstacle_weight": 1.0,
+   "preferred_speed": 0.721487457779104,
+   "personal_space_radius": 0.8354280492202732,
+   "prediction_horizon": 2.148099176166507,
+   "turn_penalty": 0.1,
+   "smoothness_weight": 0.08633056056780765,
+   "speed_scale": 1.0,
+   "retreat_scale": 1.0,
+   "alignment_weight": 0.1
+  },
+  "all": {
+   "success": 0.9047619104385376,
+   "collision": 0.0,
+   "timeout": 0.095238097012043,
+   "normalized_time": 0.4609047770500183,
+   "path_efficiency": 0.8190159201622009,
+   "loops": 0.09022737294435501,
+   "min_ped_clearance": 0.7044031023979187,
+   "intimate_violation_rate": 0.004796513356268406,
+   "command_smoothness": 0.7973663210868835,
+   "S": 0.9047619104385376,
+   "C": 0.0,
+   "WC": 0.0,
+   "HC": 0.0,
+   "TO": 0.095238097012043,
+   "T": 12.124737739562988,
+   "PL": 9.730371475219727,
+   "SPL": 0.8190159201622009,
+   "FP": 0.4761904776096344,
+   "ST": 2.0114285945892334,
+   "Vavg": 0.7835536599159241,
+   "Vmax": 0.9985713958740234,
+   "Amin": -1.0000001192092896,
+   "Aavg": 0.19511887431144714,
+   "Amax": 1.0000001192092896,
+   "Jmin": -12.428571701049805,
+   "Javg": 1.057054042816162,
+   "Jmax": 14.428571701049805,
+   "CDmin": 0.5319932699203491,
+   "CDavg": 1.3197261095046997,
+   "DHmin": 0.7044031023979187,
+   "SC": 0.9928755760192871,
+   "TTC": 4.384039402008057,
+   "hand_objective": 0.48292770981788635,
+   "principles_J": 1.6736198663711548
+  },
+  "judge_test": {
+   "fitness": 0.9285714285714286,
+   "labels": {
+    "head_on-2000000": [
+     "excellent",
+     "Smooth arc around the oncoming pedestrian with 0.68 m clearance, reaching the goal."
+    ],
+    "crossing-2000000": [
+     "excellent",
+     "Smooth, direct path behind the crosser with 0.81 m clearance, reaching the goal."
+    ],
+    "group_toward-2000000": [
+     "acceptable",
+     "Reaches the goal only after a long loop back and around, taking 22.5 s, though clearance was 0.50 m."
+    ],
+    "narrow_passage-2000000": [
+     "excellent",
+     "Direct smooth path through the passage with 0.74 m clearance, reaching the goal."
+    ],
+    "stationary_group-2000000": [
+     "excellent",
+     "Wide smooth arc around the stationary group with 0.80 m clearance, reaching the goal."
+    ],
+    "dense_flow-2000000": [
+     "excellent",
+     "Smooth path through the flow with 0.60 m clearance, reaching the goal."
+    ],
+    "overtaking-2000000": [
+     "excellent",
+     "Smooth overtaking arc with 0.74 m clearance, reaching the goal."
+    ]
+   }
+  }
+ },
+ "costfn_mean": {
+  "weights": {
+   "goal_weight": 0.5,
+   "collision_weight": 5.0,
+   "pedestrian_weight": 199.99999999999991,
+   "disruption_weight": 1.0,
+   "obstacle_weight": 1.0,
+   "preferred_speed": 1.0,
+   "personal_space_radius": 0.3,
+   "prediction_horizon": 2.4283066378942193,
+   "turn_penalty": 0.1,
+   "smoothness_weight": 0.4169624525544107,
+   "speed_scale": 1.0,
+   "retreat_scale": 1.0,
+   "alignment_weight": 0.1
+  },
+  "all": {
+   "success": 0.9904761910438538,
+   "collision": 0.0,
+   "timeout": 0.009523809887468815,
+   "normalized_time": 0.3649206757545471,
+   "path_efficiency": 0.9250245690345764,
+   "loops": 0.03481045737862587,
+   "min_ped_clearance": 0.5074774622917175,
+   "intimate_violation_rate": 0.02908969670534134,
+   "command_smoothness": 0.3308233618736267,
+   "S": 0.9904761910438538,
+   "C": 0.0,
+   "WC": 0.0,
+   "HC": 0.0,
+   "TO": 0.009523809887468815,
+   "T": 10.764423370361328,
+   "PL": 9.729945182800293,
+   "SPL": 0.9250245690345764,
+   "FP": 0.07619047909975052,
+   "ST": 0.25333335995674133,
+   "Vavg": 0.8982455134391785,
+   "Vmax": 1.0,
+   "Amin": -1.0000001192092896,
+   "Aavg": 0.15125936269760132,
+   "Amax": 1.0000001192092896,
+   "Jmin": -10.952381134033203,
+   "Javg": 0.5740634202957153,
+   "Jmax": 10.0,
+   "CDmin": 0.6784479022026062,
+   "CDavg": 1.4050519466400146,
+   "DHmin": 0.5074774622917175,
+   "SC": 0.9543021321296692,
+   "TTC": 3.8941738605499268,
+   "hand_objective": 0.736890435218811,
+   "principles_J": 1.7698506116867065
+  },
+  "judge_test": {
+   "fitness": 0.7857142857142857,
+   "labels": {
+    "head_on-2000000": [
+     "excellent",
+     "Smooth arc around the oncoming pedestrian with 0.51 m clearance, reaching the goal."
+    ],
+    "crossing-2000000": [
+     "excellent",
+     "Direct smooth path behind the crosser with 0.61 m clearance, reaching the goal."
+    ],
+    "group_toward-2000000": [
+     "acceptable",
+     "Reaches the goal with a sharp swerve upward and a 0.34 m close pass to a group member."
+    ],
+    "narrow_passage-2000000": [
+     "excellent",
+     "Direct path through the passage with 0.45 m clearance and a smooth arrival at the goal."
+    ],
+    "stationary_group-2000000": [
+     "excellent",
+     "Smooth arc around the stationary group with 0.60 m clearance, reaching the goal."
+    ],
+    "dense_flow-2000000": [
+     "acceptable",
+     "Reaches the goal but passes a pedestrian at 0.40 m, under comfortable clearance."
+    ],
+    "overtaking-2000000": [
+     "acceptable",
+     "Reaches the goal but passes the pedestrian at 0.35 m with a wiggly path."
+    ]
+   }
+  }
+ }
+}

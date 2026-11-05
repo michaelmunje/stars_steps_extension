@@ -1,0 +1,38 @@
+# Judged CMA-ES in the STARS crowd (the v4 setting): pedestrians driven by the STARS forecaster with
+# the robot in its graph, the controller forecasting with STARS too. Needs the weights-v1 bundle
+# (and a GPU for useful speed). Fitness = the judge's labels; the v4 objective J is logged beside them.
+#   python simplenavsim/scripts/judged_cmaes.py run --config simplenavsim/configs/judged_cmaes_stars.yaml \
+#       --policy checkpoints/simplenavsim/cmaes_crowd_v4/best_policy.yaml --device cuda --judge claude-code
+simulator: simulator.yaml
+pedestrians: pedestrians_stars.yaml
+policy: policy_stars_best.yaml
+recorded:                  # optional: skipped (with a warning) if datasets/steps is absent
+  path: datasets/steps
+  limit_per_split: 40
+  max_pedestrians: 40
+  min_pedestrians: 6
+judged:
+  optimize: [goal_weight, pedestrian_weight, disruption_weight, personal_space_radius, preferred_speed,
+             prediction_horizon, smoothness_weight]
+  population_size: 8         # 8 candidates x 3 scenes = 24 pictures per generation for the judge
+  generations: 10
+  sigma0: 0.2                # in the unit cube; 0.3 when starting from the defaults rather than v4
+  seed: 7
+  scenes_per_generation: 3
+  common_crowd: true         # every candidate meets the same STARS intent draws (one batch per candidate)
+  kinds: [head_on, group_toward, recorded, crossing, narrow_passage, stationary_group, dense_flow, overtaking]
+  duration: 30.0
+  dt: 0.1
+  test_kinds: [head_on, crossing, group_toward, narrow_passage, stationary_group, dense_flow, recorded]
+# The v4 objective, logged for comparison only (robot_influence exists in this crowd).
+objective:
+  success: 1.0
+  collision: 2.0
+  disruption: 1.0
+  time: 0.3
+  comfort: 1.0
+  detour: 1.0
+  smoothness: 0.1
+  circling: 0.2
+  disruption_metric: robot_influence
+  comfort_metric: intimate_violation_rate
