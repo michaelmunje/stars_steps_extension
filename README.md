@@ -52,6 +52,10 @@ python -m baselines.train_stars_ma --phase forecast --dataset steps --decoder cv
 
 # A baseline: pretrain MoFlow on STEPS (see docs/baselines.md)
 ./scripts/pretrain_transfer_model.sh --model moflow --sources steps --seed 0
+
+# ETH/UCY closed-loop crowd-simulation benchmark (see docs/ethucy_benchmark.md)
+python simplenavsim/scripts/ethucy_benchmark.py smoke             # tiny CPU check
+python simplenavsim/scripts/ethucy_benchmark.py all --device cuda # full run into results/<run_id>
 ```
 
 Prefix with `uv run`, or `source .venv/bin/activate` once per shell.
@@ -77,6 +81,7 @@ tests/
 | **SimpleNavSim simulator: quick start, weights, training, evaluation** | [`simplenavsim/README.md`](simplenavsim/README.md) |
 | Results (forecaster and navigation) | [`docs/results/README.md`](docs/results/README.md) |
 | TACC Horizon setup and jobs | [`docs/horizon.md`](docs/horizon.md) |
+| ETH/UCY closed-loop simulation benchmark, audit | [`docs/ethucy_benchmark.md`](docs/ethucy_benchmark.md), [`docs/evaluation_audit.md`](docs/evaluation_audit.md) |
 | Multi-agent STARS design, phases, ablations | [`docs/stars_multiagent.md`](docs/stars_multiagent.md) |
 | Loader, preprocessing, OpenTraj analysis, paper tables, visualization | [`docs/data_pipeline.md`](docs/data_pipeline.md) |
 | Forecasting baselines: pretraining, transfer, evaluation | [`docs/baselines.md`](docs/baselines.md), [`src/baselines/README.md`](src/baselines/README.md) |

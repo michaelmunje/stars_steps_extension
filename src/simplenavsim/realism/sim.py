@@ -159,7 +159,8 @@ class Stars:
         return other
 
     @torch.no_grad()
-    def __call__(self, x, steps, seed: int = 0, **_):
+    def __call__(self, x, steps, seed: int = 0, hook=None, **_):
+        """``hook(k, positions) -> positions`` may edit each executed step (tests: closed-loop check)."""
         from baselines.stars_ma_batch import graph_batch_from_padded
         from baselines.stars_ma_graph import to_scene
         dev = torch.device(self.device)
@@ -200,6 +201,8 @@ class Stars:
                 dist = torch.linalg.norm(rel, dim=-1, keepdim=True)
                 steer = rel / dist.clamp(min=1e-9) * torch.minimum(size, dist)
                 nxt = torch.where(dist > ARRIVAL, cur + (1 - self.goal_weight) * step + self.goal_weight * steer, cur)
+            if hook is not None:
+                nxt = hook(k, nxt)
             out.append(nxt)
             xy = torch.cat([xy[:, :, 1:], nxt[:, :, None]], 2)
             valid = torch.cat([valid[:, :, 1:], valid[:, :, -1:]], 2)
