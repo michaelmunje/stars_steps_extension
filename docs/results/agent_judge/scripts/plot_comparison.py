@@ -10,8 +10,8 @@ import numpy as np
 
 D = "docs/results/agent_judge/"
 r = json.load(open(D + "cost_comparison.json"))
-rows = [("Random weights\n(10 seeds)", [r[f"random s{i}"] for i in range(10)]),
-        ("CMA-ES\n(10 seeds)", [r[f"seed study s{i}"] for i in range(10)]),
+rows = [("Random\nweights", [r[f"random s{i}"] for i in range(10)]),
+        ("CMA-ES\n(hand-crafted reward)", [r[f"seed study s{i}"] for i in range(10)]),
         ("Agent-judged\nCMA-ES", [r["A: agent-judged"]])]
 metrics = [("S", "Success rate (%) - higher is better", 100, (0, 108)),
            ("intimate_violation_rate", "Time within 0.45 m of a person (%) - lower is better", 100, (0, None)),
@@ -27,8 +27,7 @@ for ax, (key, title, scale, ylim) in zip(axes, metrics):
     ax.set_xticks(range(len(rows)), [n for n, _ in rows], fontsize=9)
     ax.set_title(title, fontsize=10.5), ax.grid(axis="y", alpha=0.3)
     ax.set_ylim(ylim[0], ylim[1] if ylim[1] else ax.get_ylim()[1] * 1.15)
-fig.suptitle("Held-out test, 210 scenes (CPU setting)\nRandom weights and CMA-ES: average over 10 seeds "
-             "(CMA-ES trained on the hand-crafted reward). Agent-judged CMA-ES: one run", fontsize=11)
+fig.suptitle("Held-out test, 210 scenes (CPU setting)", fontsize=11)
 fig.tight_layout()
 fig.savefig(D + "comparison.png", dpi=130)
 print("saved", D + "comparison.png")

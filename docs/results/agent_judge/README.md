@@ -38,8 +38,9 @@ seed), scored here as they are. Mean ± standard deviation over seeds (`cost_com
 
 The held-out scenes where the agent-judged policy fails (19 of 210, all timeouts), worst reward first,
 at most two per kind: two-way corridors #20 and #5, narrow passage #7, standing groups #2 and #4.
-`failure_cases.gif` shows the start weights, random weights (seed 0), CMA-ES (seed 0) and the
-agent-judged policy on them; there is also one GIF per scene. Everyone else gets through, and the
+`failure_cases.gif` shows random weights (seed 0), CMA-ES (seed 0) and the agent-judged policy on
+them (the agent-judged run started from the default weights); there is also one GIF per scene. The
+others get through, and the
 agent-judged policy loops or freezes in front of passable people. The corridor and narrow-passage
 cases are hard in general: only 6-7 of the 10 CMA-ES seeds and 7-8 of the 10 random weight sets reach
 the goal there (`scenes.json`). Likely causes: two scenes per generation rarely show the cost of

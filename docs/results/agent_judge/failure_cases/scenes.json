@@ -2,7 +2,6 @@
  "selection": "held-out scenes where the agent-judged policy fails (19 of 210), worst hand-crafted reward first, <= 2 per kind",
  "scenes": {
   "dense_flow-2000020": {
-   "Start (default weights)": "reached",
    "Random weights (seed 0)": "reached",
    "CMA-ES (seed 0)": "reached",
    "Agent-judged CMA-ES": "timed out",
@@ -10,7 +9,6 @@
    "CMA-ES (10 seeds) reaching the goal": 7
   },
   "dense_flow-2000005": {
-   "Start (default weights)": "reached",
    "Random weights (seed 0)": "reached",
    "CMA-ES (seed 0)": "reached",
    "Agent-judged CMA-ES": "timed out",
@@ -18,7 +16,6 @@
    "CMA-ES (10 seeds) reaching the goal": 6
   },
   "narrow_passage-2000007": {
-   "Start (default weights)": "reached",
    "Random weights (seed 0)": "reached",
    "CMA-ES (seed 0)": "reached",
    "Agent-judged CMA-ES": "timed out",
@@ -26,7 +23,6 @@
    "CMA-ES (10 seeds) reaching the goal": 6
   },
   "stationary_group-2000002": {
-   "Start (default weights)": "reached",
    "Random weights (seed 0)": "reached",
    "CMA-ES (seed 0)": "reached",
    "Agent-judged CMA-ES": "timed out",
@@ -34,7 +30,6 @@
    "CMA-ES (10 seeds) reaching the goal": 10
   },
   "stationary_group-2000004": {
-   "Start (default weights)": "reached",
    "Random weights (seed 0)": "reached",
    "CMA-ES (seed 0)": "reached",
    "Agent-judged CMA-ES": "timed out",

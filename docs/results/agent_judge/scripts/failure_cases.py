@@ -51,8 +51,7 @@ def main(count: int = 6) -> None:
     kinds = search.kinds("test_kinds") + ["overtaking"]
     scenes = scenario_set("test", kinds, 30, dt=search.j["dt"], duration=search.j["duration"])
     batch = collate(scenes, device)
-    shown = {"Start\n(default weights)": dict(base),
-             "Random weights\n(seed 0)": {**base, **random_weights(policy.parameters, names, 0)},
+    shown = {"Random weights\n(seed 0)": {**base, **random_weights(policy.parameters, names, 0)},
              "CMA-ES\n(seed 0)": {**base, **load_policy_file(SEEDS.format(0))[1]},
              JUDGED: {**base, **load_policy_file(D / "judged_cmaes_policy.yaml")[1]}}
     judged, reward = outcomes(env, policy, batch, shown[JUDGED], device)
