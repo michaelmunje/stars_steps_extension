@@ -12,7 +12,7 @@ excellent +1, acceptable +0.5, stalled 0, unsafe -1. A candidate's fitness is it
   (720 judged episodes).
 - **Hand-crafted reward** = SPL - 2 collision + personal-space compliance - 0.3 time / 30 s (the
   Principles objective of `cmaes_crowd_principles.yaml`). Logged for every episode, never optimised.
-- **Usage:** judging cost an estimated $6.6 at API prices; checked after every generation with
+- **Usage:** judging cost an estimated $6.9 at API prices (61 calls, including one aborted first try); checked after every generation with
   `claude -p /usage` (`scripts/usage_guard.py`, stop at 60% of the 5-hour session or 20% of the week);
   the session stayed at or below 26%, the week at 9%.
 
