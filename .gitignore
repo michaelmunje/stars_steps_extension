@@ -46,3 +46,4 @@ research-plan.md
 /results/*/media/
 /results/*/preference_export/clips/
 /results/*/metrics/per_agent.csv.gz
+/results/*/metrics/kinematics_8s.npz

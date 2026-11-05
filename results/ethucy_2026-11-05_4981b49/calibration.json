@@ -1,0 +1,363 @@
+{
+ "recordings": [
+  "crowds_zara03",
+  "arxiepiskopi1",
+  "uni_examples"
+ ],
+ "windows": 152,
+ "objective": "micro ADE at 8 s (seed 0; adapter: mean of seeds 0-1)",
+ "sfm": {
+  "ped_strength": 1.0,
+  "ped_range": 0.2,
+  "tau": 1.0
+ },
+ "orca": {
+  "time_horizon": 5.0,
+  "neighbor_dist": 5.0,
+  "radius": 0.2
+ },
+ "goal_weight": {
+  "stars_steps": 0.3,
+  "stars_pooled": 0.2
+ },
+ "grid": [
+  {
+   "model": "sfm",
+   "ped_strength": 1.0,
+   "ped_range": 0.2,
+   "tau": 0.5,
+   "ade_8s": 1.1796817752721913,
+   "hacs_8s": 0.009829059829059829
+  },
+  {
+   "model": "sfm",
+   "ped_strength": 1.0,
+   "ped_range": 0.2,
+   "tau": 1.0,
+   "ade_8s": 1.163278459889451,
+   "hacs_8s": 0.005982905982905983
+  },
+  {
+   "model": "sfm",
+   "ped_strength": 1.0,
+   "ped_range": 0.3,
+   "tau": 0.5,
+   "ade_8s": 1.1961185945147061,
+   "hacs_8s": 0.007264957264957265
+  },
+  {
+   "model": "sfm",
+   "ped_strength": 1.0,
+   "ped_range": 0.3,
+   "tau": 1.0,
+   "ade_8s": 1.2047338260745215,
+   "hacs_8s": 0.005128205128205128
+  },
+  {
+   "model": "sfm",
+   "ped_strength": 1.0,
+   "ped_range": 0.5,
+   "tau": 0.5,
+   "ade_8s": 1.243192367790383,
+   "hacs_8s": 0.00641025641025641
+  },
+  {
+   "model": "sfm",
+   "ped_strength": 1.0,
+   "ped_range": 0.5,
+   "tau": 1.0,
+   "ade_8s": 1.3048296686078213,
+   "hacs_8s": 0.002136752136752137
+  },
+  {
+   "model": "sfm",
+   "ped_strength": 2.1,
+   "ped_range": 0.2,
+   "tau": 0.5,
+   "ade_8s": 1.202871896765977,
+   "hacs_8s": 0.005555555555555556
+  },
+  {
+   "model": "sfm",
+   "ped_strength": 2.1,
+   "ped_range": 0.2,
+   "tau": 1.0,
+   "ade_8s": 1.2149956256240073,
+   "hacs_8s": 0.002136752136752137
+  },
+  {
+   "model": "sfm",
+   "ped_strength": 2.1,
+   "ped_range": 0.3,
+   "tau": 0.5,
+   "ade_8s": 1.241871481061178,
+   "hacs_8s": 0.0029914529914529917
+  },
+  {
+   "model": "sfm",
+   "ped_strength": 2.1,
+   "ped_range": 0.3,
+   "tau": 1.0,
+   "ade_8s": 1.2879949332528304,
+   "hacs_8s": 0.0017094017094017094
+  },
+  {
+   "model": "sfm",
+   "ped_strength": 2.1,
+   "ped_range": 0.5,
+   "tau": 0.5,
+   "ade_8s": 1.3413731595072027,
+   "hacs_8s": 0.0008547008547008547
+  },
+  {
+   "model": "sfm",
+   "ped_strength": 2.1,
+   "ped_range": 0.5,
+   "tau": 1.0,
+   "ade_8s": 1.4781813628993667,
+   "hacs_8s": 0.0008547008547008547
+  },
+  {
+   "model": "sfm",
+   "ped_strength": 4.0,
+   "ped_range": 0.2,
+   "tau": 0.5,
+   "ade_8s": 1.238415897104079,
+   "hacs_8s": 0.001282051282051282
+  },
+  {
+   "model": "sfm",
+   "ped_strength": 4.0,
+   "ped_range": 0.2,
+   "tau": 1.0,
+   "ade_8s": 1.2822914241030037,
+   "hacs_8s": 0.00042735042735042735
+  },
+  {
+   "model": "sfm",
+   "ped_strength": 4.0,
+   "ped_range": 0.3,
+   "tau": 0.5,
+   "ade_8s": 1.2983428415772376,
+   "hacs_8s": 0.0008547008547008547
+  },
+  {
+   "model": "sfm",
+   "ped_strength": 4.0,
+   "ped_range": 0.3,
+   "tau": 1.0,
+   "ade_8s": 1.3840818029677584,
+   "hacs_8s": 0.00042735042735042735
+  },
+  {
+   "model": "sfm",
+   "ped_strength": 4.0,
+   "ped_range": 0.5,
+   "tau": 0.5,
+   "ade_8s": 1.4703388106870208,
+   "hacs_8s": 0.0008547008547008547
+  },
+  {
+   "model": "sfm",
+   "ped_strength": 4.0,
+   "ped_range": 0.5,
+   "tau": 1.0,
+   "ade_8s": 1.67127563556036,
+   "hacs_8s": 0.00042735042735042735
+  },
+  {
+   "model": "orca",
+   "time_horizon": 1.0,
+   "neighbor_dist": 3.0,
+   "radius": 0.2,
+   "ade_8s": 1.1835009584627858,
+   "hacs_8s": 0.0
+  },
+  {
+   "model": "orca",
+   "time_horizon": 1.0,
+   "neighbor_dist": 3.0,
+   "radius": 0.3,
+   "ade_8s": 1.1876814275518148,
+   "hacs_8s": 0.0
+  },
+  {
+   "model": "orca",
+   "time_horizon": 1.0,
+   "neighbor_dist": 5.0,
+   "radius": 0.2,
+   "ade_8s": 1.1825218836483495,
+   "hacs_8s": 0.0
+  },
+  {
+   "model": "orca",
+   "time_horizon": 1.0,
+   "neighbor_dist": 5.0,
+   "radius": 0.3,
+   "ade_8s": 1.1875649960415602,
+   "hacs_8s": 0.0
+  },
+  {
+   "model": "orca",
+   "time_horizon": 1.0,
+   "neighbor_dist": 10.0,
+   "radius": 0.2,
+   "ade_8s": 1.1825218836483495,
+   "hacs_8s": 0.0
+  },
+  {
+   "model": "orca",
+   "time_horizon": 1.0,
+   "neighbor_dist": 10.0,
+   "radius": 0.3,
+   "ade_8s": 1.1875649960415602,
+   "hacs_8s": 0.0
+  },
+  {
+   "model": "orca",
+   "time_horizon": 2.0,
+   "neighbor_dist": 3.0,
+   "radius": 0.2,
+   "ade_8s": 1.1843192641499005,
+   "hacs_8s": 0.0
+  },
+  {
+   "model": "orca",
+   "time_horizon": 2.0,
+   "neighbor_dist": 3.0,
+   "radius": 0.3,
+   "ade_8s": 1.1808450549430833,
+   "hacs_8s": 0.0
+  },
+  {
+   "model": "orca",
+   "time_horizon": 2.0,
+   "neighbor_dist": 5.0,
+   "radius": 0.2,
+   "ade_8s": 1.1769129950524937,
+   "hacs_8s": 0.0
+  },
+  {
+   "model": "orca",
+   "time_horizon": 2.0,
+   "neighbor_dist": 5.0,
+   "radius": 0.3,
+   "ade_8s": 1.184018250369247,
+   "hacs_8s": 0.0
+  },
+  {
+   "model": "orca",
+   "time_horizon": 2.0,
+   "neighbor_dist": 10.0,
+   "radius": 0.2,
+   "ade_8s": 1.1801004877954921,
+   "hacs_8s": 0.0
+  },
+  {
+   "model": "orca",
+   "time_horizon": 2.0,
+   "neighbor_dist": 10.0,
+   "radius": 0.3,
+   "ade_8s": 1.1828372531725564,
+   "hacs_8s": 0.0
+  },
+  {
+   "model": "orca",
+   "time_horizon": 5.0,
+   "neighbor_dist": 3.0,
+   "radius": 0.2,
+   "ade_8s": 1.1786731096518193,
+   "hacs_8s": 0.0
+  },
+  {
+   "model": "orca",
+   "time_horizon": 5.0,
+   "neighbor_dist": 3.0,
+   "radius": 0.3,
+   "ade_8s": 1.200442710425937,
+   "hacs_8s": 0.0
+  },
+  {
+   "model": "orca",
+   "time_horizon": 5.0,
+   "neighbor_dist": 5.0,
+   "radius": 0.2,
+   "ade_8s": 1.1656481889241594,
+   "hacs_8s": 0.00042735042735042735
+  },
+  {
+   "model": "orca",
+   "time_horizon": 5.0,
+   "neighbor_dist": 5.0,
+   "radius": 0.3,
+   "ade_8s": 1.1850237786269706,
+   "hacs_8s": 0.0
+  },
+  {
+   "model": "orca",
+   "time_horizon": 5.0,
+   "neighbor_dist": 10.0,
+   "radius": 0.2,
+   "ade_8s": 1.1693336752567611,
+   "hacs_8s": 0.00042735042735042735
+  },
+  {
+   "model": "orca",
+   "time_horizon": 5.0,
+   "neighbor_dist": 10.0,
+   "radius": 0.3,
+   "ade_8s": 1.1932431022656442,
+   "hacs_8s": 0.0
+  },
+  {
+   "model": "stars_steps_goal",
+   "goal_weight": 0.1,
+   "ade_8s": 1.1963988667524261
+  },
+  {
+   "model": "stars_steps_goal",
+   "goal_weight": 0.2,
+   "ade_8s": 1.0965865593173316
+  },
+  {
+   "model": "stars_steps_goal",
+   "goal_weight": 0.3,
+   "ade_8s": 1.0711033090293238
+  },
+  {
+   "model": "stars_steps_goal",
+   "goal_weight": 0.5,
+   "ade_8s": 1.0816109592643413
+  },
+  {
+   "model": "stars_steps_goal",
+   "goal_weight": 0.7,
+   "ade_8s": 1.1159271238238633
+  },
+  {
+   "model": "stars_pooled_goal",
+   "goal_weight": 0.1,
+   "ade_8s": 1.0778428927693287
+  },
+  {
+   "model": "stars_pooled_goal",
+   "goal_weight": 0.2,
+   "ade_8s": 1.0525922284904192
+  },
+  {
+   "model": "stars_pooled_goal",
+   "goal_weight": 0.3,
+   "ade_8s": 1.0629240849971842
+  },
+  {
+   "model": "stars_pooled_goal",
+   "goal_weight": 0.5,
+   "ade_8s": 1.0765373566469016
+  },
+  {
+   "model": "stars_pooled_goal",
+   "goal_weight": 0.7,
+   "ade_8s": 1.1168793657088747
+  }
+ ]
+}

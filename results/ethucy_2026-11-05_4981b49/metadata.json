@@ -1,0 +1,44 @@
+{
+ "run_id": "ethucy_2026-11-05_4981b49",
+ "created_utc": "2026-11-05T22:01:27.885885+00:00",
+ "git_commit": "e9a540c50d7199f0eea3e2a0f726d40743dc70a6",
+ "git_branch": "ethucy-benchmark",
+ "git_dirty": false,
+ "command": [
+  "simplenavsim/scripts/ethucy_benchmark.py",
+  "all",
+  "--device",
+  "cuda",
+  "--run",
+  "results/ethucy_2026-11-05_4981b49"
+ ],
+ "checkpoints": {
+  "stars_steps": {
+   "path": "experiments/stars_ma/runs/cvae_kl01_finetune/checkpoints/best.pt",
+   "sha256": "sha256:5d8763c9ef91386cc109763608797de923d830ecd4e0ed356a76530b9f45a809"
+  },
+  "stars_pooled": {
+   "path": "experiments/stars_ma/runs/cvae_all_lr3e-4_seed42/checkpoints/best.pt",
+   "sha256": "sha256:fd7af5e0f240230874fe122085fffc39446318bca93a013921302b817c82696f"
+  }
+ },
+ "data": {
+  "datasets/eth/converted/seq_eth.traj.parquet": "sha256:99670a42a6501a77063bd534504d9ea403a2d19bee45fe4a75bda2a968132f8d",
+  "datasets/eth/converted/seq_hotel.traj.parquet": "sha256:b04139e41f73b19fb90132a51e5fd63c3128e873f96670fb94b57694ba8a579c",
+  "datasets/ucy/converted/students001.traj.parquet": "sha256:4f43d0a4720e943642cd07c318813af8f23ec5a29f8c6219fe3249fb89f9444e",
+  "datasets/ucy/converted/students003.traj.parquet": "sha256:a7607be08fc5c51480bf232038df2f866e7ede733c07db45e01d8c503dde4ce0",
+  "datasets/ucy/converted/crowds_zara01.traj.parquet": "sha256:57e5132b6706b78745be8f4fa453fc78eacdba7c29a28500e12e0106fb602a98",
+  "datasets/ucy/converted/crowds_zara02.traj.parquet": "sha256:8b6293b7db0e1959c901dd5b09dd349909fe1c5b4898865dcfa9aeb4706b56ce",
+  "datasets/ucy/converted/crowds_zara03.traj.parquet": "sha256:42895a1b3fcf7dec29d3b44703db8d0a5e0dcf0f1bb4655c383e99e8d935a9f7",
+  "datasets/ucy/converted/arxiepiskopi1.traj.parquet": "sha256:1e9931c4d800ba221080cbf497ac82ec5e812720918799ea345b857026528622",
+  "datasets/ucy/converted/uni_examples.traj.parquet": "sha256:5a78cf9f5fb5a9d7d402b4bf6b13a0bdb593a508143afe69af46648365fcf126"
+ },
+ "pooled_checkpoint_exposure": {
+  "seq_hotel": "train",
+  "crowds_zara01": "train",
+  "students001": "train",
+  "students003": "val",
+  "seq_eth": "test",
+  "crowds_zara02": "test"
+ }
+}

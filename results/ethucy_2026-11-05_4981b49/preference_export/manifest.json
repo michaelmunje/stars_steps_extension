@@ -1,0 +1,1218 @@
+{
+ "schema_version": "1.0",
+ "benchmark_run_id": "ethucy_2026-11-05_4981b49",
+ "created_utc": "2026-11-05T22:20:52Z",
+ "study_type": "factual",
+ "render": {
+  "width": 960,
+  "height": 720,
+  "fps": 12,
+  "trail_s": 2.0,
+  "show_goals": false,
+  "show_ids": false,
+  "background": "#ffffff",
+  "render_config_hash": "sha256:1617043f511cfdde5787165beff0ca1416f247333a5c6e7528ff07412654d370"
+ },
+ "scenarios": [
+  {
+   "scenario_id": "eth-0377",
+   "dataset": "eth",
+   "recording": "seq_eth",
+   "start_frame": 377,
+   "start_time_s": 150.8,
+   "num_pedestrians": 3,
+   "horizon_s": 8.0,
+   "sim_dt": 0.4,
+   "goal_rule": "last observed position in the continuous recording (oracle)",
+   "bounds_m": [
+    3.022095600763957,
+    1.0062170028686523,
+    16.132651885350544,
+    10.839134216308594
+   ],
+   "init_hash": "sha256:242c42a62cff4c623b8aade8bb560c22b343f89daa238b2f0bfa4c92005590d5",
+   "counterfactual": null,
+   "clips": [
+    {
+     "clip_id": "c_7776bb",
+     "model": "ground_truth",
+     "seed": 0,
+     "mp4": "clips/c_7776bb.mp4",
+     "gif": "clips/c_7776bb.gif",
+     "duration_s": 8.0,
+     "fps": 12,
+     "init_hash": "sha256:242c42a62cff4c623b8aade8bb560c22b343f89daa238b2f0bfa4c92005590d5",
+     "render_config_hash": "sha256:1617043f511cfdde5787165beff0ca1416f247333a5c6e7528ff07412654d370"
+    },
+    {
+     "clip_id": "c_4d51a2",
+     "model": "stars_steps",
+     "seed": 0,
+     "mp4": "clips/c_4d51a2.mp4",
+     "gif": "clips/c_4d51a2.gif",
+     "duration_s": 8.0,
+     "fps": 12,
+     "init_hash": "sha256:242c42a62cff4c623b8aade8bb560c22b343f89daa238b2f0bfa4c92005590d5",
+     "render_config_hash": "sha256:1617043f511cfdde5787165beff0ca1416f247333a5c6e7528ff07412654d370"
+    },
+    {
+     "clip_id": "c_78eda9",
+     "model": "stars_pooled",
+     "seed": 0,
+     "mp4": "clips/c_78eda9.mp4",
+     "gif": "clips/c_78eda9.gif",
+     "duration_s": 8.0,
+     "fps": 12,
+     "init_hash": "sha256:242c42a62cff4c623b8aade8bb560c22b343f89daa238b2f0bfa4c92005590d5",
+     "render_config_hash": "sha256:1617043f511cfdde5787165beff0ca1416f247333a5c6e7528ff07412654d370"
+    },
+    {
+     "clip_id": "c_f1fde9",
+     "model": "stars_steps_goal",
+     "seed": 0,
+     "mp4": "clips/c_f1fde9.mp4",
+     "gif": "clips/c_f1fde9.gif",
+     "duration_s": 8.0,
+     "fps": 12,
+     "init_hash": "sha256:242c42a62cff4c623b8aade8bb560c22b343f89daa238b2f0bfa4c92005590d5",
+     "render_config_hash": "sha256:1617043f511cfdde5787165beff0ca1416f247333a5c6e7528ff07412654d370"
+    },
+    {
+     "clip_id": "c_dac7a2",
+     "model": "stars_pooled_goal",
+     "seed": 0,
+     "mp4": "clips/c_dac7a2.mp4",
+     "gif": "clips/c_dac7a2.gif",
+     "duration_s": 8.0,
+     "fps": 12,
+     "init_hash": "sha256:242c42a62cff4c623b8aade8bb560c22b343f89daa238b2f0bfa4c92005590d5",
+     "render_config_hash": "sha256:1617043f511cfdde5787165beff0ca1416f247333a5c6e7528ff07412654d370"
+    },
+    {
+     "clip_id": "c_cdbc15",
+     "model": "cv",
+     "seed": 0,
+     "mp4": "clips/c_cdbc15.mp4",
+     "gif": "clips/c_cdbc15.gif",
+     "duration_s": 8.0,
+     "fps": 12,
+     "init_hash": "sha256:242c42a62cff4c623b8aade8bb560c22b343f89daa238b2f0bfa4c92005590d5",
+     "render_config_hash": "sha256:1617043f511cfdde5787165beff0ca1416f247333a5c6e7528ff07412654d370"
+    },
+    {
+     "clip_id": "c_493ca4",
+     "model": "goal_straight",
+     "seed": 0,
+     "mp4": "clips/c_493ca4.mp4",
+     "gif": "clips/c_493ca4.gif",
+     "duration_s": 8.0,
+     "fps": 12,
+     "init_hash": "sha256:242c42a62cff4c623b8aade8bb560c22b343f89daa238b2f0bfa4c92005590d5",
+     "render_config_hash": "sha256:1617043f511cfdde5787165beff0ca1416f247333a5c6e7528ff07412654d370"
+    },
+    {
+     "clip_id": "c_75fa74",
+     "model": "sfm",
+     "seed": 0,
+     "mp4": "clips/c_75fa74.mp4",
+     "gif": "clips/c_75fa74.gif",
+     "duration_s": 8.0,
+     "fps": 12,
+     "init_hash": "sha256:242c42a62cff4c623b8aade8bb560c22b343f89daa238b2f0bfa4c92005590d5",
+     "render_config_hash": "sha256:1617043f511cfdde5787165beff0ca1416f247333a5c6e7528ff07412654d370"
+    },
+    {
+     "clip_id": "c_a73b46",
+     "model": "orca",
+     "seed": 0,
+     "mp4": "clips/c_a73b46.mp4",
+     "gif": "clips/c_a73b46.gif",
+     "duration_s": 8.0,
+     "fps": 12,
+     "init_hash": "sha256:242c42a62cff4c623b8aade8bb560c22b343f89daa238b2f0bfa4c92005590d5",
+     "render_config_hash": "sha256:1617043f511cfdde5787165beff0ca1416f247333a5c6e7528ff07412654d370"
+    }
+   ]
+  },
+  {
+   "scenario_id": "eth-1867",
+   "dataset": "eth",
+   "recording": "seq_eth",
+   "start_frame": 1867,
+   "start_time_s": 746.8,
+   "num_pedestrians": 3,
+   "horizon_s": 8.0,
+   "sim_dt": 0.4,
+   "goal_rule": "last observed position in the continuous recording (oracle)",
+   "bounds_m": [
+    -7.016891956329346,
+    -5.218073129653931,
+    13.5996675491333,
+    10.244346499443054
+   ],
+   "init_hash": "sha256:fba9b1718216cb7d032bee9b50b58bce8e2f01e96730c17662f49957df52a9a2",
+   "counterfactual": null,
+   "clips": [
+    {
+     "clip_id": "c_ee449b",
+     "model": "ground_truth",
+     "seed": 0,
+     "mp4": "clips/c_ee449b.mp4",
+     "gif": "clips/c_ee449b.gif",
+     "duration_s": 8.0,
+     "fps": 12,
+     "init_hash": "sha256:fba9b1718216cb7d032bee9b50b58bce8e2f01e96730c17662f49957df52a9a2",
+     "render_config_hash": "sha256:1617043f511cfdde5787165beff0ca1416f247333a5c6e7528ff07412654d370"
+    },
+    {
+     "clip_id": "c_84b54e",
+     "model": "stars_steps",
+     "seed": 0,
+     "mp4": "clips/c_84b54e.mp4",
+     "gif": "clips/c_84b54e.gif",
+     "duration_s": 8.0,
+     "fps": 12,
+     "init_hash": "sha256:fba9b1718216cb7d032bee9b50b58bce8e2f01e96730c17662f49957df52a9a2",
+     "render_config_hash": "sha256:1617043f511cfdde5787165beff0ca1416f247333a5c6e7528ff07412654d370"
+    },
+    {
+     "clip_id": "c_718c77",
+     "model": "stars_pooled",
+     "seed": 0,
+     "mp4": "clips/c_718c77.mp4",
+     "gif": "clips/c_718c77.gif",
+     "duration_s": 8.0,
+     "fps": 12,
+     "init_hash": "sha256:fba9b1718216cb7d032bee9b50b58bce8e2f01e96730c17662f49957df52a9a2",
+     "render_config_hash": "sha256:1617043f511cfdde5787165beff0ca1416f247333a5c6e7528ff07412654d370"
+    },
+    {
+     "clip_id": "c_8cf211",
+     "model": "stars_steps_goal",
+     "seed": 0,
+     "mp4": "clips/c_8cf211.mp4",
+     "gif": "clips/c_8cf211.gif",
+     "duration_s": 8.0,
+     "fps": 12,
+     "init_hash": "sha256:fba9b1718216cb7d032bee9b50b58bce8e2f01e96730c17662f49957df52a9a2",
+     "render_config_hash": "sha256:1617043f511cfdde5787165beff0ca1416f247333a5c6e7528ff07412654d370"
+    },
+    {
+     "clip_id": "c_b6ac6d",
+     "model": "stars_pooled_goal",
+     "seed": 0,
+     "mp4": "clips/c_b6ac6d.mp4",
+     "gif": "clips/c_b6ac6d.gif",
+     "duration_s": 8.0,
+     "fps": 12,
+     "init_hash": "sha256:fba9b1718216cb7d032bee9b50b58bce8e2f01e96730c17662f49957df52a9a2",
+     "render_config_hash": "sha256:1617043f511cfdde5787165beff0ca1416f247333a5c6e7528ff07412654d370"
+    },
+    {
+     "clip_id": "c_52834d",
+     "model": "cv",
+     "seed": 0,
+     "mp4": "clips/c_52834d.mp4",
+     "gif": "clips/c_52834d.gif",
+     "duration_s": 8.0,
+     "fps": 12,
+     "init_hash": "sha256:fba9b1718216cb7d032bee9b50b58bce8e2f01e96730c17662f49957df52a9a2",
+     "render_config_hash": "sha256:1617043f511cfdde5787165beff0ca1416f247333a5c6e7528ff07412654d370"
+    },
+    {
+     "clip_id": "c_2d858f",
+     "model": "goal_straight",
+     "seed": 0,
+     "mp4": "clips/c_2d858f.mp4",
+     "gif": "clips/c_2d858f.gif",
+     "duration_s": 8.0,
+     "fps": 12,
+     "init_hash": "sha256:fba9b1718216cb7d032bee9b50b58bce8e2f01e96730c17662f49957df52a9a2",
+     "render_config_hash": "sha256:1617043f511cfdde5787165beff0ca1416f247333a5c6e7528ff07412654d370"
+    },
+    {
+     "clip_id": "c_7e21bb",
+     "model": "sfm",
+     "seed": 0,
+     "mp4": "clips/c_7e21bb.mp4",
+     "gif": "clips/c_7e21bb.gif",
+     "duration_s": 8.0,
+     "fps": 12,
+     "init_hash": "sha256:fba9b1718216cb7d032bee9b50b58bce8e2f01e96730c17662f49957df52a9a2",
+     "render_config_hash": "sha256:1617043f511cfdde5787165beff0ca1416f247333a5c6e7528ff07412654d370"
+    },
+    {
+     "clip_id": "c_16e729",
+     "model": "orca",
+     "seed": 0,
+     "mp4": "clips/c_16e729.mp4",
+     "gif": "clips/c_16e729.gif",
+     "duration_s": 8.0,
+     "fps": 12,
+     "init_hash": "sha256:fba9b1718216cb7d032bee9b50b58bce8e2f01e96730c17662f49957df52a9a2",
+     "render_config_hash": "sha256:1617043f511cfdde5787165beff0ca1416f247333a5c6e7528ff07412654d370"
+    }
+   ]
+  },
+  {
+   "scenario_id": "hotel-0467",
+   "dataset": "hotel",
+   "recording": "seq_hotel",
+   "start_frame": 467,
+   "start_time_s": 186.8,
+   "num_pedestrians": 4,
+   "horizon_s": 8.0,
+   "sim_dt": 0.4,
+   "goal_rule": "last observed position in the continuous recording (oracle)",
+   "bounds_m": [
+    -7.255934953689575,
+    -11.363844871520996,
+    11.063865065574646,
+    2.37600514292717
+   ],
+   "init_hash": "sha256:864c207f4ee4df3533e558b160ec4d1fe9b8dd6cbfbce309ac11eabf05d3488f",
+   "counterfactual": null,
+   "clips": [
+    {
+     "clip_id": "c_f7ca69",
+     "model": "ground_truth",
+     "seed": 0,
+     "mp4": "clips/c_f7ca69.mp4",
+     "gif": "clips/c_f7ca69.gif",
+     "duration_s": 8.0,
+     "fps": 12,
+     "init_hash": "sha256:864c207f4ee4df3533e558b160ec4d1fe9b8dd6cbfbce309ac11eabf05d3488f",
+     "render_config_hash": "sha256:1617043f511cfdde5787165beff0ca1416f247333a5c6e7528ff07412654d370"
+    },
+    {
+     "clip_id": "c_1621ee",
+     "model": "stars_steps",
+     "seed": 0,
+     "mp4": "clips/c_1621ee.mp4",
+     "gif": "clips/c_1621ee.gif",
+     "duration_s": 8.0,
+     "fps": 12,
+     "init_hash": "sha256:864c207f4ee4df3533e558b160ec4d1fe9b8dd6cbfbce309ac11eabf05d3488f",
+     "render_config_hash": "sha256:1617043f511cfdde5787165beff0ca1416f247333a5c6e7528ff07412654d370"
+    },
+    {
+     "clip_id": "c_c8152a",
+     "model": "stars_pooled",
+     "seed": 0,
+     "mp4": "clips/c_c8152a.mp4",
+     "gif": "clips/c_c8152a.gif",
+     "duration_s": 8.0,
+     "fps": 12,
+     "init_hash": "sha256:864c207f4ee4df3533e558b160ec4d1fe9b8dd6cbfbce309ac11eabf05d3488f",
+     "render_config_hash": "sha256:1617043f511cfdde5787165beff0ca1416f247333a5c6e7528ff07412654d370"
+    },
+    {
+     "clip_id": "c_c837f4",
+     "model": "stars_steps_goal",
+     "seed": 0,
+     "mp4": "clips/c_c837f4.mp4",
+     "gif": "clips/c_c837f4.gif",
+     "duration_s": 8.0,
+     "fps": 12,
+     "init_hash": "sha256:864c207f4ee4df3533e558b160ec4d1fe9b8dd6cbfbce309ac11eabf05d3488f",
+     "render_config_hash": "sha256:1617043f511cfdde5787165beff0ca1416f247333a5c6e7528ff07412654d370"
+    },
+    {
+     "clip_id": "c_5e6303",
+     "model": "stars_pooled_goal",
+     "seed": 0,
+     "mp4": "clips/c_5e6303.mp4",
+     "gif": "clips/c_5e6303.gif",
+     "duration_s": 8.0,
+     "fps": 12,
+     "init_hash": "sha256:864c207f4ee4df3533e558b160ec4d1fe9b8dd6cbfbce309ac11eabf05d3488f",
+     "render_config_hash": "sha256:1617043f511cfdde5787165beff0ca1416f247333a5c6e7528ff07412654d370"
+    },
+    {
+     "clip_id": "c_71b426",
+     "model": "cv",
+     "seed": 0,
+     "mp4": "clips/c_71b426.mp4",
+     "gif": "clips/c_71b426.gif",
+     "duration_s": 8.0,
+     "fps": 12,
+     "init_hash": "sha256:864c207f4ee4df3533e558b160ec4d1fe9b8dd6cbfbce309ac11eabf05d3488f",
+     "render_config_hash": "sha256:1617043f511cfdde5787165beff0ca1416f247333a5c6e7528ff07412654d370"
+    },
+    {
+     "clip_id": "c_b26bcc",
+     "model": "goal_straight",
+     "seed": 0,
+     "mp4": "clips/c_b26bcc.mp4",
+     "gif": "clips/c_b26bcc.gif",
+     "duration_s": 8.0,
+     "fps": 12,
+     "init_hash": "sha256:864c207f4ee4df3533e558b160ec4d1fe9b8dd6cbfbce309ac11eabf05d3488f",
+     "render_config_hash": "sha256:1617043f511cfdde5787165beff0ca1416f247333a5c6e7528ff07412654d370"
+    },
+    {
+     "clip_id": "c_54133d",
+     "model": "sfm",
+     "seed": 0,
+     "mp4": "clips/c_54133d.mp4",
+     "gif": "clips/c_54133d.gif",
+     "duration_s": 8.0,
+     "fps": 12,
+     "init_hash": "sha256:864c207f4ee4df3533e558b160ec4d1fe9b8dd6cbfbce309ac11eabf05d3488f",
+     "render_config_hash": "sha256:1617043f511cfdde5787165beff0ca1416f247333a5c6e7528ff07412654d370"
+    },
+    {
+     "clip_id": "c_473a80",
+     "model": "orca",
+     "seed": 0,
+     "mp4": "clips/c_473a80.mp4",
+     "gif": "clips/c_473a80.gif",
+     "duration_s": 8.0,
+     "fps": 12,
+     "init_hash": "sha256:864c207f4ee4df3533e558b160ec4d1fe9b8dd6cbfbce309ac11eabf05d3488f",
+     "render_config_hash": "sha256:1617043f511cfdde5787165beff0ca1416f247333a5c6e7528ff07412654d370"
+    }
+   ]
+  },
+  {
+   "scenario_id": "hotel-0477",
+   "dataset": "hotel",
+   "recording": "seq_hotel",
+   "start_frame": 477,
+   "start_time_s": 190.8,
+   "num_pedestrians": 4,
+   "horizon_s": 8.0,
+   "sim_dt": 0.4,
+   "goal_rule": "last observed position in the continuous recording (oracle)",
+   "bounds_m": [
+    -8.49891209602356,
+    -11.363844871520996,
+    12.360262632369995,
+    4.28053617477417
+   ],
+   "init_hash": "sha256:69a1992a1b8b08c8fac8b213dd1791e0eb04933ecb1ff3b9ef440fb32b6d5802",
+   "counterfactual": null,
+   "clips": [
+    {
+     "clip_id": "c_272f3d",
+     "model": "ground_truth",
+     "seed": 0,
+     "mp4": "clips/c_272f3d.mp4",
+     "gif": "clips/c_272f3d.gif",
+     "duration_s": 8.0,
+     "fps": 12,
+     "init_hash": "sha256:69a1992a1b8b08c8fac8b213dd1791e0eb04933ecb1ff3b9ef440fb32b6d5802",
+     "render_config_hash": "sha256:1617043f511cfdde5787165beff0ca1416f247333a5c6e7528ff07412654d370"
+    },
+    {
+     "clip_id": "c_b5991b",
+     "model": "stars_steps",
+     "seed": 0,
+     "mp4": "clips/c_b5991b.mp4",
+     "gif": "clips/c_b5991b.gif",
+     "duration_s": 8.0,
+     "fps": 12,
+     "init_hash": "sha256:69a1992a1b8b08c8fac8b213dd1791e0eb04933ecb1ff3b9ef440fb32b6d5802",
+     "render_config_hash": "sha256:1617043f511cfdde5787165beff0ca1416f247333a5c6e7528ff07412654d370"
+    },
+    {
+     "clip_id": "c_4ee70c",
+     "model": "stars_pooled",
+     "seed": 0,
+     "mp4": "clips/c_4ee70c.mp4",
+     "gif": "clips/c_4ee70c.gif",
+     "duration_s": 8.0,
+     "fps": 12,
+     "init_hash": "sha256:69a1992a1b8b08c8fac8b213dd1791e0eb04933ecb1ff3b9ef440fb32b6d5802",
+     "render_config_hash": "sha256:1617043f511cfdde5787165beff0ca1416f247333a5c6e7528ff07412654d370"
+    },
+    {
+     "clip_id": "c_e01cbb",
+     "model": "stars_steps_goal",
+     "seed": 0,
+     "mp4": "clips/c_e01cbb.mp4",
+     "gif": "clips/c_e01cbb.gif",
+     "duration_s": 8.0,
+     "fps": 12,
+     "init_hash": "sha256:69a1992a1b8b08c8fac8b213dd1791e0eb04933ecb1ff3b9ef440fb32b6d5802",
+     "render_config_hash": "sha256:1617043f511cfdde5787165beff0ca1416f247333a5c6e7528ff07412654d370"
+    },
+    {
+     "clip_id": "c_0030a4",
+     "model": "stars_pooled_goal",
+     "seed": 0,
+     "mp4": "clips/c_0030a4.mp4",
+     "gif": "clips/c_0030a4.gif",
+     "duration_s": 8.0,
+     "fps": 12,
+     "init_hash": "sha256:69a1992a1b8b08c8fac8b213dd1791e0eb04933ecb1ff3b9ef440fb32b6d5802",
+     "render_config_hash": "sha256:1617043f511cfdde5787165beff0ca1416f247333a5c6e7528ff07412654d370"
+    },
+    {
+     "clip_id": "c_8a0bb5",
+     "model": "cv",
+     "seed": 0,
+     "mp4": "clips/c_8a0bb5.mp4",
+     "gif": "clips/c_8a0bb5.gif",
+     "duration_s": 8.0,
+     "fps": 12,
+     "init_hash": "sha256:69a1992a1b8b08c8fac8b213dd1791e0eb04933ecb1ff3b9ef440fb32b6d5802",
+     "render_config_hash": "sha256:1617043f511cfdde5787165beff0ca1416f247333a5c6e7528ff07412654d370"
+    },
+    {
+     "clip_id": "c_9bdaa2",
+     "model": "goal_straight",
+     "seed": 0,
+     "mp4": "clips/c_9bdaa2.mp4",
+     "gif": "clips/c_9bdaa2.gif",
+     "duration_s": 8.0,
+     "fps": 12,
+     "init_hash": "sha256:69a1992a1b8b08c8fac8b213dd1791e0eb04933ecb1ff3b9ef440fb32b6d5802",
+     "render_config_hash": "sha256:1617043f511cfdde5787165beff0ca1416f247333a5c6e7528ff07412654d370"
+    },
+    {
+     "clip_id": "c_c6c379",
+     "model": "sfm",
+     "seed": 0,
+     "mp4": "clips/c_c6c379.mp4",
+     "gif": "clips/c_c6c379.gif",
+     "duration_s": 8.0,
+     "fps": 12,
+     "init_hash": "sha256:69a1992a1b8b08c8fac8b213dd1791e0eb04933ecb1ff3b9ef440fb32b6d5802",
+     "render_config_hash": "sha256:1617043f511cfdde5787165beff0ca1416f247333a5c6e7528ff07412654d370"
+    },
+    {
+     "clip_id": "c_9616d3",
+     "model": "orca",
+     "seed": 0,
+     "mp4": "clips/c_9616d3.mp4",
+     "gif": "clips/c_9616d3.gif",
+     "duration_s": 8.0,
+     "fps": 12,
+     "init_hash": "sha256:69a1992a1b8b08c8fac8b213dd1791e0eb04933ecb1ff3b9ef440fb32b6d5802",
+     "render_config_hash": "sha256:1617043f511cfdde5787165beff0ca1416f247333a5c6e7528ff07412654d370"
+    }
+   ]
+  },
+  {
+   "scenario_id": "univ-s001-0028",
+   "dataset": "univ",
+   "recording": "students001",
+   "start_frame": 28,
+   "start_time_s": 11.2,
+   "num_pedestrians": 36,
+   "horizon_s": 8.0,
+   "sim_dt": 0.4,
+   "goal_rule": "last observed position in the continuous recording (oracle)",
+   "bounds_m": [
+    -2.4058308204015084,
+    -0.8269870281219474,
+    18.446040352185566,
+    14.81191635131836
+   ],
+   "init_hash": "sha256:2d3bd51fcc4c86052106660c5706120bcce445f64296c78fe216e79fee66a08d",
+   "counterfactual": null,
+   "clips": [
+    {
+     "clip_id": "c_66a828",
+     "model": "ground_truth",
+     "seed": 0,
+     "mp4": "clips/c_66a828.mp4",
+     "gif": "clips/c_66a828.gif",
+     "duration_s": 8.0,
+     "fps": 12,
+     "init_hash": "sha256:2d3bd51fcc4c86052106660c5706120bcce445f64296c78fe216e79fee66a08d",
+     "render_config_hash": "sha256:1617043f511cfdde5787165beff0ca1416f247333a5c6e7528ff07412654d370"
+    },
+    {
+     "clip_id": "c_17f9d4",
+     "model": "stars_steps",
+     "seed": 0,
+     "mp4": "clips/c_17f9d4.mp4",
+     "gif": "clips/c_17f9d4.gif",
+     "duration_s": 8.0,
+     "fps": 12,
+     "init_hash": "sha256:2d3bd51fcc4c86052106660c5706120bcce445f64296c78fe216e79fee66a08d",
+     "render_config_hash": "sha256:1617043f511cfdde5787165beff0ca1416f247333a5c6e7528ff07412654d370"
+    },
+    {
+     "clip_id": "c_9a7cb1",
+     "model": "stars_pooled",
+     "seed": 0,
+     "mp4": "clips/c_9a7cb1.mp4",
+     "gif": "clips/c_9a7cb1.gif",
+     "duration_s": 8.0,
+     "fps": 12,
+     "init_hash": "sha256:2d3bd51fcc4c86052106660c5706120bcce445f64296c78fe216e79fee66a08d",
+     "render_config_hash": "sha256:1617043f511cfdde5787165beff0ca1416f247333a5c6e7528ff07412654d370"
+    },
+    {
+     "clip_id": "c_1df99b",
+     "model": "stars_steps_goal",
+     "seed": 0,
+     "mp4": "clips/c_1df99b.mp4",
+     "gif": "clips/c_1df99b.gif",
+     "duration_s": 8.0,
+     "fps": 12,
+     "init_hash": "sha256:2d3bd51fcc4c86052106660c5706120bcce445f64296c78fe216e79fee66a08d",
+     "render_config_hash": "sha256:1617043f511cfdde5787165beff0ca1416f247333a5c6e7528ff07412654d370"
+    },
+    {
+     "clip_id": "c_b1170c",
+     "model": "stars_pooled_goal",
+     "seed": 0,
+     "mp4": "clips/c_b1170c.mp4",
+     "gif": "clips/c_b1170c.gif",
+     "duration_s": 8.0,
+     "fps": 12,
+     "init_hash": "sha256:2d3bd51fcc4c86052106660c5706120bcce445f64296c78fe216e79fee66a08d",
+     "render_config_hash": "sha256:1617043f511cfdde5787165beff0ca1416f247333a5c6e7528ff07412654d370"
+    },
+    {
+     "clip_id": "c_b94511",
+     "model": "cv",
+     "seed": 0,
+     "mp4": "clips/c_b94511.mp4",
+     "gif": "clips/c_b94511.gif",
+     "duration_s": 8.0,
+     "fps": 12,
+     "init_hash": "sha256:2d3bd51fcc4c86052106660c5706120bcce445f64296c78fe216e79fee66a08d",
+     "render_config_hash": "sha256:1617043f511cfdde5787165beff0ca1416f247333a5c6e7528ff07412654d370"
+    },
+    {
+     "clip_id": "c_afbcff",
+     "model": "goal_straight",
+     "seed": 0,
+     "mp4": "clips/c_afbcff.mp4",
+     "gif": "clips/c_afbcff.gif",
+     "duration_s": 8.0,
+     "fps": 12,
+     "init_hash": "sha256:2d3bd51fcc4c86052106660c5706120bcce445f64296c78fe216e79fee66a08d",
+     "render_config_hash": "sha256:1617043f511cfdde5787165beff0ca1416f247333a5c6e7528ff07412654d370"
+    },
+    {
+     "clip_id": "c_ef66d4",
+     "model": "sfm",
+     "seed": 0,
+     "mp4": "clips/c_ef66d4.mp4",
+     "gif": "clips/c_ef66d4.gif",
+     "duration_s": 8.0,
+     "fps": 12,
+     "init_hash": "sha256:2d3bd51fcc4c86052106660c5706120bcce445f64296c78fe216e79fee66a08d",
+     "render_config_hash": "sha256:1617043f511cfdde5787165beff0ca1416f247333a5c6e7528ff07412654d370"
+    },
+    {
+     "clip_id": "c_a805ad",
+     "model": "orca",
+     "seed": 0,
+     "mp4": "clips/c_a805ad.mp4",
+     "gif": "clips/c_a805ad.gif",
+     "duration_s": 8.0,
+     "fps": 12,
+     "init_hash": "sha256:2d3bd51fcc4c86052106660c5706120bcce445f64296c78fe216e79fee66a08d",
+     "render_config_hash": "sha256:1617043f511cfdde5787165beff0ca1416f247333a5c6e7528ff07412654d370"
+    }
+   ]
+  },
+  {
+   "scenario_id": "univ-s001-0188",
+   "dataset": "univ",
+   "recording": "students001",
+   "start_frame": 188,
+   "start_time_s": 75.2,
+   "num_pedestrians": 31,
+   "horizon_s": 8.0,
+   "sim_dt": 0.4,
+   "goal_rule": "last observed position in the continuous recording (oracle)",
+   "bounds_m": [
+    -0.7948709328969308,
+    -0.496443271636962,
+    18.301973422368366,
+    13.826189994812012
+   ],
+   "init_hash": "sha256:326f57a0c4171e17091f1d19d16c34104df45fb929c32cb9ec5f1bba31204026",
+   "counterfactual": null,
+   "clips": [
+    {
+     "clip_id": "c_86fc27",
+     "model": "ground_truth",
+     "seed": 0,
+     "mp4": "clips/c_86fc27.mp4",
+     "gif": "clips/c_86fc27.gif",
+     "duration_s": 8.0,
+     "fps": 12,
+     "init_hash": "sha256:326f57a0c4171e17091f1d19d16c34104df45fb929c32cb9ec5f1bba31204026",
+     "render_config_hash": "sha256:1617043f511cfdde5787165beff0ca1416f247333a5c6e7528ff07412654d370"
+    },
+    {
+     "clip_id": "c_e1a1e1",
+     "model": "stars_steps",
+     "seed": 0,
+     "mp4": "clips/c_e1a1e1.mp4",
+     "gif": "clips/c_e1a1e1.gif",
+     "duration_s": 8.0,
+     "fps": 12,
+     "init_hash": "sha256:326f57a0c4171e17091f1d19d16c34104df45fb929c32cb9ec5f1bba31204026",
+     "render_config_hash": "sha256:1617043f511cfdde5787165beff0ca1416f247333a5c6e7528ff07412654d370"
+    },
+    {
+     "clip_id": "c_fc7499",
+     "model": "stars_pooled",
+     "seed": 0,
+     "mp4": "clips/c_fc7499.mp4",
+     "gif": "clips/c_fc7499.gif",
+     "duration_s": 8.0,
+     "fps": 12,
+     "init_hash": "sha256:326f57a0c4171e17091f1d19d16c34104df45fb929c32cb9ec5f1bba31204026",
+     "render_config_hash": "sha256:1617043f511cfdde5787165beff0ca1416f247333a5c6e7528ff07412654d370"
+    },
+    {
+     "clip_id": "c_cb8fb2",
+     "model": "stars_steps_goal",
+     "seed": 0,
+     "mp4": "clips/c_cb8fb2.mp4",
+     "gif": "clips/c_cb8fb2.gif",
+     "duration_s": 8.0,
+     "fps": 12,
+     "init_hash": "sha256:326f57a0c4171e17091f1d19d16c34104df45fb929c32cb9ec5f1bba31204026",
+     "render_config_hash": "sha256:1617043f511cfdde5787165beff0ca1416f247333a5c6e7528ff07412654d370"
+    },
+    {
+     "clip_id": "c_dc504e",
+     "model": "stars_pooled_goal",
+     "seed": 0,
+     "mp4": "clips/c_dc504e.mp4",
+     "gif": "clips/c_dc504e.gif",
+     "duration_s": 8.0,
+     "fps": 12,
+     "init_hash": "sha256:326f57a0c4171e17091f1d19d16c34104df45fb929c32cb9ec5f1bba31204026",
+     "render_config_hash": "sha256:1617043f511cfdde5787165beff0ca1416f247333a5c6e7528ff07412654d370"
+    },
+    {
+     "clip_id": "c_80051d",
+     "model": "cv",
+     "seed": 0,
+     "mp4": "clips/c_80051d.mp4",
+     "gif": "clips/c_80051d.gif",
+     "duration_s": 8.0,
+     "fps": 12,
+     "init_hash": "sha256:326f57a0c4171e17091f1d19d16c34104df45fb929c32cb9ec5f1bba31204026",
+     "render_config_hash": "sha256:1617043f511cfdde5787165beff0ca1416f247333a5c6e7528ff07412654d370"
+    },
+    {
+     "clip_id": "c_f1cd39",
+     "model": "goal_straight",
+     "seed": 0,
+     "mp4": "clips/c_f1cd39.mp4",
+     "gif": "clips/c_f1cd39.gif",
+     "duration_s": 8.0,
+     "fps": 12,
+     "init_hash": "sha256:326f57a0c4171e17091f1d19d16c34104df45fb929c32cb9ec5f1bba31204026",
+     "render_config_hash": "sha256:1617043f511cfdde5787165beff0ca1416f247333a5c6e7528ff07412654d370"
+    },
+    {
+     "clip_id": "c_fbfecc",
+     "model": "sfm",
+     "seed": 0,
+     "mp4": "clips/c_fbfecc.mp4",
+     "gif": "clips/c_fbfecc.gif",
+     "duration_s": 8.0,
+     "fps": 12,
+     "init_hash": "sha256:326f57a0c4171e17091f1d19d16c34104df45fb929c32cb9ec5f1bba31204026",
+     "render_config_hash": "sha256:1617043f511cfdde5787165beff0ca1416f247333a5c6e7528ff07412654d370"
+    },
+    {
+     "clip_id": "c_38bb4c",
+     "model": "orca",
+     "seed": 0,
+     "mp4": "clips/c_38bb4c.mp4",
+     "gif": "clips/c_38bb4c.gif",
+     "duration_s": 8.0,
+     "fps": 12,
+     "init_hash": "sha256:326f57a0c4171e17091f1d19d16c34104df45fb929c32cb9ec5f1bba31204026",
+     "render_config_hash": "sha256:1617043f511cfdde5787165beff0ca1416f247333a5c6e7528ff07412654d370"
+    }
+   ]
+  },
+  {
+   "scenario_id": "zara1-0078",
+   "dataset": "zara1",
+   "recording": "crowds_zara01",
+   "start_frame": 78,
+   "start_time_s": 31.2,
+   "num_pedestrians": 4,
+   "horizon_s": 8.0,
+   "sim_dt": 0.4,
+   "goal_rule": "last observed position in the continuous recording (oracle)",
+   "bounds_m": [
+    -0.6404397487640381,
+    -2.0361595451831818,
+    17.53757095336914,
+    11.597348481416702
+   ],
+   "init_hash": "sha256:dde5d55507a4ac13eacf6abac32bf99adc225228c41f13f00c2a21f8afbffcc4",
+   "counterfactual": null,
+   "clips": [
+    {
+     "clip_id": "c_0a2a18",
+     "model": "ground_truth",
+     "seed": 0,
+     "mp4": "clips/c_0a2a18.mp4",
+     "gif": "clips/c_0a2a18.gif",
+     "duration_s": 8.0,
+     "fps": 12,
+     "init_hash": "sha256:dde5d55507a4ac13eacf6abac32bf99adc225228c41f13f00c2a21f8afbffcc4",
+     "render_config_hash": "sha256:1617043f511cfdde5787165beff0ca1416f247333a5c6e7528ff07412654d370"
+    },
+    {
+     "clip_id": "c_a126ba",
+     "model": "stars_steps",
+     "seed": 0,
+     "mp4": "clips/c_a126ba.mp4",
+     "gif": "clips/c_a126ba.gif",
+     "duration_s": 8.0,
+     "fps": 12,
+     "init_hash": "sha256:dde5d55507a4ac13eacf6abac32bf99adc225228c41f13f00c2a21f8afbffcc4",
+     "render_config_hash": "sha256:1617043f511cfdde5787165beff0ca1416f247333a5c6e7528ff07412654d370"
+    },
+    {
+     "clip_id": "c_78b73f",
+     "model": "stars_pooled",
+     "seed": 0,
+     "mp4": "clips/c_78b73f.mp4",
+     "gif": "clips/c_78b73f.gif",
+     "duration_s": 8.0,
+     "fps": 12,
+     "init_hash": "sha256:dde5d55507a4ac13eacf6abac32bf99adc225228c41f13f00c2a21f8afbffcc4",
+     "render_config_hash": "sha256:1617043f511cfdde5787165beff0ca1416f247333a5c6e7528ff07412654d370"
+    },
+    {
+     "clip_id": "c_73442c",
+     "model": "stars_steps_goal",
+     "seed": 0,
+     "mp4": "clips/c_73442c.mp4",
+     "gif": "clips/c_73442c.gif",
+     "duration_s": 8.0,
+     "fps": 12,
+     "init_hash": "sha256:dde5d55507a4ac13eacf6abac32bf99adc225228c41f13f00c2a21f8afbffcc4",
+     "render_config_hash": "sha256:1617043f511cfdde5787165beff0ca1416f247333a5c6e7528ff07412654d370"
+    },
+    {
+     "clip_id": "c_e93283",
+     "model": "stars_pooled_goal",
+     "seed": 0,
+     "mp4": "clips/c_e93283.mp4",
+     "gif": "clips/c_e93283.gif",
+     "duration_s": 8.0,
+     "fps": 12,
+     "init_hash": "sha256:dde5d55507a4ac13eacf6abac32bf99adc225228c41f13f00c2a21f8afbffcc4",
+     "render_config_hash": "sha256:1617043f511cfdde5787165beff0ca1416f247333a5c6e7528ff07412654d370"
+    },
+    {
+     "clip_id": "c_553e83",
+     "model": "cv",
+     "seed": 0,
+     "mp4": "clips/c_553e83.mp4",
+     "gif": "clips/c_553e83.gif",
+     "duration_s": 8.0,
+     "fps": 12,
+     "init_hash": "sha256:dde5d55507a4ac13eacf6abac32bf99adc225228c41f13f00c2a21f8afbffcc4",
+     "render_config_hash": "sha256:1617043f511cfdde5787165beff0ca1416f247333a5c6e7528ff07412654d370"
+    },
+    {
+     "clip_id": "c_8c740e",
+     "model": "goal_straight",
+     "seed": 0,
+     "mp4": "clips/c_8c740e.mp4",
+     "gif": "clips/c_8c740e.gif",
+     "duration_s": 8.0,
+     "fps": 12,
+     "init_hash": "sha256:dde5d55507a4ac13eacf6abac32bf99adc225228c41f13f00c2a21f8afbffcc4",
+     "render_config_hash": "sha256:1617043f511cfdde5787165beff0ca1416f247333a5c6e7528ff07412654d370"
+    },
+    {
+     "clip_id": "c_18def0",
+     "model": "sfm",
+     "seed": 0,
+     "mp4": "clips/c_18def0.mp4",
+     "gif": "clips/c_18def0.gif",
+     "duration_s": 8.0,
+     "fps": 12,
+     "init_hash": "sha256:dde5d55507a4ac13eacf6abac32bf99adc225228c41f13f00c2a21f8afbffcc4",
+     "render_config_hash": "sha256:1617043f511cfdde5787165beff0ca1416f247333a5c6e7528ff07412654d370"
+    },
+    {
+     "clip_id": "c_9e8ae0",
+     "model": "orca",
+     "seed": 0,
+     "mp4": "clips/c_9e8ae0.mp4",
+     "gif": "clips/c_9e8ae0.gif",
+     "duration_s": 8.0,
+     "fps": 12,
+     "init_hash": "sha256:dde5d55507a4ac13eacf6abac32bf99adc225228c41f13f00c2a21f8afbffcc4",
+     "render_config_hash": "sha256:1617043f511cfdde5787165beff0ca1416f247333a5c6e7528ff07412654d370"
+    }
+   ]
+  },
+  {
+   "scenario_id": "zara1-0748",
+   "dataset": "zara1",
+   "recording": "crowds_zara01",
+   "start_frame": 748,
+   "start_time_s": 299.2,
+   "num_pedestrians": 5,
+   "horizon_s": 8.0,
+   "sim_dt": 0.4,
+   "goal_rule": "last observed position in the continuous recording (oracle)",
+   "bounds_m": [
+    -0.1960221529006958,
+    -2.9628177136182785,
+    18.224496841430664,
+    10.852571532130241
+   ],
+   "init_hash": "sha256:19fc3bc8d4de8a9ad1dc7d2f611c54021c02fb8c3b2d643ce5c104000e2662e9",
+   "counterfactual": null,
+   "clips": [
+    {
+     "clip_id": "c_92ed52",
+     "model": "ground_truth",
+     "seed": 0,
+     "mp4": "clips/c_92ed52.mp4",
+     "gif": "clips/c_92ed52.gif",
+     "duration_s": 8.0,
+     "fps": 12,
+     "init_hash": "sha256:19fc3bc8d4de8a9ad1dc7d2f611c54021c02fb8c3b2d643ce5c104000e2662e9",
+     "render_config_hash": "sha256:1617043f511cfdde5787165beff0ca1416f247333a5c6e7528ff07412654d370"
+    },
+    {
+     "clip_id": "c_baaeec",
+     "model": "stars_steps",
+     "seed": 0,
+     "mp4": "clips/c_baaeec.mp4",
+     "gif": "clips/c_baaeec.gif",
+     "duration_s": 8.0,
+     "fps": 12,
+     "init_hash": "sha256:19fc3bc8d4de8a9ad1dc7d2f611c54021c02fb8c3b2d643ce5c104000e2662e9",
+     "render_config_hash": "sha256:1617043f511cfdde5787165beff0ca1416f247333a5c6e7528ff07412654d370"
+    },
+    {
+     "clip_id": "c_70385b",
+     "model": "stars_pooled",
+     "seed": 0,
+     "mp4": "clips/c_70385b.mp4",
+     "gif": "clips/c_70385b.gif",
+     "duration_s": 8.0,
+     "fps": 12,
+     "init_hash": "sha256:19fc3bc8d4de8a9ad1dc7d2f611c54021c02fb8c3b2d643ce5c104000e2662e9",
+     "render_config_hash": "sha256:1617043f511cfdde5787165beff0ca1416f247333a5c6e7528ff07412654d370"
+    },
+    {
+     "clip_id": "c_5d7ec8",
+     "model": "stars_steps_goal",
+     "seed": 0,
+     "mp4": "clips/c_5d7ec8.mp4",
+     "gif": "clips/c_5d7ec8.gif",
+     "duration_s": 8.0,
+     "fps": 12,
+     "init_hash": "sha256:19fc3bc8d4de8a9ad1dc7d2f611c54021c02fb8c3b2d643ce5c104000e2662e9",
+     "render_config_hash": "sha256:1617043f511cfdde5787165beff0ca1416f247333a5c6e7528ff07412654d370"
+    },
+    {
+     "clip_id": "c_e395db",
+     "model": "stars_pooled_goal",
+     "seed": 0,
+     "mp4": "clips/c_e395db.mp4",
+     "gif": "clips/c_e395db.gif",
+     "duration_s": 8.0,
+     "fps": 12,
+     "init_hash": "sha256:19fc3bc8d4de8a9ad1dc7d2f611c54021c02fb8c3b2d643ce5c104000e2662e9",
+     "render_config_hash": "sha256:1617043f511cfdde5787165beff0ca1416f247333a5c6e7528ff07412654d370"
+    },
+    {
+     "clip_id": "c_da8c54",
+     "model": "cv",
+     "seed": 0,
+     "mp4": "clips/c_da8c54.mp4",
+     "gif": "clips/c_da8c54.gif",
+     "duration_s": 8.0,
+     "fps": 12,
+     "init_hash": "sha256:19fc3bc8d4de8a9ad1dc7d2f611c54021c02fb8c3b2d643ce5c104000e2662e9",
+     "render_config_hash": "sha256:1617043f511cfdde5787165beff0ca1416f247333a5c6e7528ff07412654d370"
+    },
+    {
+     "clip_id": "c_d7430a",
+     "model": "goal_straight",
+     "seed": 0,
+     "mp4": "clips/c_d7430a.mp4",
+     "gif": "clips/c_d7430a.gif",
+     "duration_s": 8.0,
+     "fps": 12,
+     "init_hash": "sha256:19fc3bc8d4de8a9ad1dc7d2f611c54021c02fb8c3b2d643ce5c104000e2662e9",
+     "render_config_hash": "sha256:1617043f511cfdde5787165beff0ca1416f247333a5c6e7528ff07412654d370"
+    },
+    {
+     "clip_id": "c_f60ea1",
+     "model": "sfm",
+     "seed": 0,
+     "mp4": "clips/c_f60ea1.mp4",
+     "gif": "clips/c_f60ea1.gif",
+     "duration_s": 8.0,
+     "fps": 12,
+     "init_hash": "sha256:19fc3bc8d4de8a9ad1dc7d2f611c54021c02fb8c3b2d643ce5c104000e2662e9",
+     "render_config_hash": "sha256:1617043f511cfdde5787165beff0ca1416f247333a5c6e7528ff07412654d370"
+    },
+    {
+     "clip_id": "c_e26f39",
+     "model": "orca",
+     "seed": 0,
+     "mp4": "clips/c_e26f39.mp4",
+     "gif": "clips/c_e26f39.gif",
+     "duration_s": 8.0,
+     "fps": 12,
+     "init_hash": "sha256:19fc3bc8d4de8a9ad1dc7d2f611c54021c02fb8c3b2d643ce5c104000e2662e9",
+     "render_config_hash": "sha256:1617043f511cfdde5787165beff0ca1416f247333a5c6e7528ff07412654d370"
+    }
+   ]
+  },
+  {
+   "scenario_id": "zara2-0878",
+   "dataset": "zara2",
+   "recording": "crowds_zara02",
+   "start_frame": 878,
+   "start_time_s": 351.2,
+   "num_pedestrians": 6,
+   "horizon_s": 8.0,
+   "sim_dt": 0.4,
+   "goal_rule": "last observed position in the continuous recording (oracle)",
+   "bounds_m": [
+    6.741093635559082,
+    0.7100949287414551,
+    19.068031311035156,
+    9.95529818534851
+   ],
+   "init_hash": "sha256:6f7c885a1ec4be58593a9c53526c6239e248bd93a396f37ce4faa293e4bfcc8e",
+   "counterfactual": null,
+   "clips": [
+    {
+     "clip_id": "c_5e3765",
+     "model": "ground_truth",
+     "seed": 0,
+     "mp4": "clips/c_5e3765.mp4",
+     "gif": "clips/c_5e3765.gif",
+     "duration_s": 8.0,
+     "fps": 12,
+     "init_hash": "sha256:6f7c885a1ec4be58593a9c53526c6239e248bd93a396f37ce4faa293e4bfcc8e",
+     "render_config_hash": "sha256:1617043f511cfdde5787165beff0ca1416f247333a5c6e7528ff07412654d370"
+    },
+    {
+     "clip_id": "c_4389ca",
+     "model": "stars_steps",
+     "seed": 0,
+     "mp4": "clips/c_4389ca.mp4",
+     "gif": "clips/c_4389ca.gif",
+     "duration_s": 8.0,
+     "fps": 12,
+     "init_hash": "sha256:6f7c885a1ec4be58593a9c53526c6239e248bd93a396f37ce4faa293e4bfcc8e",
+     "render_config_hash": "sha256:1617043f511cfdde5787165beff0ca1416f247333a5c6e7528ff07412654d370"
+    },
+    {
+     "clip_id": "c_58d5ea",
+     "model": "stars_pooled",
+     "seed": 0,
+     "mp4": "clips/c_58d5ea.mp4",
+     "gif": "clips/c_58d5ea.gif",
+     "duration_s": 8.0,
+     "fps": 12,
+     "init_hash": "sha256:6f7c885a1ec4be58593a9c53526c6239e248bd93a396f37ce4faa293e4bfcc8e",
+     "render_config_hash": "sha256:1617043f511cfdde5787165beff0ca1416f247333a5c6e7528ff07412654d370"
+    },
+    {
+     "clip_id": "c_d9a998",
+     "model": "stars_steps_goal",
+     "seed": 0,
+     "mp4": "clips/c_d9a998.mp4",
+     "gif": "clips/c_d9a998.gif",
+     "duration_s": 8.0,
+     "fps": 12,
+     "init_hash": "sha256:6f7c885a1ec4be58593a9c53526c6239e248bd93a396f37ce4faa293e4bfcc8e",
+     "render_config_hash": "sha256:1617043f511cfdde5787165beff0ca1416f247333a5c6e7528ff07412654d370"
+    },
+    {
+     "clip_id": "c_35f6ac",
+     "model": "stars_pooled_goal",
+     "seed": 0,
+     "mp4": "clips/c_35f6ac.mp4",
+     "gif": "clips/c_35f6ac.gif",
+     "duration_s": 8.0,
+     "fps": 12,
+     "init_hash": "sha256:6f7c885a1ec4be58593a9c53526c6239e248bd93a396f37ce4faa293e4bfcc8e",
+     "render_config_hash": "sha256:1617043f511cfdde5787165beff0ca1416f247333a5c6e7528ff07412654d370"
+    },
+    {
+     "clip_id": "c_bed18f",
+     "model": "cv",
+     "seed": 0,
+     "mp4": "clips/c_bed18f.mp4",
+     "gif": "clips/c_bed18f.gif",
+     "duration_s": 8.0,
+     "fps": 12,
+     "init_hash": "sha256:6f7c885a1ec4be58593a9c53526c6239e248bd93a396f37ce4faa293e4bfcc8e",
+     "render_config_hash": "sha256:1617043f511cfdde5787165beff0ca1416f247333a5c6e7528ff07412654d370"
+    },
+    {
+     "clip_id": "c_bceac3",
+     "model": "goal_straight",
+     "seed": 0,
+     "mp4": "clips/c_bceac3.mp4",
+     "gif": "clips/c_bceac3.gif",
+     "duration_s": 8.0,
+     "fps": 12,
+     "init_hash": "sha256:6f7c885a1ec4be58593a9c53526c6239e248bd93a396f37ce4faa293e4bfcc8e",
+     "render_config_hash": "sha256:1617043f511cfdde5787165beff0ca1416f247333a5c6e7528ff07412654d370"
+    },
+    {
+     "clip_id": "c_9c6b7f",
+     "model": "sfm",
+     "seed": 0,
+     "mp4": "clips/c_9c6b7f.mp4",
+     "gif": "clips/c_9c6b7f.gif",
+     "duration_s": 8.0,
+     "fps": 12,
+     "init_hash": "sha256:6f7c885a1ec4be58593a9c53526c6239e248bd93a396f37ce4faa293e4bfcc8e",
+     "render_config_hash": "sha256:1617043f511cfdde5787165beff0ca1416f247333a5c6e7528ff07412654d370"
+    },
+    {
+     "clip_id": "c_01ad80",
+     "model": "orca",
+     "seed": 0,
+     "mp4": "clips/c_01ad80.mp4",
+     "gif": "clips/c_01ad80.gif",
+     "duration_s": 8.0,
+     "fps": 12,
+     "init_hash": "sha256:6f7c885a1ec4be58593a9c53526c6239e248bd93a396f37ce4faa293e4bfcc8e",
+     "render_config_hash": "sha256:1617043f511cfdde5787165beff0ca1416f247333a5c6e7528ff07412654d370"
+    }
+   ]
+  },
+  {
+   "scenario_id": "zara2-0928",
+   "dataset": "zara2",
+   "recording": "crowds_zara02",
+   "start_frame": 928,
+   "start_time_s": 371.2,
+   "num_pedestrians": 8,
+   "horizon_s": 8.0,
+   "sim_dt": 0.4,
+   "goal_rule": "last observed position in the continuous recording (oracle)",
+   "bounds_m": [
+    -1.4050493240356445,
+    -1.9610216617584229,
+    18.084253311157227,
+    12.65595531463623
+   ],
+   "init_hash": "sha256:4eeb6ec8fee135baf7eba5394e7522d1accc7106b1faf407ceec1a27e840e672",
+   "counterfactual": null,
+   "clips": [
+    {
+     "clip_id": "c_e5b0ca",
+     "model": "ground_truth",
+     "seed": 0,
+     "mp4": "clips/c_e5b0ca.mp4",
+     "gif": "clips/c_e5b0ca.gif",
+     "duration_s": 8.0,
+     "fps": 12,
+     "init_hash": "sha256:4eeb6ec8fee135baf7eba5394e7522d1accc7106b1faf407ceec1a27e840e672",
+     "render_config_hash": "sha256:1617043f511cfdde5787165beff0ca1416f247333a5c6e7528ff07412654d370"
+    },
+    {
+     "clip_id": "c_f1420c",
+     "model": "stars_steps",
+     "seed": 0,
+     "mp4": "clips/c_f1420c.mp4",
+     "gif": "clips/c_f1420c.gif",
+     "duration_s": 8.0,
+     "fps": 12,
+     "init_hash": "sha256:4eeb6ec8fee135baf7eba5394e7522d1accc7106b1faf407ceec1a27e840e672",
+     "render_config_hash": "sha256:1617043f511cfdde5787165beff0ca1416f247333a5c6e7528ff07412654d370"
+    },
+    {
+     "clip_id": "c_bb7569",
+     "model": "stars_pooled",
+     "seed": 0,
+     "mp4": "clips/c_bb7569.mp4",
+     "gif": "clips/c_bb7569.gif",
+     "duration_s": 8.0,
+     "fps": 12,
+     "init_hash": "sha256:4eeb6ec8fee135baf7eba5394e7522d1accc7106b1faf407ceec1a27e840e672",
+     "render_config_hash": "sha256:1617043f511cfdde5787165beff0ca1416f247333a5c6e7528ff07412654d370"
+    },
+    {
+     "clip_id": "c_196e5f",
+     "model": "stars_steps_goal",
+     "seed": 0,
+     "mp4": "clips/c_196e5f.mp4",
+     "gif": "clips/c_196e5f.gif",
+     "duration_s": 8.0,
+     "fps": 12,
+     "init_hash": "sha256:4eeb6ec8fee135baf7eba5394e7522d1accc7106b1faf407ceec1a27e840e672",
+     "render_config_hash": "sha256:1617043f511cfdde5787165beff0ca1416f247333a5c6e7528ff07412654d370"
+    },
+    {
+     "clip_id": "c_b0062d",
+     "model": "stars_pooled_goal",
+     "seed": 0,
+     "mp4": "clips/c_b0062d.mp4",
+     "gif": "clips/c_b0062d.gif",
+     "duration_s": 8.0,
+     "fps": 12,
+     "init_hash": "sha256:4eeb6ec8fee135baf7eba5394e7522d1accc7106b1faf407ceec1a27e840e672",
+     "render_config_hash": "sha256:1617043f511cfdde5787165beff0ca1416f247333a5c6e7528ff07412654d370"
+    },
+    {
+     "clip_id": "c_784fff",
+     "model": "cv",
+     "seed": 0,
+     "mp4": "clips/c_784fff.mp4",
+     "gif": "clips/c_784fff.gif",
+     "duration_s": 8.0,
+     "fps": 12,
+     "init_hash": "sha256:4eeb6ec8fee135baf7eba5394e7522d1accc7106b1faf407ceec1a27e840e672",
+     "render_config_hash": "sha256:1617043f511cfdde5787165beff0ca1416f247333a5c6e7528ff07412654d370"
+    },
+    {
+     "clip_id": "c_ecb9d3",
+     "model": "goal_straight",
+     "seed": 0,
+     "mp4": "clips/c_ecb9d3.mp4",
+     "gif": "clips/c_ecb9d3.gif",
+     "duration_s": 8.0,
+     "fps": 12,
+     "init_hash": "sha256:4eeb6ec8fee135baf7eba5394e7522d1accc7106b1faf407ceec1a27e840e672",
+     "render_config_hash": "sha256:1617043f511cfdde5787165beff0ca1416f247333a5c6e7528ff07412654d370"
+    },
+    {
+     "clip_id": "c_26bc42",
+     "model": "sfm",
+     "seed": 0,
+     "mp4": "clips/c_26bc42.mp4",
+     "gif": "clips/c_26bc42.gif",
+     "duration_s": 8.0,
+     "fps": 12,
+     "init_hash": "sha256:4eeb6ec8fee135baf7eba5394e7522d1accc7106b1faf407ceec1a27e840e672",
+     "render_config_hash": "sha256:1617043f511cfdde5787165beff0ca1416f247333a5c6e7528ff07412654d370"
+    },
+    {
+     "clip_id": "c_6f3c38",
+     "model": "orca",
+     "seed": 0,
+     "mp4": "clips/c_6f3c38.mp4",
+     "gif": "clips/c_6f3c38.gif",
+     "duration_s": 8.0,
+     "fps": 12,
+     "init_hash": "sha256:4eeb6ec8fee135baf7eba5394e7522d1accc7106b1faf407ceec1a27e840e672",
+     "render_config_hash": "sha256:1617043f511cfdde5787165beff0ca1416f247333a5c6e7528ff07412654d370"
+    }
+   ]
+  }
+ ]
+}
