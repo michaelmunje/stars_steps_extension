@@ -1,0 +1,35 @@
+{
+ "selection": "lowest mean Principles J over the 3 policies, <= 2 per kind",
+ "scenes": {
+  "dense_flow-2000008": {
+   "Start (default weights)": "collision",
+   "A: agent-judged CMA-ES": "reached",
+   "B: cost function + agent checks": "reached"
+  },
+  "narrow_passage-2000007": {
+   "Start (default weights)": "reached",
+   "A: agent-judged CMA-ES": "timed out",
+   "B: cost function + agent checks": "timed out"
+  },
+  "dense_flow-2000005": {
+   "Start (default weights)": "reached",
+   "A: agent-judged CMA-ES": "timed out",
+   "B: cost function + agent checks": "reached"
+  },
+  "stationary_group-2000004": {
+   "Start (default weights)": "reached",
+   "A: agent-judged CMA-ES": "timed out",
+   "B: cost function + agent checks": "reached"
+  },
+  "stationary_group-2000002": {
+   "Start (default weights)": "reached",
+   "A: agent-judged CMA-ES": "timed out",
+   "B: cost function + agent checks": "reached"
+  },
+  "narrow_passage-2000001": {
+   "Start (default weights)": "reached",
+   "A: agent-judged CMA-ES": "reached",
+   "B: cost function + agent checks": "timed out"
+  }
+ }
+}

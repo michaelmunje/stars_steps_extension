@@ -52,3 +52,22 @@ test episodes) and `test_judge_labels.json`, `convergence.png`, `results.json` (
 `judged_episode_labels.jsonl` (experiment 1: every episode's parameters, label, reason, metrics and
 both cost functions), `evals.jsonl` (experiment 2's checks), `scripts/` (drivers, usage guard,
 configs). Usage was checked after every generation with `claude -p /usage` (`usage_guard.py`).
+
+## Against random weights and the earlier CMA-ES seed study ([`comparison.png`](comparison.png))
+
+Same 210 held-out scenes and setting; the seed study's 10 random weight sets and the 10 CMA-ES policies
+trained from them (in the STARS crowd, 11 weights, ~460k episodes each) are scored here as they are.
+Mean ± standard deviation over seeds (`cost_comparison.json`):
+
+| | Success | Time within 0.45 m | Principles J |
+| --- | --- | --- | --- |
+| Random weights (10 seeds) | 77.8 ± 32.7% | 6.1 ± 3.4% | 1.45 ± 0.36 |
+| CMA-ES, seed study (10 seeds) | 98.7 ± 1.0% | 0.4 ± 0.2% | **1.79 ± 0.01** |
+| A: agent-judged CMA-ES | 91.0% | **0.4%** | 1.68 |
+| B: cost function + agent | **99.0%** | 2.9% | 1.77 |
+
+Neither 1-hour run beats the seed-study CMA-ES on the cost, which had about 60x (B) to 640x (A) more
+episodes and 11 tuned weights instead of 6. B matches its success and A matches its clearance.
+
+Hard scenes: [`hard_scenes/`](hard_scenes/) has the 6 held-out scenes with the lowest Principles J
+across start, A and B (one combined GIF, one per scene, outcomes in `scenes.json`).
