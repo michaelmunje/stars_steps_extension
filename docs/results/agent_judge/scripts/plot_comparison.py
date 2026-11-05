@@ -1,4 +1,4 @@
-"""Bar plot: random weights and the 10 CMA-ES seeds of the seed study (mean ± std, dots = seeds) against
+"""Bar plot: random weights and the 10 CMA-ES seeds of the seed study (mean over seeds) against
 the agent-judged run, all on the same 210 held-out scenes of the CPU setting (cost_comparison.json)."""
 import json
 
@@ -21,22 +21,14 @@ fig, axes = plt.subplots(1, 3, figsize=(12, 4.3))
 for ax, (key, title, scale, ylim) in zip(axes, metrics):
     for i, ((name, group), c) in enumerate(zip(rows, colours)):
         v = np.array([g[key] for g in group]) * scale
-        lo_cap, hi_cap = (0, 100) if scale == 100 else (-np.inf, np.inf)
-        sd = v.std(ddof=1) if len(v) > 1 else 0.0
-        err = [[v.mean() - max(lo_cap, v.mean() - sd)], [min(hi_cap, v.mean() + sd) - v.mean()]]
-        ax.bar(i, v.mean(), color=c, alpha=0.85, width=0.65, yerr=err if len(v) > 1 else None, capsize=6)
-        if len(v) > 1:
-            ax.scatter(np.full(len(v), i) + np.linspace(-0.18, 0.18, len(v)), v, color="black", s=10, zorder=3)
-        digits = 2 if scale == 1 else 1
-        label = f"{v.mean():.{digits}f}" + (f" ± {sd:.{digits}f}" if len(v) > 1 else "")
-        top = min(hi_cap, v.mean() + sd)
-        ax.annotate(label, (i, max(top, v.max())), ha="center", va="bottom", fontsize=9, xytext=(0, 3),
-                    textcoords="offset points")
+        ax.bar(i, v.mean(), color=c, alpha=0.85, width=0.65)
+        ax.annotate(f"{v.mean():.{2 if scale == 1 else 1}f}", (i, v.mean()), ha="center", va="bottom", fontsize=9,
+                    xytext=(0, 3), textcoords="offset points")
     ax.set_xticks(range(len(rows)), [n for n, _ in rows], fontsize=9)
     ax.set_title(title, fontsize=10.5), ax.grid(axis="y", alpha=0.3)
     ax.set_ylim(ylim[0], ylim[1] if ylim[1] else ax.get_ylim()[1] * 1.15)
-fig.suptitle("Held-out test, 210 scenes (CPU setting)\nRandom weights and CMA-ES: mean ± std over 10 seeds (dots: seeds; "
-             "CMA-ES seed s started from random seed s; trained on the hand-crafted reward). Agent-judged: one run", fontsize=11)
+fig.suptitle("Held-out test, 210 scenes (CPU setting)\nRandom weights and CMA-ES: average over 10 seeds "
+             "(CMA-ES trained on the hand-crafted reward). Agent-judged CMA-ES: one run", fontsize=11)
 fig.tight_layout()
 fig.savefig(D + "comparison.png", dpi=130)
 print("saved", D + "comparison.png")

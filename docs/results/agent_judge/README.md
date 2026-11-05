@@ -20,7 +20,7 @@ excellent +1, acceptable +0.5, stalled 0, unsafe -1. A candidate's fitness is it
 
 Random weights and CMA-ES are the earlier seed study's 10 seeds (CMA-ES seed s started from random
 seed s and was trained on the hand-crafted reward in the STARS crowd: 11 weights, ~460k episodes per
-seed), scored here as they are. Mean ± standard deviation over seeds (`cost_comparison.json`):
+seed), scored here as they are. Mean ± standard deviation over seeds (`cost_comparison.json`; the plot shows the means):
 
 | | Success | Time within 0.45 m of a person | Hand-crafted reward |
 | --- | --- | --- | --- |
