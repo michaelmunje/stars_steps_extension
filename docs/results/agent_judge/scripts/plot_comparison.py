@@ -1,5 +1,5 @@
 """Bar plot: random weights and the 10 CMA-ES seeds of the seed study (mean ± std, dots = seeds) against
-experiments A and B, all on the same 210 held-out scenes of the CPU setting (cost_comparison.json)."""
+the agent-judged run, all on the same 210 held-out scenes of the CPU setting (cost_comparison.json)."""
 import json
 
 import matplotlib
@@ -12,12 +12,12 @@ D = "docs/results/agent_judge/"
 r = json.load(open(D + "cost_comparison.json"))
 rows = [("Random weights\n(10 seeds)", [r[f"random s{i}"] for i in range(10)]),
         ("CMA-ES\n(10 seeds)", [r[f"seed study s{i}"] for i in range(10)]),
-        ("A: agent-\njudged", [r["A: agent-judged"]]), ("B: cost fn\n+ agent", [r["B: cost fn + agent"]])]
+        ("Agent-judged\nCMA-ES", [r["A: agent-judged"]])]
 metrics = [("S", "Success rate (%) - higher is better", 100, (0, 108)),
            ("intimate_violation_rate", "Time within 0.45 m of a person (%) - lower is better", 100, (0, None)),
-           ("pj", "Cost: Principles J (higher is better)", 1, (0.8, 2.0))]
-colours = ["#9aa7b8", "#1f4e9c", "#d9822b", "#1a7f37"]
-fig, axes = plt.subplots(1, 3, figsize=(13, 4.3))
+           ("pj", "Hand-crafted reward (higher is better)", 1, (0.8, 2.0))]
+colours = ["#9aa7b8", "#1f4e9c", "#d9822b"]
+fig, axes = plt.subplots(1, 3, figsize=(12, 4.3))
 for ax, (key, title, scale, ylim) in zip(axes, metrics):
     for i, ((name, group), c) in enumerate(zip(rows, colours)):
         v = np.array([g[key] for g in group]) * scale
@@ -36,7 +36,7 @@ for ax, (key, title, scale, ylim) in zip(axes, metrics):
     ax.set_title(title, fontsize=10.5), ax.grid(axis="y", alpha=0.3)
     ax.set_ylim(ylim[0], ylim[1] if ylim[1] else ax.get_ylim()[1] * 1.15)
 fig.suptitle("Held-out test, 210 scenes (CPU setting)\nRandom weights and CMA-ES: mean ± std over 10 seeds (dots: seeds; "
-             "CMA-ES seed s started from random seed s). A and B: one run each", fontsize=11)
+             "CMA-ES seed s started from random seed s; trained on the hand-crafted reward). Agent-judged: one run", fontsize=11)
 fig.tight_layout()
 fig.savefig(D + "comparison.png", dpi=130)
 print("saved", D + "comparison.png")

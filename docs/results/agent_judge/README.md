@@ -1,73 +1,53 @@
-# Agent judge vs cost function: two 1-hour CMA-ES runs (2026-11-04)
+# Agent-judged CMA-ES (2026-11-04)
 
-Both runs tune the same 6 controller weights (goal weight, pedestrian weight, personal-space radius,
-preferred speed, prediction horizon, smoothness) from the same default weights, in the same
-CPU-sized setting (`judged_cmaes_poc.yaml`: reactive-replay pedestrians, constant-velocity predictor;
-the STARS-crowd version needs a GPU node, none was free). The judge is a headless Claude Code agent
-(`claude -p`, Sonnet) that labels top-down episode pictures with the rubric in
-`src/simplenavsim/optimization/judge.py`: excellent +1, acceptable +0.5, stalled 0, unsafe -1.
+CMA-ES whose fitness is an agent judge's labels of rendered episodes, instead of a hand-crafted
+reward (AutoEval's loop, Zhou et al. 2025). The judge is a headless Claude Code agent (`claude -p`,
+Sonnet) that labels top-down episode pictures with the rubric in `src/simplenavsim/optimization/judge.py`:
+excellent +1, acceptable +0.5, stalled 0, unsafe -1. A candidate's fitness is its mean label.
 
-| | 1. Agent-judged CMA-ES | 2. Cost-function CMA-ES + agent checks |
-| --- | --- | --- |
-| Fitness | the judge's labels | the cost in `objective.json`, revised by the agent |
-| Generation | 6 candidates x 2 scenes, all judged | 12 candidates x 4 scenes |
-| Run | 60 generations, 41 min (generation cap) | 161 generations, 60 min |
-| Judge use | every generation (720 episodes) | 4 checks of the 3 best candidates (48 episodes) |
+- **Setting:** CPU-sized (`judged_cmaes_poc.yaml`): reactive-replay pedestrians, constant-velocity
+  predictor (the STARS-crowd version needs a GPU node; none was free). 6 controller weights tuned
+  from the default weights.
+- **Run:** 6 candidates x 2 scenes per generation, every episode judged; 60 generations in 41 minutes
+  (720 judged episodes).
+- **Hand-crafted reward** = SPL - 2 collision + personal-space compliance - 0.3 time / 30 s (the
+  Principles objective of `cmaes_crowd_principles.yaml`). Logged for every episode, never optimised.
+- **Usage:** judging cost an estimated $6.6 at API prices; checked after every generation with
+  `claude -p /usage` (`scripts/usage_guard.py`, stop at 60% of the 5-hour session or 20% of the week);
+  the session stayed at or below 26%, the week at 9%.
 
-**Experiment 2's cost function** (`objective_history.jsonl`, reasons in `objective.json`):
-start J = SPL - 2 C + SC - 0.3 time/30 s;
-gen 40: judge flagged brief close passes and sharp turns, so + (-3 x intimate-zone rate) + (-0.05 x jerk);
-gen 78: close passes gone, judge flagged slow detours around groups, so time weight -0.3 -> -0.6;
-gens 112 and 140: the remaining 'acceptable' episodes were already the lowest-cost ones, so no change.
+## Results on 210 held-out scenes ([`comparison.png`](comparison.png))
 
-## Held-out test (7 kinds x 30 scenes, never seen in training)
+Random weights and CMA-ES are the earlier seed study's 10 seeds (CMA-ES seed s started from random
+seed s and was trained on the hand-crafted reward in the STARS crowd: 11 weights, ~460k episodes per
+seed), scored here as they are. Mean ± standard deviation over seeds (`cost_comparison.json`):
 
-| Policy | Success | Collisions | Timeouts | SPL | Time to goal | Personal space (>= 0.5 m) | Time < 0.45 m | Min gap | Jerk | Principles J | Judge (7 test pictures) |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Start (defaults) | 99.5% | 0.5% | 0% | 0.97 | 10.5 s | 0.89 | 8.9% | 0.34 m | 0.93 | 1.745 | +0.57 |
-| 1. Agent-judged (final mean) | 91.0% | **0%** | 9.0% | 0.83 | 12.0 s | **0.99** | **0.4%** | **0.69 m** | 1.08 | 1.684 | **+0.93** |
-| 1. Agent-judged (best candidate) | 90.5% | 0% | 9.5% | 0.82 | 12.1 s | 0.99 | 0.5% | 0.70 m | 1.06 | 1.674 | +0.93 |
-| 2. Cost function + agent (final mean) | **99.0%** | **0%** | 1.0% | **0.93** | 10.8 s | 0.95 | 2.9% | 0.51 m | **0.57** | **1.770** | +0.79 |
+| | Success | Time within 0.45 m of a person | Hand-crafted reward |
+| --- | --- | --- | --- |
+| Random weights (10 seeds) | 77.8 ± 32.7% | 6.1 ± 3.4% | 1.45 ± 0.36 |
+| CMA-ES on the hand-crafted reward (10 seeds) | 98.7 ± 1.0% | 0.4 ± 0.2% | **1.79 ± 0.01** |
+| Agent-judged CMA-ES | 91.0% | **0.4%** | 1.68 |
 
-- **Agent-judged CMA-ES learns the most comfortable robot** (99% of the time >= 0.5 m from everyone,
-  0.69 m minimum gap, judge +0.93) but becomes over-cautious: 9% timeouts, mostly backing off and
-  detouring around oncoming groups (22 s in `policies.gif`). With 2 scenes per generation it rarely
-  saw the cost of stalling, and the rubric rates a stall (0) above a close pass that reaches the goal
-  only by 0.5.
-- **Cost function + agent checks gives the best all-round policy:** 99% success, no collisions,
-  comfortable clearance (min gap 0.51 m), the smoothest motion, and the best Principles J. The
-  agent's revisions removed close passes (time < 0.45 m: 8.9% at the start -> 2.9%) without losing
-  task performance, at about 1/15 of the judge calls.
-- **The judge agrees with the cost function:** over experiment 1's 720 episodes, Spearman correlation
-  of the label with Principles J +0.77 and with the original J +0.71; with jerk +0.02 (the judge
-  ignores smoothness that the metrics penalise).
-- Judge usage for both runs and the test labels: 69 `claude -p` calls, estimated $7.91 at API
-  prices; the subscription went from 17% to 26% of the 5-hour session and stayed at 9% of the week.
+- The agent-judged policy is as comfortable as reward-tuned CMA-ES (0.4% of the time within 0.45 m,
+  0.69 m minimum gap, no collisions) but stalls more often (9% timeouts), with 640x fewer episodes
+  and 6 tuned weights instead of 11.
+- The judge agrees with the hand-crafted reward: over the 720 judged episodes the Spearman
+  correlation of the label with the reward is +0.77 (with jerk +0.02: the judge ignores smoothness).
+
+## Failure cases ([`failure_cases/`](failure_cases/))
+
+The held-out scenes where the agent-judged policy fails (19 of 210, all timeouts), worst reward first,
+at most two per kind: two-way corridors #20 and #5, narrow passage #7, standing groups #2 and #4.
+`failure_cases.gif` shows the start weights, random weights (seed 0), CMA-ES (seed 0) and the
+agent-judged policy on them; there is also one GIF per scene. Everyone else gets through, and the
+agent-judged policy loops or freezes in front of passable people. The corridor and narrow-passage
+cases are hard in general: only 6-7 of the 10 CMA-ES seeds and 7-8 of the 10 random weight sets reach
+the goal there (`scenes.json`). Likely causes: two scenes per generation rarely show the cost of
+stalling, and the rubric rates a stall (0) above a close pass that reaches the goal (+0.5).
 
 ## Files
 
-`policies.gif` / `.png` (held-out scenes, rows = policies), `sheet.png` (the judge's view of the
-test episodes) and `test_judge_labels.json`, `convergence.png`, `results.json` (every metric),
-`judged_cmaes_policy.yaml` and `costfn_agent_policy.yaml` (final weights),
-`judged_episode_labels.jsonl` (experiment 1: every episode's parameters, label, reason, metrics and
-both cost functions), `evals.jsonl` (experiment 2's checks), `scripts/` (drivers, usage guard,
-configs). Usage was checked after every generation with `claude -p /usage` (`usage_guard.py`).
-
-## Against random weights and the earlier CMA-ES seed study ([`comparison.png`](comparison.png))
-
-Same 210 held-out scenes and setting; the seed study's 10 random weight sets and the 10 CMA-ES policies
-trained from them (in the STARS crowd, 11 weights, ~460k episodes each) are scored here as they are.
-Mean ± standard deviation over seeds (`cost_comparison.json`):
-
-| | Success | Time within 0.45 m | Principles J |
-| --- | --- | --- | --- |
-| Random weights (10 seeds) | 77.8 ± 32.7% | 6.1 ± 3.4% | 1.45 ± 0.36 |
-| CMA-ES, seed study (10 seeds) | 98.7 ± 1.0% | 0.4 ± 0.2% | **1.79 ± 0.01** |
-| A: agent-judged CMA-ES | 91.0% | **0.4%** | 1.68 |
-| B: cost function + agent | **99.0%** | 2.9% | 1.77 |
-
-Neither 1-hour run beats the seed-study CMA-ES on the cost, which had about 60x (B) to 640x (A) more
-episodes and 11 tuned weights instead of 6. B matches its success and A matches its clearance.
-
-Hard scenes: [`hard_scenes/`](hard_scenes/) has the 6 held-out scenes with the lowest Principles J
-across start, A and B (one combined GIF, one per scene, outcomes in `scenes.json`).
+`comparison.png`, `cost_comparison.json` (every metric per policy), `failure_cases/`,
+`convergence.png` (judge fitness and hand-crafted reward per generation), `results.json` (start vs
+agent-judged, all metrics), `judged_cmaes_policy.yaml` (final weights), `judged_episode_labels.jsonl`
+(every judged episode: parameters, label, reason, all metrics, hand-crafted reward), `scripts/`.
