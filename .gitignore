@@ -40,3 +40,9 @@ research-plan.md
 /checkpoints/
 /runs/
 /*-[0-9]*.out
+
+# ETH/UCY benchmark: heavy outputs stay out of git (metrics, plots, report and manifest are kept)
+/results/*/trajectories/
+/results/*/media/
+/results/*/preference_export/clips/
+/results/*/metrics/per_agent.csv.gz
