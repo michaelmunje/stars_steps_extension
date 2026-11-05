@@ -1,0 +1,59 @@
+{
+ "selection": "held-out scenes where the agent-judged policy reaches the goal without coming within 0.45 m of anyone, largest margin of its hand-crafted reward over the 10-seed CMA-ES mean first, <= 2 per kind",
+ "scenes": {
+  "narrow_passage-2000018": {
+   "Random weights (seed 0)": "reached",
+   "CMA-ES (seed 0)": "reached",
+   "Agent-judged CMA-ES": "reached",
+   "hand-crafted reward: agent-judged": 1.692,
+   "hand-crafted reward: CMA-ES (10-seed mean)": 1.209,
+   "random weights (10 seeds) reaching the goal": 8,
+   "CMA-ES (10 seeds) reaching the goal": 6
+  },
+  "narrow_passage-2000002": {
+   "Random weights (seed 0)": "reached",
+   "CMA-ES (seed 0)": "reached",
+   "Agent-judged CMA-ES": "reached",
+   "hand-crafted reward: agent-judged": 1.639,
+   "hand-crafted reward: CMA-ES (10-seed mean)": 1.215,
+   "random weights (10 seeds) reaching the goal": 8,
+   "CMA-ES (10 seeds) reaching the goal": 6
+  },
+  "dense_flow-2000000": {
+   "Random weights (seed 0)": "reached",
+   "CMA-ES (seed 0)": "reached",
+   "Agent-judged CMA-ES": "reached",
+   "hand-crafted reward: agent-judged": 1.841,
+   "hand-crafted reward: CMA-ES (10-seed mean)": 1.622,
+   "random weights (10 seeds) reaching the goal": 7,
+   "CMA-ES (10 seeds) reaching the goal": 10
+  },
+  "crossing-2000026": {
+   "Random weights (seed 0)": "reached",
+   "CMA-ES (seed 0)": "reached",
+   "Agent-judged CMA-ES": "reached",
+   "hand-crafted reward: agent-judged": 1.893,
+   "hand-crafted reward: CMA-ES (10-seed mean)": 1.705,
+   "random weights (10 seeds) reaching the goal": 8,
+   "CMA-ES (10 seeds) reaching the goal": 10
+  },
+  "crossing-2000022": {
+   "Random weights (seed 0)": "reached",
+   "CMA-ES (seed 0)": "reached",
+   "Agent-judged CMA-ES": "reached",
+   "hand-crafted reward: agent-judged": 1.876,
+   "hand-crafted reward: CMA-ES (10-seed mean)": 1.749,
+   "random weights (10 seeds) reaching the goal": 8,
+   "CMA-ES (10 seeds) reaching the goal": 10
+  },
+  "dense_flow-2000011": {
+   "Random weights (seed 0)": "reached",
+   "CMA-ES (seed 0)": "reached",
+   "Agent-judged CMA-ES": "reached",
+   "hand-crafted reward: agent-judged": 1.894,
+   "hand-crafted reward: CMA-ES (10-seed mean)": 1.849,
+   "random weights (10 seeds) reaching the goal": 9,
+   "CMA-ES (10 seeds) reaching the goal": 10
+  }
+ }
+}

@@ -46,9 +46,18 @@ cases are hard in general: only 6-7 of the 10 CMA-ES seeds and 7-8 of the 10 ran
 the goal there (`scenes.json`). Likely causes: two scenes per generation rarely show the cost of
 stalling, and the rubric rates a stall (0) above a close pass that reaches the goal (+0.5).
 
+## Success cases ([`success_cases/`](success_cases/))
+
+Held-out scenes where the agent-judged policy reaches the goal without coming within 0.45 m of anyone,
+ranked by how far its hand-crafted reward beats the average of the 10 CMA-ES seeds there (at most two
+per kind): narrow passages #18 and #2, two-way corridors #0 and #11, crossings #26 and #22. Same rows as
+the failure cases. In the narrow passages the agent-judged policy waits for the oncoming pedestrian to
+clear and then goes through (about 16 s), where 4 of the 10 CMA-ES seeds fail; in the crossings it drives
+almost straight while CMA-ES (seed 0) swerves widely. Rewards and per-seed counts are in `scenes.json`.
+
 ## Files
 
-`comparison.png`, `cost_comparison.json` (every metric per policy), `failure_cases/`,
+`comparison.png`, `cost_comparison.json` (every metric per policy), `failure_cases/`, `success_cases/`,
 `convergence.png` (judge fitness and hand-crafted reward per generation), `results.json` (start vs
 agent-judged, all metrics), `judged_cmaes_policy.yaml` (final weights), `judged_episode_labels.jsonl`
 (every judged episode: parameters, label, reason, all metrics, hand-crafted reward), `scripts/`.
