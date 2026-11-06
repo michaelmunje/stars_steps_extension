@@ -1,0 +1,80 @@
+stage: run
+run: results/ethucy_2026-11-05_noethucy
+device: cuda
+scenes:
+  eth:
+  - seq_eth
+  hotel:
+  - seq_hotel
+  univ:
+  - students001
+  - students003
+  zara1:
+  - crowds_zara01
+  zara2:
+  - crowds_zara02
+methods:
+- stars_noethucy
+- stars_noethucy_goal
+- stars_noethucy_goal_adapter
+seeds: 5
+stride: 10
+max_windows: 0
+max_grid: 0
+scenarios: 10
+case_studies: 3
+media_seed: 2026
+append: true
+horizons_s:
+- 2.0
+- 4.0
+- 4.8
+- 8.0
+- 12.0
+obs_steps: 8
+dt: 0.4
+max_steps: 30
+calibration_recordings:
+- crowds_zara03
+- arxiepiskopi1
+- uni_examples
+collision_radius_m: 0.2
+nonlinear_threshold_m: 0.2
+goal_reached_m: 0.5
+bootstrap:
+  block_steps: 50
+  reps: 2000
+calibration_grids:
+  sfm:
+    ped_strength:
+    - 1.0
+    - 2.1
+    - 4.0
+    ped_range:
+    - 0.2
+    - 0.3
+    - 0.5
+    tau:
+    - 0.5
+    - 1.0
+  orca:
+    time_horizon:
+    - 1.0
+    - 2.0
+    - 5.0
+    neighbor_dist:
+    - 3.0
+    - 5.0
+    - 10.0
+    radius:
+    - 0.2
+    - 0.3
+  goal_weight:
+  - 0.1
+  - 0.2
+  - 0.3
+  - 0.5
+  - 0.7
+sim_radius_m: 0.2
+arrival_m: 0.3
+substeps: 4
