@@ -168,6 +168,8 @@ def _parser() -> argparse.ArgumentParser:
     forecast.add_argument("--goal", action="store_true",
                           help="Goal-conditioned decoder: each agent's oracle goal (its track's last observed "
                                "position in the recording) joins the decoder context")
+    forecast.add_argument("--goal-beyond-horizon", action="store_true",
+                          help="With --goal: drop goals that are reached within the forecast horizon (leak removal)")
     forecast.add_argument("--no-social-layer", action="store_true", help="Decoder without its social message-passing round")
     forecast.add_argument("--representation", choices=("mu", "hidden"), default=DECODER_RECIPE["representation"])
     forecast.add_argument("--kl-weight", type=float, default=FORECAST_RECIPE["kl_weight"])
@@ -180,6 +182,10 @@ def _parser() -> argparse.ArgumentParser:
                                "neighbours' predicted futures and re-decode)")
     forecast.add_argument("--collision-weight", type=float, default=0.0,
                           help="> 0 adds a pairwise collision hinge on the decoded futures (CVAE: on a prior sample)")
+    forecast.add_argument("--bom-weight", type=float, default=0.0,
+                          help="> 0 (CVAE) adds a best-of-many loss: the min over --bom-samples prior samples of "
+                               "each agent's ADE (prior samples cover the data instead of regressing to its mean)")
+    forecast.add_argument("--bom-samples", type=int, default=4)
     forecast.add_argument("--collision-radius", type=float, default=0.4,
                           help="Collision hinge distance in metres (pairs closer in the ground truth are allowed "
                                "down to their own closest approach)")
@@ -300,6 +306,10 @@ def load_stores(entries: list[dict], split: str, args, forecasting, *, windows: 
             store = cached_store(source, entry["name"], split, args.obs, args.pred, **{**options, "workers": 0})
         if args.max_scenes:
             store = store.select(torch.arange(min(args.max_scenes, len(store))))
+        if store.goal is not None and getattr(args, "goal_beyond_horizon", False):
+            # Leak removal: a goal reached within the forecast horizon equals a supervised future
+            # position; such agents get no goal (valid = 0), as at a benchmark goal beyond reach.
+            store.goal[:, 2] = torch.where(store.goal[:, 3] <= args.pred, 0.0, store.goal[:, 2])
         stores.append(store)
     if not stores:
         raise RuntimeError(f"No {split} windows in {[entry['name'] for entry in entries]}")
@@ -371,8 +381,10 @@ def forecast_loss(model, batch, args, kl_weight: float) -> dict[str, torch.Tenso
     future_local = to_local(batch.future, batch.origin, batch.heading)
     valid = batch.future_valid.to(future_local.dtype)
     collide = getattr(args, "collision_weight", 0.0) > 0
-    if collide and model.latent_dim:
-        out = model.training_forward(batch, future_local, batch.future_valid, prior_samples=1)
+    bom = getattr(args, "bom_weight", 0.0) > 0 and model.latent_dim
+    if (collide or bom) and model.latent_dim:
+        out = model.training_forward(batch, future_local, batch.future_valid,
+                                     prior_samples=max(1, args.bom_samples if bom else 1))
     else:
         out = model.training_forward(batch, future_local, batch.future_valid)
     if "denoise" in out:  # diffusion decoder: the forecast loss is the denoising (epsilon) MSE
@@ -383,6 +395,12 @@ def forecast_loss(model, batch, args, kl_weight: float) -> dict[str, torch.Tenso
         if out["kl"] is not None else losses["forecast"].new_zeros(())
     losses["rollout"] = losses["forecast"].new_zeros(())
     losses["collision"] = losses["forecast"].new_zeros(())
+    losses["bom"] = losses["forecast"].new_zeros(())
+    if bom:
+        error = torch.linalg.norm(out["prior_prediction"].float() - torch.nan_to_num(future_local)[None], dim=-1)
+        ade = (error * valid[None]).sum(-1) / valid.sum(-1).clamp(min=1)[None]        # [S, N]
+        has = batch.future_valid.any(-1)
+        losses["bom"] = (ade.min(0).values * has).sum() / has.sum().clamp(min=1)
     if collide:
         generated = out["prior_prediction"][0] if model.latent_dim else out["prediction"]
         losses["collision"] = collision_loss(generated, batch, args.collision_radius)
@@ -393,7 +411,8 @@ def forecast_loss(model, batch, args, kl_weight: float) -> dict[str, torch.Tenso
                             radius=args.radius, z=out["z"], keep_graph=True)[:, :model.prediction_steps]
         losses["rollout"] = _masked_distance(simulated, batch.future, valid)
     losses["loss"] = (losses["forecast"] + kl_weight * losses["kl"] + args.rollout_weight * losses["rollout"]
-                      + getattr(args, "collision_weight", 0.0) * losses["collision"])
+                      + getattr(args, "collision_weight", 0.0) * losses["collision"]
+                      + getattr(args, "bom_weight", 0.0) * losses["bom"])
     return losses
 
 

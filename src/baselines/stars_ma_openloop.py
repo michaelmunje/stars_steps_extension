@@ -157,6 +157,8 @@ def scene_metrics(report: Report, names: list[str], batch, predictions: dict[str
         chosen = (dataset == index)[:, None] & complete
         report.keep(names[index], "speed_gt", gt_speed[chosen])
     per("speed_gt", (gt_speed.mean(-1) * cf).sum(-1), agents)
+    gt_net = torch.linalg.norm(future[:, :, -1] - last, dim=-1) / (future.shape[2] * dt)
+    per("netspeed_gt", (gt_net * cf).sum(-1), agents)
     per("stationary_gt", ((gt_speed.mean(-1) < 0.1).float() * cf).sum(-1), agents)
     turn, turn_valid = _turning(gt_path)
     per("turn_gt", (turn * turn_valid * complete[..., None]).sum((1, 2)), (turn_valid * complete[..., None]).sum((1, 2)))
@@ -176,7 +178,12 @@ def scene_metrics(report: Report, names: list[str], batch, predictions: dict[str
         path = torch.cat([last[None, :, :, None].expand(K, -1, -1, -1, -1), pred], dim=3)
         speed = _speeds(path, dt)                                  # [K, B, N, P]
         per(f"{name}_speed", (speed.mean(-1).mean(0) * cf).sum(-1), agents)
+        net = torch.linalg.norm(pred[..., -1, :] - last[None], dim=-1) / (pred.shape[3] * dt)   # [K, B, N]
+        per(f"{name}_netspeed", (net.mean(0) * cf).sum(-1), agents)
         moving = complete & (gt_speed.mean(-1) > 0.3)
+        net_moving = complete & (gt_net > 0.3)
+        per(f"{name}_netspeed_ratio_moving", ((net[0] / gt_net.clamp(min=1e-3)) * net_moving).sum(-1),
+            net_moving.float().sum(-1))
         per(f"{name}_speed_ratio_moving", ((speed[0].mean(-1) / gt_speed.mean(-1).clamp(min=1e-3)) * moving).sum(-1),
             moving.float().sum(-1))
         for step in range(speed.shape[-1]):
@@ -257,6 +264,7 @@ def main() -> None:
         models[name] = model
         graph = payload["graph"]
         args.goals = args.goals or bool(model.decoder_recipe.get("goal"))
+        args.goal_beyond_horizon = bool(payload["run_config"].get("goal_beyond_horizon", False))
     if args.config:
         config = yaml.safe_load(args.config.read_text()) or {}
         entries = dataset_entries(config.get("val_datasets") or config["datasets"])
