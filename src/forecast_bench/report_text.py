@@ -81,7 +81,10 @@ last observed step, simulated jointly; a window starts every 10 s; an agent is s
 recorded track covers it; 2 seeds x 1 sample, micro-averaged over the 5 scenes). Schemes: `<method>@4` = receding
 horizon (predict 12, execute the first 4 steps = 1.6 s for everyone, append to history, repeat); `*_native` = STARS'
 own loop (re-forecast every 0.4 s, execute 1 step, temporally correlated CVAE intent). Collision = agent within 0.4 m
-of another scored agent (simulated) at the same step.
+of another scored agent (simulated) at the same step. The scored population changes with the horizon (only agents
+whose recorded track lasts that long), so ground-truth speed falls with horizon (long tracks are slow / lingering
+pedestrians) and numbers are comparable across methods within a column, not along a row. MoFlow's receding-horizon
+rollout (100 flow steps per call) ran in a separate per-fold job; if its row is missing it was still running.
 """
 
 CAVEATS = """## Caveats
