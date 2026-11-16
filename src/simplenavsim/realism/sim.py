@@ -28,7 +28,12 @@ CHECKPOINTS = {"stars_steps": REPO / "experiments/stars_ma/runs/cvae_kl01_finetu
                "stars_pooled": REPO / "experiments/stars_ma/runs/cvae_all_lr3e-4_seed42/checkpoints/best.pt",
                # Trained without ETH or UCY (configs/stars_ma/all_no_ethucy.yaml): zero-shot on every scene.
                "stars_noethucy": REPO / "experiments/stars_ma/runs/cvae_noethucy_nogoal/checkpoints/best.pt",
-               "stars_noethucy_goal": REPO / "experiments/stars_ma/runs/cvae_noethucy_goal/checkpoints/best.pt"}
+               "stars_noethucy_goal": REPO / "experiments/stars_ma/runs/cvae_noethucy_goal/checkpoints/best.pt",
+               # results/stars_improve_2026-11-15: all 7 datasets, seed 2 (best validation); used with oversample=4.
+               "stars_improved": REPO / "experiments/stars_ma/runs/si_final_base_s2/checkpoints/best.pt",
+               # Collision-aware variant: refinement round + decoder-only collision loss, KL 0.15.
+               "stars_improved_social": REPO / "experiments/stars_ma/runs/si_final_social_s42/checkpoints/best.pt"}
+OVERSAMPLE = {"stars_improved": 4}   # closed-loop rollouts per window; the least-colliding one is kept
 RADIUS = 0.2              # pedestrian body radius (m) used by SFM / ORCA
 ARRIVAL = 0.3             # goal-directed models stop within this distance of the goal (m)
 DEFAULT_SPEED = 1.0       # desired speed of an agent with a single observed position (context agents only)
@@ -147,6 +152,7 @@ class Stars:
     device: str = "cpu"
     intent_correlation: float = 0.8
     goal_weight: float = 0.0          # > 0: inference-time goal-steering adapter
+    oversample: int = 1               # > 1: M rollouts per window, keep the one with the fewest close pairs
 
     def __post_init__(self):
         from baselines.train_stars_ma import load_forecaster
@@ -161,8 +167,33 @@ class Stars:
         other.goal_weight = weight
         return other
 
-    @torch.no_grad()
+    def with_oversample(self, m: int) -> "Stars":
+        other = object.__new__(Stars)
+        other.__dict__.update(self.__dict__)
+        other.oversample = m
+        return other
+
     def __call__(self, x, steps, seed: int = 0, hook=None, **_):
+        """Closed-loop rollout [B, N, steps, 2]. With ``oversample`` M > 1, M rollouts (seeds seed*M .. seed*M+M-1)
+        are drawn per window and the one with the fewest close pairs (< 0.4 m at any step) is kept; pairs that look
+        like a walking group in the observation (within 1 m, velocities within 0.3 m/s) are not counted. Only the
+        model's own rollouts and the observation are used (no future information)."""
+        if self.oversample <= 1:
+            return self._rollout(x, steps, seed, hook)
+        runs = np.stack([self._rollout(x, steps, seed * self.oversample + j, hook) for j in range(self.oversample)])
+        agents, obs = np.asarray(x["agents"], bool), np.asarray(x["obs"], float)
+        vel = (obs[:, :, -1] - obs[:, :, -2]) / DT
+        group = (np.linalg.norm(obs[:, :, None, -1] - obs[:, None, :, -1], axis=-1) < 1.0) & \
+                (np.linalg.norm(vel[:, :, None] - vel[:, None], axis=-1) < 0.3)
+        n = agents.shape[1]
+        pair = agents[:, :, None] & agents[:, None, :] & ~group & np.triu(np.ones((n, n), bool), 1)
+        dist = np.linalg.norm(runs[:, :, :, None] - runs[:, :, None, :], axis=-1).min(-1)   # [M, B, N, N]
+        close = ((dist < 0.4) & pair).sum((-1, -2))                                        # [M, B]
+        best = close.argmin(0)
+        return runs[best, np.arange(runs.shape[1])]
+
+    @torch.no_grad()
+    def _rollout(self, x, steps, seed: int = 0, hook=None):
         """``hook(k, positions) -> positions`` may edit each executed step (tests: closed-loop check)."""
         from baselines.stars_ma_batch import graph_batch_from_padded
         from baselines.stars_ma_graph import to_scene

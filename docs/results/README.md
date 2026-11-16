@@ -20,6 +20,10 @@ How to run the simulator: [`../../simplenavsim/README.md`](../../simplenavsim/RE
 - `cvae_kl01_finetune` drives the simulated crowd and is the robot's predictor: its 20 s
   rollouts keep the real walking speed, while the slightly more accurate search winner was 25% too slow.
 
+## Closed-loop examples with the improved STARS
+
+GIFs on ETH/UCY: [`closed_loop_examples/`](closed_loop_examples/).
+
 ## Navigation (SimpleNavSim, 270 test scenes: 9 kinds x 30)
 
 GIFs and full tables: [`evaluation/`](evaluation/). The objective has a disruption term only in
