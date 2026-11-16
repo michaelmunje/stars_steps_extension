@@ -244,3 +244,28 @@ def test_scene_goals_are_track_ends_in_the_scene_frame():
     expected = theta_rotation(np.array([[[3.0, 4.0]]], dtype=np.float32), 0.5)[0, 0]
     np.testing.assert_allclose(goal[0], [*expected, 1.0, 30.0], atol=1e-5)
     assert goal[1].tolist() == [0.0, 0.0, 0.0, 0.0] and goal[2, 2:].tolist() == [1.0, 5.0]
+
+
+def test_oversampled_prediction_keeps_the_least_colliding_joint_samples():
+    import torch
+
+    from baselines.stars_ma_batch import build_batch
+    from baselines.stars_ma_graph import to_scene
+    from baselines.stars_ma_model import StarsMultiAgentForecaster
+
+    store = _store()
+    batch = build_batch(store, torch.arange(len(store)), dt=0.4, knn=4, radius=None)
+    small = {"hidden_dim": 32, "latent_dim": 16, "edge_transformer_layers": 1, "node_transformer_layers": 1,
+             "num_heads": 4, "dropout": 0.0}
+    model = StarsMultiAgentForecaster(8, 12, dt=0.4, encoder_recipe=small, decoder_recipe={
+        "hidden_dim": 32, "latent_dim": 8, "dropout": 0.0, "oversample": 3}).eval()
+    torch.manual_seed(0)
+    chosen = model.predict(batch, samples=4)
+    assert chosen.shape == (4, batch.num_nodes, 12, 2)
+    model.decoder_recipe["oversample"] = 1
+    torch.manual_seed(0)
+    drawn = model.predict(batch, samples=12)
+    # Every kept sample is one of the 12 draws, scene by scene.
+    for start, stop in zip(batch.ptr[:-1].tolist(), batch.ptr[1:].tolist()):
+        for sample in chosen[:, start:stop]:
+            assert min(float((sample - other[start:stop]).abs().max()) for other in drawn) < 1e-4

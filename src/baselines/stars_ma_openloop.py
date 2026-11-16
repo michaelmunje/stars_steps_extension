@@ -32,6 +32,8 @@ from pathlib import Path
 import numpy as np
 import torch
 
+from baselines.stars_ma_model import observed_groups, select_scene_samples
+
 COLLISION_DISTANCES = (0.2, 0.3, 0.4)
 
 
@@ -85,33 +87,6 @@ class Report:
                 row["speed_gt_p90"] = float(np.quantile(gt, 0.9))
             out[key] = row
         return out
-
-
-def observed_groups(batch, dt: float) -> torch.Tensor:
-    """``[B, N, N]`` pairs that look like walking groups from the observation alone: within 1 m and
-    with velocities within 0.3 m/s of each other at the last observed step."""
-    observed = batch.to_padded(batch.obs_xy)                           # [B, N, T, 2]
-    last = observed[:, :, -1]
-    velocity = (observed[:, :, -1] - observed[:, :, -2]) / dt
-    gap = torch.linalg.norm(last[:, :, None] - last[:, None], dim=-1)
-    return (gap < 1.0) & (torch.linalg.norm(velocity[:, :, None] - velocity[:, None], dim=-1) < 0.3)
-
-
-def select_scene_samples(prediction: torch.Tensor, batch, keep: int, dt: float, distance: float = 0.4) -> torch.Tensor:
-    """Inference-time rejection: from ``[M, Nt, P, 2]`` scene-frame joint samples keep, per scene, the
-    ``keep`` samples with the fewest close pairs (< ``distance`` at some step) among pairs that are not
-    an observed group (no future information is used)."""
-    pred = batch.to_padded(prediction, node_dim=1)                     # [M, B, N, P, 2]
-    mask = batch.node_mask
-    N = mask.shape[1]
-    upper = mask[:, :, None] & mask[:, None, :] & torch.ones(N, N, dtype=torch.bool, device=mask.device).triu(1)
-    allowed = upper & ~observed_groups(batch, dt)
-    counts = torch.stack([((torch.linalg.norm(sample[:, :, None] - sample[:, None], dim=-1).min(-1).values < distance)
-                           & allowed).float().sum((1, 2)) for sample in pred])          # [M, B]
-    # Stable choice: fewest close pairs, ties broken by sample index (draws are exchangeable).
-    order = torch.argsort(counts + torch.arange(len(pred), device=counts.device)[:, None] * 1e-6, dim=0)[:keep]
-    chosen = pred.gather(0, order[:, :, None, None, None].expand(keep, *pred.shape[1:]))
-    return chosen[:, mask]                                             # [keep, Nt, P, 2]
 
 
 def scene_metrics(report: Report, names: list[str], batch, predictions: dict[str, torch.Tensor], dt: float,
