@@ -276,3 +276,44 @@ def test_unique_windows_keep_the_first_sample_of_each_window():
     first = _Rows("a", [{"recording": "r", "start_step": s} for s in (0, 0, 1, 1, 1)])
     second = _Rows("b", [{"recording": "r", "start_step": 0}, {"recording": "r", "start_step": 0}])
     assert unique_window_indices(ConcatDataset([first, second])) == [0, 2, 5]
+
+
+def test_refinement_rounds_couple_agents_through_predicted_futures_and_stay_equivariant():
+    torch.manual_seed(0)
+    model = StarsMultiAgentForecaster(8, 12, dt=DT, encoder_recipe=SMALL, decoder_recipe={
+        "hidden_dim": 32, "dropout": 0.0, "latent_dim": 8, "refine": 1}).eval()
+    xy, valid = _walkers(), np.ones((20, 6), dtype=bool)
+    data = _graph(xy, valid, knn=4, radius=None)
+    encoded = model.encode(data)
+    z = model.sample_latent(encoded["context"], 1)
+    prediction = model.decode(data, encoded, z)
+    # Another agent's latent changes this agent's prediction only through the decoder rounds.
+    other = z.clone()
+    other[0, 1] += 3.0
+    assert not torch.allclose(model.decode(data, encoded, other)[0, 0], prediction[0, 0])
+    order = np.array([3, 0, 5, 1, 4, 2])
+    permuted = _graph(xy[:, order], valid[:, order], knn=4, radius=None)
+    torch.testing.assert_close(model.decode(permuted, model.encode(permuted), z[:, torch.from_numpy(order)]),
+                               prediction[:, torch.from_numpy(order)], atol=1e-5, rtol=1e-4)
+    # The rounds are differentiable and the prior-sample path is available for training losses.
+    model.train()
+    out = model.training_forward(Batch.from_data_list([data]), to_local(data.future, data.origin, data.heading),
+                                 data.future_valid, prior_samples=2)
+    assert out["prior_prediction"].shape == (2, 6, 12, 2)
+    (out["prediction"].square().mean() + out["prior_prediction"].square().mean()).backward()
+
+
+def test_collision_loss_ignores_pairs_as_close_as_in_the_ground_truth():
+    from baselines.train_stars_ma import collision_loss
+
+    xy, valid = _walkers(agents=2), np.ones((20, 2), dtype=bool)
+    xy[:, 1] = xy[:, 0] + np.array([1.0, 0.0], dtype=np.float32)   # walk side by side, 1 m apart
+    data = Batch.from_data_list([_graph(xy, valid, knn=4, radius=None)])
+    truth = to_local(data.future, data.origin, data.heading)
+    assert float(collision_loss(truth, data, 0.4)) == 0.0
+    together = to_local(data.future[[0, 0]], data.origin, data.heading)  # both predicted on one path
+    assert float(collision_loss(together, data, 0.4)) == pytest.approx(0.4, abs=1e-4)
+    xy[:, 1] = xy[:, 0] + np.array([0.3, 0.0], dtype=np.float32)   # a close pair in the data
+    data = Batch.from_data_list([_graph(xy, valid, knn=4, radius=None)])
+    assert float(collision_loss(to_local(data.future[[0, 0]], data.origin, data.heading), data, 0.4)) \
+        == pytest.approx(0.3, abs=1e-4)

@@ -36,7 +36,7 @@ from torch import nn
 
 from baselines.stars import upstream_model_module
 from baselines.stars_data import EDGE_FEATURE_DIM
-from baselines.stars_ma_graph import NODE_FEATURE_DIM, build_graph, to_local, to_scene
+from baselines.stars_ma_graph import NODE_FEATURE_DIM, build_graph, rotate, to_local, to_scene
 
 # STARS "homo" recipe sizes (stars.VAE_RECIPE) plus the new node-motion branch.
 ENCODER_RECIPE = {
@@ -61,7 +61,9 @@ DECODER_RECIPE = {
     "diffusion_scale": 0.1,   # metres; constant-velocity residual steps / this have ~unit scale on STEPS
     "diffusion_social_layers": 0,  # > 0: joint (scene-level) diffusion, social layers inside the denoiser
     "goal": False,            # True: the decoder context also holds each agent's goal (goal_features)
+    "refine": 0,              # > 0: future-aware social refinement rounds (TrajectoryDecoder only)
 }
+REFINE_SCALE = 5.0  # metres per unit of the relative-future edge features
 GOAL_DIM = 4
 GOAL_SCALE = 10.0  # metres per unit of the goal features
 
@@ -263,6 +265,19 @@ class TrajectoryDecoder(nn.Module):
         self.initial = nn.Linear(hidden, hidden)
         self.cell = nn.GRUCell(2 + hidden, hidden)
         self.output = nn.Linear(hidden, 2)
+        # Future-aware refinement: each round attends over the graph with edge features made from
+        # the neighbours' *predicted* futures (relative positions in the destination's frame, per
+        # step) and re-decodes, so a sample's agents see where the others are going.
+        self.refine = int(recipe.get("refine", 0))
+        if self.refine:
+            from torch_geometric.nn import TransformerConv
+
+            self.refine_edge = nn.ModuleList(_mlp(4 * prediction_steps + 1 + edge_dim, hidden, hidden, recipe["dropout"])
+                                             for _ in range(self.refine))
+            self.refine_social = nn.ModuleList(
+                TransformerConv(hidden, hidden // num_heads, heads=num_heads, concat=True, beta=True,
+                                dropout=recipe["dropout"], edge_dim=hidden) for _ in range(self.refine))
+            self.refine_norm = nn.ModuleList(nn.LayerNorm(hidden) for _ in range(self.refine))
 
     def context(self, representation: torch.Tensor, node_attr: torch.Tensor) -> torch.Tensor:
         return torch.cat([representation, node_attr[:, -1]], dim=-1)
@@ -275,16 +290,8 @@ class TrajectoryDecoder(nn.Module):
         future = torch.cat([torch.nan_to_num(future_local) * mask, mask], dim=-1).flatten(1)
         return self.posterior(torch.cat([context, self.future_encoder(future)], dim=-1)).chunk(2, dim=-1)
 
-    def forward(self, context: torch.Tensor, last_velocity: torch.Tensor, edge_index: torch.Tensor,
-                edge_emb: torch.Tensor, dt: float, z: torch.Tensor | None = None) -> torch.Tensor:
-        """Local-frame future positions ``[N, P, 2]`` (origin at the last observed position)."""
-        if self.latent_dim:
-            if z is None:
-                raise ValueError("The CVAE decoder needs a latent sample z")
-            context = torch.cat([context, z], dim=-1)
-        hidden = F.gelu(self.input(context))
-        if self.social is not None and edge_index.numel():
-            hidden = self.social_norm(hidden + self.social(hidden, edge_index, edge_attr=edge_emb))
+    def rollout_steps(self, hidden: torch.Tensor, last_velocity: torch.Tensor, dt: float) -> torch.Tensor:
+        """GRU unroll from per-agent ``hidden``: local-frame positions ``[N, P, 2]``."""
         # Positions accumulate over the horizon: keep the recurrence in float32 under bf16 autocast.
         with torch.autocast(device_type=hidden.device.type, enabled=False):
             hidden = hidden.float()
@@ -296,6 +303,44 @@ class TrajectoryDecoder(nn.Module):
                 step = self.output(state)
                 steps.append(step)
             return torch.stack(steps, dim=1).cumsum(dim=1)
+
+    def future_edges(self, local: torch.Tensor, origin: torch.Tensor, heading: torch.Tensor,
+                     edge_index: torch.Tensor) -> torch.Tensor:
+        """Per-edge features of the predicted futures: the source's position relative to the
+        destination at every future step and its per-step change, in the destination's frame
+        (``/ REFINE_SCALE``), plus their closest approach: ``[E, 4P + 1]``."""
+        with torch.autocast(device_type=local.device.type, enabled=False):
+            scene = to_scene(local.float(), origin.float(), heading.float())        # [N, P, 2]
+            source, destination = edge_index
+            relative = rotate(scene[source] - scene[destination], -heading.float()[destination, None])
+            delta = torch.cat([relative[:, :1], relative[:, 1:] - relative[:, :-1]], dim=1)
+            closest = torch.linalg.norm(relative, dim=-1).min(dim=1, keepdim=True).values
+            return torch.cat([relative.flatten(1) / REFINE_SCALE, delta.flatten(1) / REFINE_SCALE * 4,
+                              closest / REFINE_SCALE], dim=-1)
+
+    def forward(self, context: torch.Tensor, last_velocity: torch.Tensor, edge_index: torch.Tensor,
+                edge_emb: torch.Tensor, dt: float, z: torch.Tensor | None = None, origin: torch.Tensor | None = None,
+                heading: torch.Tensor | None = None) -> torch.Tensor:
+        """Local-frame future positions ``[N, P, 2]`` (origin at the last observed position).
+
+        ``origin``/``heading`` (each node's local frame in the scene) are needed by the refinement rounds."""
+        if self.latent_dim:
+            if z is None:
+                raise ValueError("The CVAE decoder needs a latent sample z")
+            context = torch.cat([context, z], dim=-1)
+        hidden = F.gelu(self.input(context))
+        if self.social is not None and edge_index.numel():
+            hidden = self.social_norm(hidden + self.social(hidden, edge_index, edge_attr=edge_emb))
+        local = self.rollout_steps(hidden, last_velocity, dt)
+        if self.refine and edge_index.numel():
+            if origin is None or heading is None:
+                raise ValueError("Refinement rounds need each node's origin and heading")
+            for edge_mlp, conv, norm in zip(self.refine_edge, self.refine_social, self.refine_norm):
+                features = torch.cat([self.future_edges(local, origin, heading, edge_index),
+                                      edge_emb.float()], dim=-1).to(hidden.dtype)
+                hidden = norm(hidden + conv(hidden, edge_index, edge_attr=edge_mlp(features)))
+                local = self.rollout_steps(hidden, last_velocity, dt)
+        return local
 
 
 class DiffusionDecoder(nn.Module):
@@ -475,12 +520,17 @@ class StarsMultiAgentForecaster(nn.Module):
         velocity = data.node_attr[:, -1, 2:4]
         latents = [None] if z is None else list(z)
         return torch.stack([
-            self.decoder(encoded["context"], velocity, data.edge_index, encoded["edge_emb"], self.dt, z=sample)
+            self.decoder(encoded["context"], velocity, data.edge_index, encoded["edge_emb"], self.dt, z=sample,
+                         origin=data.origin, heading=data.heading)
             for sample in latents
         ])
 
-    def training_forward(self, data, future_local: torch.Tensor, future_valid: torch.Tensor) -> dict[str, torch.Tensor]:
-        """Teacher-forced prediction with posterior latents; returns ``prediction [N, P, 2]`` and ``kl [N]``."""
+    def training_forward(self, data, future_local: torch.Tensor, future_valid: torch.Tensor,
+                         prior_samples: int = 0) -> dict[str, torch.Tensor]:
+        """Teacher-forced prediction with posterior latents; returns ``prediction [N, P, 2]`` and ``kl [N]``.
+
+        ``prior_samples`` > 0 (CVAE) also decodes that many reparameterised prior samples
+        (``prior_prediction [S, N, P, 2]``), e.g. for a loss on what the model generates at test time."""
         encoded = self.encode(data)
         if self.diffusion:
             hidden = self.decoder.hidden(encoded["context"], data.edge_index, encoded["edge_emb"])
@@ -498,7 +548,11 @@ class StarsMultiAgentForecaster(nn.Module):
         prior_z = p_mu + torch.exp(0.5 * p_logvar) * torch.randn_like(p_mu)
         z = torch.where(has_future, z, prior_z.detach())
         kl = 0.5 * (p_logvar - q_logvar + (q_logvar.exp() + (q_mu - p_mu) ** 2) / p_logvar.exp() - 1).sum(-1)
-        return {"prediction": self.decode(data, encoded, z[None])[0], "kl": kl * has_future.squeeze(-1), "z": z}
+        out = {"prediction": self.decode(data, encoded, z[None])[0], "kl": kl * has_future.squeeze(-1), "z": z}
+        if prior_samples:
+            noise = torch.randn((prior_samples, *p_mu.shape), device=p_mu.device, dtype=p_mu.dtype)
+            out["prior_prediction"] = self.decode(data, encoded, p_mu + torch.exp(0.5 * p_logvar) * noise)
+        return out
 
     @torch.no_grad()
     def predict(self, data, samples: int = 1) -> torch.Tensor:

@@ -1,0 +1,12 @@
+# Every dataset: the six of all.yaml plus the ATC subset (held-out recording 2013-09-29 = test,
+# capped at 80k/10k/50k windows of its millions of overlapping ones). Same recipe as all.yaml.
+datasets:
+  - steps
+  - ptdpes
+  - madras
+  - grand_central      # temporal split (registered default)
+  - ucy
+  - eth
+  - name: atc
+    max_windows: {train: 80000, val: 10000, test: 50000}
+learning_rate: 3.0e-4

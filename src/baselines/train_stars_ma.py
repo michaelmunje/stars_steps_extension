@@ -175,6 +175,14 @@ def _parser() -> argparse.ArgumentParser:
                           help="> 0 adds the closed-loop multi-step loss, executing this many steps per round")
     forecast.add_argument("--rollout-weight", type=float, default=1.0)
     forecast.add_argument("--samples", type=int, default=20, help="K for best-of-K validation (CVAE)")
+    forecast.add_argument("--refine", type=int, default=0,
+                          help="Future-aware social refinement rounds in the decoder (agents attend to the "
+                               "neighbours' predicted futures and re-decode)")
+    forecast.add_argument("--collision-weight", type=float, default=0.0,
+                          help="> 0 adds a pairwise collision hinge on the decoded futures (CVAE: on a prior sample)")
+    forecast.add_argument("--collision-radius", type=float, default=0.4,
+                          help="Collision hinge distance in metres (pairs closer in the ground truth are allowed "
+                               "down to their own closest approach)")
     return parser
 
 
@@ -337,11 +345,36 @@ def _masked_distance(prediction: torch.Tensor, target: torch.Tensor, valid: torc
     return (error * valid).sum() / valid.sum().clamp(min=1)
 
 
+def collision_loss(local: torch.Tensor, batch, radius: float) -> torch.Tensor:
+    """Pairwise hinge ``relu(r_ij - d_ij(t))`` over the graph's edges and both agents' valid future
+    steps, for local-frame predictions ``[N, P, 2]``; ``r_ij`` is ``radius`` or, if smaller, the
+    pair's closest approach in the ground truth (groups that walk closer are not pushed apart).
+    Normalised per supervised agent-step."""
+    source, destination = batch.edge_index
+    if not source.numel():
+        return local.new_zeros(()).float()
+    with torch.autocast(device_type=local.device.type, enabled=False):
+        scene = to_scene(local.float(), batch.origin.float(), batch.heading.float())
+        valid = batch.future_valid[source] & batch.future_valid[destination]                  # [E, P]
+        future = torch.nan_to_num(batch.future.float())
+        truth = torch.linalg.norm(future[source] - future[destination], dim=-1)
+        allowed = torch.where(valid, truth, torch.full_like(truth, float("inf"))).min(dim=1, keepdim=True).values
+        threshold = allowed.clamp(max=radius)
+        distance = torch.linalg.norm(scene[source] - scene[destination] + 1e-9, dim=-1)
+        violation = torch.relu(threshold - distance) * valid
+        return violation.sum() / batch.future_valid.sum().clamp(min=1)
+
+
 def forecast_loss(model, batch, args, kl_weight: float) -> dict[str, torch.Tensor]:
-    """Teacher-forced loss, CVAE KL, and (optionally) the closed-loop multi-step rollout loss."""
+    """Teacher-forced loss, CVAE KL, optional collision hinge, and (optionally) the closed-loop
+    multi-step rollout loss."""
     future_local = to_local(batch.future, batch.origin, batch.heading)
     valid = batch.future_valid.to(future_local.dtype)
-    out = model.training_forward(batch, future_local, batch.future_valid)
+    collide = getattr(args, "collision_weight", 0.0) > 0
+    if collide and model.latent_dim:
+        out = model.training_forward(batch, future_local, batch.future_valid, prior_samples=1)
+    else:
+        out = model.training_forward(batch, future_local, batch.future_valid)
     if "denoise" in out:  # diffusion decoder: the forecast loss is the denoising (epsilon) MSE
         zero = out["denoise"].new_zeros(())
         return {"forecast": out["denoise"], "kl": zero, "rollout": zero, "loss": out["denoise"]}
@@ -349,13 +382,18 @@ def forecast_loss(model, batch, args, kl_weight: float) -> dict[str, torch.Tenso
     losses["kl"] = out["kl"].float().sum() / batch.future_valid.any(dim=-1).sum().clamp(min=1) \
         if out["kl"] is not None else losses["forecast"].new_zeros(())
     losses["rollout"] = losses["forecast"].new_zeros(())
+    losses["collision"] = losses["forecast"].new_zeros(())
+    if collide:
+        generated = out["prior_prediction"][0] if model.latent_dim else out["prediction"]
+        losses["collision"] = collision_loss(generated, batch, args.collision_radius)
     if args.rollout_exec_steps:
         # Closed loop: each agent keeps the intent z inferred from its future for the whole rollout.
         rounds = math.ceil(model.prediction_steps / args.rollout_exec_steps)
         simulated = rollout(model, batch, rounds=rounds, exec_steps=args.rollout_exec_steps, knn=args.knn,
                             radius=args.radius, z=out["z"], keep_graph=True)[:, :model.prediction_steps]
         losses["rollout"] = _masked_distance(simulated, batch.future, valid)
-    losses["loss"] = losses["forecast"] + kl_weight * losses["kl"] + args.rollout_weight * losses["rollout"]
+    losses["loss"] = (losses["forecast"] + kl_weight * losses["kl"] + args.rollout_weight * losses["rollout"]
+                      + getattr(args, "collision_weight", 0.0) * losses["collision"])
     return losses
 
 
@@ -560,6 +598,7 @@ def train(args) -> None:
         "social_layer": not args.no_social_layer,
         "representation": args.representation,
         "goal": args.goal,
+        "refine": args.refine,
         **({"hidden_dim": args.decoder_hidden_dim} if args.decoder_hidden_dim else {}),
         **({"dropout": args.decoder_dropout} if args.decoder_dropout is not None else {}),
     }
