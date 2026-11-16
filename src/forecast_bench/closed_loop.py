@@ -49,7 +49,9 @@ def forecaster(name: str, fold: str, device: str):
     module, _, variant = name.partition("_")          # e.g. socialvae_official -> predict_socialvae, 'official'
     import importlib
     mod = importlib.import_module(f"forecast_bench.predict_{module}")
-    return mod.make_predictor(f"{variant}:{fold}" if variant == "official" else variant, device)
+    if module in ("socialvae", "moflow"):
+        return mod.make_predictor(f"{variant}:{fold}" if variant == "official" else variant, device)
+    return mod.make_predictor(fold, device)             # trajectron / agentformer / sgan: official per-fold ckpt
 
 
 def receding(predict, stride: int):
@@ -120,6 +122,16 @@ def main() -> None:
     args = parser.parse_args()
     args.out.mkdir(parents=True, exist_ok=True)
     for method in args.methods.split(","):
+        try:
+            run_method(method, args)
+        except Exception as error:   # one failing baseline must not stop the others
+            import traceback
+            traceback.print_exc()
+            print(f"FAILED {method}: {error!r}", flush=True)
+
+
+def run_method(method: str, args) -> None:
+    if True:
         rows = []
         for fold in args.folds.split(","):
             wins = D.benchmark_windows(scenes=[fold], stride=args.stride)

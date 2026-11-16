@@ -37,6 +37,8 @@ METHODS = {
 PUBLISHED = {
     "socialvae_official": {"eth": (0.47, 0.76), "hotel": (0.14, 0.22), "univ": (0.25, 0.47), "zara1": (0.20, 0.37),
                            "zara2": (0.14, 0.28)},
+    "moflow_official": {"eth": (0.40, 0.57), "hotel": (0.11, 0.17), "univ": (0.23, 0.39), "zara1": (0.15, 0.26),
+                        "zara2": (0.12, 0.22)},
 }
 LEAKED = {"stars_pooled": {"hotel", "univ", "zara1"}}
 POOLED = ("steps", "ptdpes", "madras", "grand_central", "atc", "eth", "ucy")
