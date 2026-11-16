@@ -24,6 +24,11 @@ STARS = {  # method -> checkpoint
     "stars_noethucy_goal": RUNS / "cvae_noethucy_goal/checkpoints/best.pt",
     "stars_steps_diffusion": RUNS / "diffusion_finetune/checkpoints/best.pt",
     "stars_steps_joint_diffusion": RUNS / "joint_diffusion_finetune/checkpoints/best.pt",
+    # branch stars-improve: all-7 pooled recipe (seed 2, best of 3 on validation), 4x joint-sample
+    # oversampling with collision-based selection; needs stars-improve's src first on PYTHONPATH
+    "stars_improved": RUNS / "si_final_base_s2/checkpoints/best_os4.pt",
+    # collision-aware variant: refinement round + decoder collision hinge (weight 10), KL 0.15
+    "stars_improved_social": RUNS / "si_final_social_s42/checkpoints/best.pt",
 }
 
 

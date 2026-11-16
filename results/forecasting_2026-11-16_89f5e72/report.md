@@ -10,7 +10,17 @@ end. Every number: `metrics.csv` / `metrics.json` / `closed_loop_metrics.csv`; a
 * **Single-sample accuracy.** The mean-over-samples ADE of STARS CVAE (0.56) is the best of the learned models (SocialVAE 0.66, T++ 0.73, SGAN 0.86, MoFlow 0.99, AgentFormer > 1) and close to CV (0.53): the best-of-20 leaders buy their minADE with widely spread samples.
 * **Collisions between predicted agents.** On ETH/UCY, 8.1 % of real agents come within 0.4 m of another (0.5 % within 0.2 m). STARS CVAE predictions do so for 14 % (5 % within 0.2 m) -- the fewest of all methods (CV 18 %, MoFlow 20 %, AgentFormer 20 %, SocialVAE 23 %, T++ 24 %, SGAN 24 %), but still well above the data, especially at 0.2 m. STARS' diffusion decoders are the worst (28-30 %). On our datasets the ordering is the same; STARS matches the GT contact rate on STEPS (5.4 % vs 5.8 %) and over-predicts contacts most on grand_central / ATC.
 * **Our datasets.** STARS pooled (w/ or w/o ETH/UCY) is best or tied-best of the non-oracle models on every dataset except STEPS (all methods ~0.07 minADE) and ucy (STARS pooled 0.19/0.39 vs MoFlow-STEPS 0.20/0.37).
-* **Closed loop (up to 20 s).** Receding-horizon STARS (no-ETH/UCY, 1.6 s steps) has the lowest ADE among learned models at every horizon (2.63 m at 20 s; SocialVAE 2.73, AgentFormer 3.89, T++ 3.95, SGAN 4.16, MoFlow 5.14; CV 2.54) and the lowest collision rate, close to GT (0.27 vs 0.33 at 20 s). STARS pooled native (1-step loop) is best overall at 20 s (2.39 m). The LOO fine-tuned STARS drifts in its native 1-step loop (speeds rise to 0.74 m/s vs 0.24 GT): fine-tuning used only the open-loop loss. MoFlow, the best open-loop baseline, drifts most in closed loop (5.14 m at 20 s, 50% of agents in contact, speed 0.79 vs 0.24 m/s GT).
+* **Closed loop (up to 20 s).** Receding-horizon STARS (no-ETH/UCY, 1.6 s steps) has the lowest ADE among learned models at every horizon (2.63 m at 20 s; SocialVAE 2.73, T++ 3.95, AgentFormer 3.89, SGAN 4.16; CV 2.54) and the lowest collision rate, close to GT (0.27 vs 0.33 at 20 s). STARS pooled native (1-step loop) is best overall at 20 s (2.39 m). The LOO fine-tuned STARS drifts in its native 1-step loop (speeds rise to 0.74 m/s vs 0.24 GT): fine-tuning used only the open-loop loss. MoFlow's closed loop is still running (pending row).
+* **STARS improved (branch `stars-improve`, `results/stars_improve_2026-11-15`).** Two new rows.
+  * **`stars_improved`:** the pooled recipe on all 7 datasets, plus inference-time selection of joint samples. It draws 4x20 samples and keeps the 20 with the fewest close pairs, ignoring pairs that are walking groups in the observation.
+    * It keeps `stars_pooled`'s accuracy on ETH/UCY (minADE20 0.23/0.43, mean-over-samples 0.55/1.15) and on our datasets.
+    * Predicted contacts on ETH/UCY fall from 5.0% to 3.1% within 0.2 m and from 14.2% to 10.1% within 0.4 m (GT 0.5% / 8.1%).
+    * On our datasets, contacts within 0.2 m drop by 15-70%: least on grand_central, most on eth and ucy.
+  * **`stars_improved_social`:** adds a decoder refinement round that sees the neighbours' predicted futures, plus a collision hinge loss.
+    * It reaches GT contact rates on ETH/UCY: 0.6% within 0.2 m and 4.5% within 0.4 m (GT 0.5% / 8.1%).
+    * The cost is accuracy: minADE20 0.27/0.51 and a slightly slower speed.
+  * Both share `stars_pooled`'s ETH/UCY leakage: hotel, zara1 and univ were in training.
+
 
 ## Protocol
 
@@ -72,6 +82,8 @@ pair agents' k-th samples arbitrarily.
 | STARS pooled w/o ETH/UCY | 0.45/0.80 | 0.10/0.18 | 0.27/0.53 | 0.24/0.49 | 0.18/0.36 | 0.25/0.47 | none (zero-shot) |
 | STARS pooled w/o ETH/UCY + oracle goal | 0.37/0.50 | 0.09/0.13 | 0.24/0.41 | 0.21/0.37 | 0.17/0.32 | 0.22/0.34 | none (zero-shot; privileged goal input) |
 | STARS pooled (6 datasets) | 0.46/0.83 | 0.10/0.16* | 0.22/0.42* | 0.22/0.44* | 0.16/0.31 | 0.23/0.43 | LEAK: hotel, zara1, univ(001 train, 003 val); eth, zara2 clean |
+| STARS improved (7 datasets, 4x sample selection) | 0.46/0.79 | 0.10/0.17* | 0.22/0.42* | 0.22/0.43* | 0.16/0.33 | 0.23/0.43 | LEAK: hotel, zara1, univ(001 train, 003 val); eth, zara2 clean |
+| STARS improved, collision-aware (refine + collision loss) | 0.50/0.88 | 0.12/0.20* | 0.31/0.62* | 0.25/0.49* | 0.19/0.38 | 0.27/0.51 | LEAK: hotel, zara1, univ(001 train, 003 val); eth, zara2 clean |
 | STARS STEPS-only, per-agent diffusion | 0.55/0.83 | 0.15/0.22 | 0.35/0.64 | 0.29/0.51 | 0.21/0.38 | 0.31/0.52 | none (zero-shot) |
 | STARS STEPS-only, joint diffusion | 0.50/0.80 | 0.14/0.21 | 0.34/0.60 | 0.30/0.49 | 0.21/0.35 | 0.30/0.49 | none (zero-shot) |
 
@@ -92,6 +104,8 @@ pair agents' k-th samples arbitrarily.
 | STARS pooled w/o ETH/UCY | 1.12/2.31 | 0.24/0.47 | 0.62/1.31 | 0.49/1.04 | 0.36/0.77 | 0.56/1.18 | none (zero-shot) |
 | STARS pooled w/o ETH/UCY + oracle goal | 0.78/1.32 | 0.15/0.25 | 0.51/1.00 | 0.37/0.70 | 0.30/0.60 | 0.42/0.77 | none (zero-shot; privileged goal input) |
 | STARS pooled (6 datasets) | 1.17/2.39 | 0.24/0.47* | 0.56/1.20* | 0.48/1.03* | 0.36/0.78 | 0.56/1.17 | LEAK: hotel, zara1, univ(001 train, 003 val); eth, zara2 clean |
+| STARS improved (7 datasets, 4x sample selection) | 1.14/2.32 | 0.23/0.44* | 0.54/1.18* | 0.48/1.03* | 0.35/0.77 | 0.55/1.15 | LEAK: hotel, zara1, univ(001 train, 003 val); eth, zara2 clean |
+| STARS improved, collision-aware (refine + collision loss) | 1.13/2.30 | 0.23/0.45* | 0.61/1.28* | 0.50/1.05* | 0.38/0.80 | 0.57/1.17 | LEAK: hotel, zara1, univ(001 train, 003 val); eth, zara2 clean |
 | STARS STEPS-only, per-agent diffusion | 1.47/2.90 | 0.51/1.05 | 0.89/1.86 | 0.89/1.94 | 0.65/1.41 | 0.88/1.83 | none (zero-shot) |
 | STARS STEPS-only, joint diffusion | 1.30/2.58 | 0.49/0.98 | 0.84/1.71 | 0.86/1.83 | 0.60/1.27 | 0.82/1.67 | none (zero-shot) |
 
@@ -112,6 +126,8 @@ pair agents' k-th samples arbitrarily.
 | STARS pooled w/o ETH/UCY | 1.12/2.32 | 0.23/0.45 | 0.62/1.31 | 0.50/1.05 | 0.36/0.78 | 0.57/1.18 | none (zero-shot) |
 | STARS pooled w/o ETH/UCY + oracle goal | 0.74/1.24 | 0.15/0.25 | 0.51/1.00 | 0.37/0.70 | 0.30/0.59 | 0.42/0.76 | none (zero-shot; privileged goal input) |
 | STARS pooled (6 datasets) | 1.20/2.46 | 0.25/0.49* | 0.56/1.21* | 0.47/1.01* | 0.35/0.77 | 0.57/1.19 | LEAK: hotel, zara1, univ(001 train, 003 val); eth, zara2 clean |
+| STARS improved (7 datasets, 4x sample selection) | 1.13/2.30 | 0.24/0.46* | 0.55/1.18* | 0.49/1.05* | 0.36/0.78 | 0.55/1.15 | LEAK: hotel, zara1, univ(001 train, 003 val); eth, zara2 clean |
+| STARS improved, collision-aware (refine + collision loss) | 1.10/2.24 | 0.23/0.45* | 0.61/1.28* | 0.49/1.03* | 0.38/0.80 | 0.56/1.16 | LEAK: hotel, zara1, univ(001 train, 003 val); eth, zara2 clean |
 | STARS STEPS-only, per-agent diffusion | 1.44/2.87 | 0.53/1.08 | 0.88/1.84 | 0.89/1.96 | 0.65/1.41 | 0.88/1.83 | none (zero-shot) |
 | STARS STEPS-only, joint diffusion | 1.27/2.52 | 0.50/1.00 | 0.84/1.70 | 0.86/1.82 | 0.60/1.27 | 0.81/1.66 | none (zero-shot) |
 
@@ -132,6 +148,8 @@ pair agents' k-th samples arbitrarily.
 | STARS pooled w/o ETH/UCY | 0.51/0.91 | 0.12/0.22 | 0.53/1.12 | 0.30/0.63 | 0.23/0.49 | 0.34/0.67 | none (zero-shot) |
 | STARS pooled w/o ETH/UCY + oracle goal | 0.42/0.60 | 0.10/0.14 | 0.43/0.82 | 0.25/0.44 | 0.22/0.42 | 0.28/0.48 | none (zero-shot; privileged goal input) |
 | STARS pooled (6 datasets) | 0.52/0.93 | 0.12/0.19* | 0.48/1.02* | 0.29/0.59* | 0.22/0.46 | 0.32/0.64 | LEAK: hotel, zara1, univ(001 train, 003 val); eth, zara2 clean |
+| STARS improved (7 datasets, 4x sample selection) | 0.52/0.90 | 0.12/0.20* | 0.47/1.00* | 0.28/0.59* | 0.22/0.47 | 0.32/0.63 | LEAK: hotel, zara1, univ(001 train, 003 val); eth, zara2 clean |
+| STARS improved, collision-aware (refine + collision loss) | 0.57/1.02 | 0.13/0.22* | 0.53/1.11* | 0.30/0.62* | 0.25/0.51 | 0.35/0.70 | LEAK: hotel, zara1, univ(001 train, 003 val); eth, zara2 clean |
 | STARS STEPS-only, per-agent diffusion | 0.64/0.99 | 0.19/0.32 | 0.72/1.48 | 0.44/0.87 | 0.34/0.69 | 0.47/0.87 | none (zero-shot) |
 | STARS STEPS-only, joint diffusion | 0.56/0.91 | 0.17/0.28 | 0.68/1.36 | 0.41/0.75 | 0.30/0.58 | 0.43/0.78 | none (zero-shot) |
 
@@ -153,6 +171,8 @@ pair agents' k-th samples arbitrarily.
 | STARS pooled w/o ETH/UCY | 0.051 | 0.140 | 0.188 | 0.296 | 0.682 | 0.675 | 0.041 |
 | STARS pooled w/o ETH/UCY + oracle goal | 0.051 | 0.154 | 0.190 | 0.315 | 0.643 | 0.675 | 0.045 |
 | STARS pooled (6 datasets) | 0.050 | 0.142 | 0.190 | 0.299 | 0.689 | 0.675 | 0.037 |
+| STARS improved (7 datasets, 4x sample selection) | 0.031 | 0.101 | 0.149 | 0.247 | 0.678 | 0.675 | 0.039 |
+| STARS improved, collision-aware (refine + collision loss) | 0.006 | 0.045 | 0.052 | 0.168 | 0.665 | 0.675 | 0.041 |
 | STARS STEPS-only, per-agent diffusion | 0.123 | 0.295 | 0.318 | 0.503 | 0.696 | 0.675 | 0.091 |
 | STARS STEPS-only, joint diffusion | 0.114 | 0.283 | 0.300 | 0.485 | 0.700 | 0.675 | 0.085 |
 
@@ -167,6 +187,8 @@ pair agents' k-th samples arbitrarily.
 | STARS pooled w/o ETH/UCY | 0.07/0.12 | 0.26/0.39 | 0.21/0.33 | 0.23/0.38 | 0.29/0.40 | 0.23/0.39 | 0.22/0.44 |
 | STARS pooled w/o ETH/UCY + oracle goal | 0.07/0.10 | 0.25/0.34 | 0.17/0.21 | 0.20/0.29 | 0.27/0.35 | 0.20/0.27 | 0.20/0.39 |
 | STARS pooled (6 datasets) | 0.07/0.11 | 0.27/0.39 | 0.20/0.31 | 0.23/0.38 | 0.30/0.41 | 0.24/0.41 | 0.19/0.39 |
+| STARS improved (7 datasets, 4x sample selection) | 0.07/0.12 | 0.26/0.39 | 0.21/0.32 | 0.23/0.38 | 0.29/0.40 | 0.22/0.37 | 0.19/0.38 |
+| STARS improved, collision-aware (refine + collision loss) | 0.08/0.13 | 0.31/0.49 | 0.25/0.40 | 0.26/0.44 | 0.34/0.50 | 0.25/0.44 | 0.22/0.45 |
 | STARS STEPS-only, per-agent diffusion | 0.07/0.09 | 0.40/0.60 | 0.31/0.52 | 0.36/0.55 | 0.40/0.55 | 0.33/0.51 | 0.27/0.50 |
 | STARS STEPS-only, joint diffusion | 0.07/0.10 | 0.39/0.59 | 0.32/0.48 | 0.37/0.54 | 0.40/0.55 | 0.32/0.49 | 0.25/0.43 |
 | *scored agents / windows* | 22989 / 1500 | 13866 / 500 | 447 / 4 | 21195 / 300 | 18284 / 300 | 733 / 188 | 1856 / 268 |
@@ -182,6 +204,8 @@ pair agents' k-th samples arbitrarily.
 | STARS pooled w/o ETH/UCY | 0.13/0.23 | 0.62/1.15 | 0.59/1.13 | 0.58/1.16 | 0.64/1.14 | 0.55/1.11 | 0.41/0.88 |
 | STARS pooled w/o ETH/UCY + oracle goal | 0.11/0.18 | 0.58/1.02 | 0.45/0.80 | 0.45/0.80 | 0.58/0.97 | 0.40/0.65 | 0.35/0.70 |
 | STARS pooled (6 datasets) | 0.13/0.24 | 0.64/1.17 | 0.57/1.10 | 0.58/1.17 | 0.82/1.50 | 0.59/1.19 | 0.41/0.88 |
+| STARS improved (7 datasets, 4x sample selection) | 0.13/0.23 | 0.63/1.16 | 0.59/1.13 | 0.58/1.17 | 0.64/1.14 | 0.55/1.09 | 0.40/0.86 |
+| STARS improved, collision-aware (refine + collision loss) | 0.13/0.24 | 0.65/1.18 | 0.53/0.99 | 0.63/1.26 | 0.67/1.20 | 0.61/1.22 | 0.43/0.91 |
 | STARS STEPS-only, per-agent diffusion | 0.21/0.39 | 0.93/1.77 | 0.85/1.66 | 1.17/2.45 | 1.11/2.11 | 1.14/2.41 | 0.79/1.72 |
 | STARS STEPS-only, joint diffusion | 0.20/0.36 | 0.91/1.70 | 0.89/1.69 | 1.10/2.22 | 1.07/2.03 | 0.95/1.94 | 0.68/1.44 |
 | *scored agents / windows* | 22989 / 1500 | 13866 / 500 | 447 / 4 | 21195 / 300 | 18284 / 300 | 733 / 188 | 1856 / 268 |
@@ -197,6 +221,8 @@ pair agents' k-th samples arbitrarily.
 | STARS pooled w/o ETH/UCY | 0.09/0.15 | 0.44/0.79 | 0.53/1.03 | 0.51/1.00 | 0.55/0.95 | 0.31/0.56 | 0.28/0.59 |
 | STARS pooled w/o ETH/UCY + oracle goal | 0.08/0.12 | 0.40/0.68 | 0.41/0.72 | 0.40/0.69 | 0.50/0.81 | 0.25/0.37 | 0.26/0.51 |
 | STARS pooled (6 datasets) | 0.09/0.15 | 0.44/0.80 | 0.51/0.96 | 0.51/1.02 | 0.69/1.23 | 0.32/0.60 | 0.27/0.57 |
+| STARS improved (7 datasets, 4x sample selection) | 0.09/0.15 | 0.44/0.78 | 0.53/0.99 | 0.51/1.01 | 0.55/0.95 | 0.30/0.54 | 0.27/0.57 |
+| STARS improved, collision-aware (refine + collision loss) | 0.10/0.16 | 0.45/0.81 | 0.48/0.88 | 0.55/1.08 | 0.57/1.00 | 0.33/0.61 | 0.29/0.60 |
 | STARS STEPS-only, per-agent diffusion | 0.12/0.20 | 0.66/1.22 | 0.75/1.46 | 0.98/2.01 | 0.93/1.73 | 0.52/1.00 | 0.45/0.94 |
 | STARS STEPS-only, joint diffusion | 0.11/0.18 | 0.64/1.17 | 0.78/1.48 | 0.92/1.83 | 0.89/1.64 | 0.45/0.82 | 0.38/0.74 |
 | *scored agents / windows* | 22989 / 1500 | 13866 / 500 | 447 / 4 | 21195 / 300 | 18284 / 300 | 733 / 188 | 1856 / 268 |
@@ -213,6 +239,8 @@ pair agents' k-th samples arbitrarily.
 | STARS pooled w/o ETH/UCY | 0.054 | 0.074 | 0.046 | 0.254 | 0.175 | 0.087 | 0.140 |
 | STARS pooled w/o ETH/UCY + oracle goal | 0.055 | 0.077 | 0.025 | 0.251 | 0.177 | 0.065 | 0.133 |
 | STARS pooled (6 datasets) | 0.056 | 0.081 | 0.039 | 0.264 | 0.197 | 0.105 | 0.152 |
+| STARS improved (7 datasets, 4x sample selection) | 0.045 | 0.053 | 0.020 | 0.217 | 0.131 | 0.036 | 0.088 |
+| STARS improved, collision-aware (refine + collision loss) | 0.042 | 0.018 | 0.002 | 0.133 | 0.035 | 0.012 | 0.048 |
 | STARS STEPS-only, per-agent diffusion | 0.125 | 0.171 | 0.071 | 0.347 | 0.314 | 0.292 | 0.320 |
 | STARS STEPS-only, joint diffusion | 0.106 | 0.164 | 0.086 | 0.344 | 0.310 | 0.279 | 0.304 |
 
@@ -228,6 +256,8 @@ pair agents' k-th samples arbitrarily.
 | STARS pooled w/o ETH/UCY | 0.011 | 0.021 | 0.017 | 0.110 | 0.064 | 0.028 | 0.040 |
 | STARS pooled w/o ETH/UCY + oracle goal | 0.011 | 0.021 | 0.009 | 0.109 | 0.066 | 0.018 | 0.035 |
 | STARS pooled (6 datasets) | 0.011 | 0.023 | 0.016 | 0.115 | 0.073 | 0.035 | 0.048 |
+| STARS improved (7 datasets, 4x sample selection) | 0.008 | 0.013 | 0.007 | 0.098 | 0.047 | 0.010 | 0.022 |
+| STARS improved, collision-aware (refine + collision loss) | 0.005 | 0.002 | 0.001 | 0.045 | 0.007 | 0.001 | 0.005 |
 | STARS STEPS-only, per-agent diffusion | 0.039 | 0.062 | 0.025 | 0.147 | 0.131 | 0.121 | 0.129 |
 | STARS STEPS-only, joint diffusion | 0.031 | 0.057 | 0.032 | 0.147 | 0.127 | 0.120 | 0.121 |
 
@@ -243,6 +273,8 @@ pair agents' k-th samples arbitrarily.
 | STARS pooled w/o ETH/UCY | 0.277 | 0.438 | 0.975 | 0.929 | 0.953 | 0.160 | 0.339 |
 | STARS pooled w/o ETH/UCY + oracle goal | 0.278 | 0.443 | 0.775 | 0.930 | 0.950 | 0.127 | 0.331 |
 | STARS pooled (6 datasets) | 0.285 | 0.455 | 0.900 | 0.931 | 0.960 | 0.190 | 0.368 |
+| STARS improved (7 datasets, 4x sample selection) | 0.234 | 0.345 | 0.775 | 0.908 | 0.889 | 0.075 | 0.258 |
+| STARS improved, collision-aware (refine + collision loss) | 0.222 | 0.176 | 0.125 | 0.819 | 0.538 | 0.025 | 0.149 |
 | STARS STEPS-only, per-agent diffusion | 0.535 | 0.652 | 0.988 | 0.958 | 0.993 | 0.433 | 0.652 |
 | STARS STEPS-only, joint diffusion | 0.475 | 0.634 | 1.000 | 0.953 | 0.992 | 0.426 | 0.631 |
 
@@ -258,6 +290,8 @@ pair agents' k-th samples arbitrarily.
 | STARS pooled w/o ETH/UCY | 0.061 | 0.099 | 0.065 | 0.057 | 0.122 | 0.051 | 0.025 |
 | STARS pooled w/o ETH/UCY + oracle goal | 0.060 | 0.097 | 0.085 | 0.059 | 0.122 | 0.067 | 0.027 |
 | STARS pooled (6 datasets) | 0.059 | 0.098 | 0.073 | 0.060 | 0.074 | 0.053 | 0.022 |
+| STARS improved (7 datasets, 4x sample selection) | 0.061 | 0.097 | 0.076 | 0.060 | 0.118 | 0.059 | 0.035 |
+| STARS improved, collision-aware (refine + collision loss) | 0.062 | 0.131 | 0.104 | 0.050 | 0.149 | 0.064 | 0.028 |
 | STARS STEPS-only, per-agent diffusion | 0.036 | 0.033 | 0.114 | 0.073 | 0.068 | 0.054 | 0.067 |
 | STARS STEPS-only, joint diffusion | 0.026 | 0.027 | 0.097 | 0.064 | 0.058 | 0.036 | 0.062 |
 

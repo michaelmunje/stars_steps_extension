@@ -30,6 +30,10 @@ METHODS = {
     "stars_noethucy": ("STARS pooled w/o ETH/UCY", "none (zero-shot)"),
     "stars_noethucy_goal": ("STARS pooled w/o ETH/UCY + oracle goal", "none (zero-shot; privileged goal input)"),
     "stars_pooled": ("STARS pooled (6 datasets)", "LEAK: hotel, zara1, univ(001 train, 003 val); eth, zara2 clean"),
+    "stars_improved": ("STARS improved (7 datasets, 4x sample selection)",
+                       "LEAK: hotel, zara1, univ(001 train, 003 val); eth, zara2 clean"),
+    "stars_improved_social": ("STARS improved, collision-aware (refine + collision loss)",
+                              "LEAK: hotel, zara1, univ(001 train, 003 val); eth, zara2 clean"),
     "stars_steps_diffusion": ("STARS STEPS-only, per-agent diffusion", "none (zero-shot)"),
     "stars_steps_joint_diffusion": ("STARS STEPS-only, joint diffusion", "none (zero-shot)"),
 }
@@ -50,7 +54,8 @@ PUBLISHED = {
 }
 PUB_NOTE = {"trajectron_official": "paper (future-leaking features)",
             "sgan_official": "MODEL_ZOO (scene-joint min: compare minJoint)"}
-LEAKED = {"stars_pooled": {"hotel", "univ", "zara1"}}
+LEAKED = {"stars_pooled": {"hotel", "univ", "zara1"}, "stars_improved": {"hotel", "univ", "zara1"},
+          "stars_improved_social": {"hotel", "univ", "zara1"}}
 POOLED = ("steps", "ptdpes", "madras", "grand_central", "atc", "eth", "ucy")
 
 
