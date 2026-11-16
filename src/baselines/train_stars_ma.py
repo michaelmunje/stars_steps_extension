@@ -702,6 +702,16 @@ def train(args) -> None:
         samples = args.samples if (args.phase == "forecast" and model.stochastic) else 1
         checkpoint = args.run_dir / "checkpoints" / "best.pt"
 
+        def save_latest(epoch: int) -> None:
+            latest.parent.mkdir(parents=True, exist_ok=True)
+            torch.save({"state_dict": model.state_dict(), "optimizer": optimizer.state_dict(),
+                        "scheduler": scheduler.state_dict(), "epoch": epoch, "best_epoch": best_epoch,
+                        "global_step": global_step,
+                        "stopper": {"patience": stopper.patience, "min_delta": stopper.min_delta,
+                                    "best": stopper.best, "bad_epochs": stopper.bad_epochs}},
+                       latest.with_suffix(".tmp"))
+            os.replace(latest.with_suffix(".tmp"), latest)
+
         for epoch in range(start_epoch, args.recipe["max_epochs"] + 1):
             model.train()
             if getattr(model, "freeze_encoder", False):
@@ -766,6 +776,8 @@ def train(args) -> None:
 
             if epoch % args.eval_every and epoch != args.recipe["max_epochs"]:
                 run.metric({"stage": args.phase, "epoch": epoch, **train_metrics, **throughput})
+                if args.main:  # resumable after every epoch, not only after validated ones
+                    save_latest(epoch)
                 continue
             val_batches = epoch_batches(val_store, args, 0, train=False)
             if args.phase == "ssl":
@@ -787,14 +799,7 @@ def train(args) -> None:
                     _save(checkpoint, model, args, selection={"metric": name, "value": selection,
                                                               "best_epoch": epoch, "metrics": metrics})
             if args.main:
-                latest.parent.mkdir(parents=True, exist_ok=True)
-                torch.save({"state_dict": model.state_dict(), "optimizer": optimizer.state_dict(),
-                            "scheduler": scheduler.state_dict(), "epoch": epoch, "best_epoch": best_epoch,
-                            "global_step": global_step,
-                            "stopper": {"patience": stopper.patience, "min_delta": stopper.min_delta,
-                                        "best": stopper.best, "bad_epochs": stopper.bad_epochs}},
-                           latest.with_suffix(".tmp"))
-                os.replace(latest.with_suffix(".tmp"), latest)
+                save_latest(epoch)
             run.update(stage=args.phase, epoch=epoch, best_selection=stopper.best, best_epoch=best_epoch,
                        **{key: throughput[key] for key in ("epoch_seconds", "nodes_per_second")})
             if stopped:
