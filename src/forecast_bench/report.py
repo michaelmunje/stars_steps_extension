@@ -39,7 +39,17 @@ PUBLISHED = {
                            "zara2": (0.14, 0.28)},
     "moflow_official": {"eth": (0.40, 0.57), "hotel": (0.11, 0.17), "univ": (0.23, 0.39), "zara1": (0.15, 0.26),
                         "zara2": (0.12, 0.22)},
+    # T++ published numbers rely on future-leaking features (np.gradient over whole tracks, fixed upstream in 03712b7)
+    "trajectron_official": {"eth": (0.39, 0.83), "hotel": (0.12, 0.21), "univ": (0.20, 0.44), "zara1": (0.15, 0.33),
+                            "zara2": (0.11, 0.25)},
+    "agentformer_official": {"eth": (0.45, 0.75), "hotel": (0.14, 0.22), "univ": (0.25, 0.45), "zara1": (0.18, 0.30),
+                             "zara2": (0.14, 0.24)},
+    # SGAN MODEL_ZOO (SGAN-20VP-20) uses a scene-joint min: compare with the minJoint table, not per-agent minADE
+    "sgan_official": {"eth": (0.77, 1.39), "hotel": (0.43, 0.88), "univ": (0.75, 1.50), "zara1": (0.34, 0.68),
+                      "zara2": (0.36, 0.73)},
 }
+PUB_NOTE = {"trajectron_official": "paper (future-leaking features)",
+            "sgan_official": "MODEL_ZOO (scene-joint min: compare minJoint)"}
 LEAKED = {"stars_pooled": {"hotel", "univ", "zara1"}}
 POOLED = ("steps", "ptdpes", "madras", "grand_central", "atc", "eth", "ucy")
 
@@ -87,7 +97,7 @@ def ethucy_table(df: pd.DataFrame, a: str, b: str, *, published: bool = False) -
         if published and method in PUBLISHED:
             p = PUBLISHED[method]
             avg = fmt(*np.mean([p[f] for f in FOLDS], 0))
-            lines.append(f"| &nbsp;&nbsp;published | " + " | ".join(fmt(*p[f]) for f in FOLDS) + f" | {avg} | paper |")
+            lines.append(f"| &nbsp;&nbsp;published | " + " | ".join(fmt(*p[f]) for f in FOLDS) + f" | {avg} | {PUB_NOTE.get(method, 'paper')} |")
     return "\n".join(lines)
 
 
@@ -236,6 +246,11 @@ def main() -> None:
         ("Our datasets: speed W1 to GT (m/s)", pooled_social(df, "speed_w1")),
         ("Closed loop (ETH/UCY, 5 scenes pooled, micro-averaged)", closed_md),
     ]
+    body = "\n\n".join(f"### {t}\n\n{b}" for t, b in sections if b)
+    from forecast_bench import report_text as T
+    headline = (args.out / "headline.md").read_text() if (args.out / "headline.md").exists() else ""
+    (args.out / "report.md").write_text("\n".join([T.INTRO, headline, T.PROTOCOL, T.METHODS, "## Results\n", body,
+                                                   "", T.REPRO, T.CLOSED, T.CAVEATS, T.COMMANDS]))
     (args.out / "tables.md").write_text("\n\n".join(f"### {t}\n\n{body}" for t, body in sections if body) + "\n")
     plots(df, closed, args.out)
     print((args.out / "tables.md").read_text())

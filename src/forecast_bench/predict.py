@@ -116,8 +116,12 @@ def main() -> None:
     parser.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
     parser.add_argument("--samples", type=int, default=20)
     parser.add_argument("--max-nodes", type=int, default=8192)
+    parser.add_argument("--skip-existing", action="store_true")
     args = parser.parse_args()
     for name in args.sets.split(","):
+        path = args.root / "preds" / name / f"{args.method}.npz"
+        if args.skip_existing and path.exists():
+            continue
         windows = load(args.root / "windows" / f"{name}.npz")
         if args.method == "cv":
             pred = constant_velocity(windows)
@@ -126,9 +130,10 @@ def main() -> None:
             pred = stars(windows, checkpoint, args.device, args.samples, args.max_nodes)
         else:
             pred = stars(windows, STARS[args.method], args.device, args.samples, args.max_nodes)
-        path = args.root / "preds" / name / f"{args.method}.npz"
         path.parent.mkdir(parents=True, exist_ok=True)
-        np.savez(path, pred=pred.astype(np.float32))
+        tmp = path.with_name(f".{path.stem}.tmp.npz")
+        np.savez(tmp, pred=pred.astype(np.float32))
+        tmp.replace(path)   # atomic: an interrupted run never leaves a partial file behind
         print(f"{name}/{args.method}: {pred.shape}", flush=True)
 
 

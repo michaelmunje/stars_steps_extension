@@ -51,7 +51,8 @@ def forecaster(name: str, fold: str, device: str):
     mod = importlib.import_module(f"forecast_bench.predict_{module}")
     if module in ("socialvae", "moflow"):
         return mod.make_predictor(f"{variant}:{fold}" if variant == "official" else variant, device)
-    return mod.make_predictor(fold, device)             # trajectron / agentformer / sgan: official per-fold ckpt
+    # trajectron / agentformer / sgan: official per-fold ckpt (the T++ adapter runs on CPU only)
+    return mod.make_predictor(fold, "cpu" if module == "trajectron" else device)
 
 
 def receding(predict, stride: int):
@@ -147,7 +148,8 @@ def run_method(method: str, args) -> None:
                     for w, t in zip(group, trajs):
                         rows += [{"method": method, "seed": seed, **r} for r in score(t, w)]
             print(f"{method} {fold}: {len(wins)} windows", flush=True)
-        pd.DataFrame(rows).to_csv(args.out / f"{method.replace('@', '_s')}.csv", index=False)
+        tag = "" if args.folds == ",".join(FOLDS) else "__" + args.folds.replace(",", "-")   # per-fold runs: own file
+        pd.DataFrame(rows).to_csv(args.out / f"{method.replace('@', '_s')}{tag}.csv", index=False)
 
 
 def _chunks(wins, size: int = 16):
