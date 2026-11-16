@@ -10,7 +10,7 @@ end. Every number: `metrics.csv` / `metrics.json` / `closed_loop_metrics.csv`; a
 * **Single-sample accuracy.** The mean-over-samples ADE of STARS CVAE (0.56) is the best of the learned models (SocialVAE 0.66, T++ 0.73, SGAN 0.86, MoFlow 0.99, AgentFormer > 1) and close to CV (0.53): the best-of-20 leaders buy their minADE with widely spread samples.
 * **Collisions between predicted agents.** On ETH/UCY, 8.1 % of real agents come within 0.4 m of another (0.5 % within 0.2 m). STARS CVAE predictions do so for 14 % (5 % within 0.2 m) -- the fewest of all methods (CV 18 %, MoFlow 20 %, AgentFormer 20 %, SocialVAE 23 %, T++ 24 %, SGAN 24 %), but still well above the data, especially at 0.2 m. STARS' diffusion decoders are the worst (28-30 %). On our datasets the ordering is the same; STARS matches the GT contact rate on STEPS (5.4 % vs 5.8 %) and over-predicts contacts most on grand_central / ATC.
 * **Our datasets.** STARS pooled (w/ or w/o ETH/UCY) is best or tied-best of the non-oracle models on every dataset except STEPS (all methods ~0.07 minADE) and ucy (STARS pooled 0.19/0.39 vs MoFlow-STEPS 0.20/0.37).
-* **Closed loop (up to 20 s).** Receding-horizon STARS (no-ETH/UCY, 1.6 s steps) has the lowest ADE among learned models at every horizon (2.63 m at 20 s; SocialVAE 2.73, T++ 3.95, AgentFormer 3.89, SGAN 4.16; CV 2.54) and the lowest collision rate, close to GT (0.27 vs 0.33 at 20 s). STARS pooled native (1-step loop) is best overall at 20 s (2.39 m). The LOO fine-tuned STARS drifts in its native 1-step loop (speeds rise to 0.74 m/s vs 0.24 GT): fine-tuning used only the open-loop loss. MoFlow's closed loop is still running (pending row).
+* **Closed loop (up to 20 s).** Receding-horizon STARS (no-ETH/UCY, 1.6 s steps) has the lowest ADE among learned models at every horizon (2.63 m at 20 s; SocialVAE 2.73, AgentFormer 3.89, T++ 3.95, SGAN 4.16, MoFlow 5.14; CV 2.54) and the lowest collision rate, close to GT (0.27 vs 0.33 at 20 s). STARS pooled native (1-step loop) is best overall at 20 s (2.39 m). The LOO fine-tuned STARS drifts in its native 1-step loop (speeds rise to 0.74 m/s vs 0.24 GT): fine-tuning used only the open-loop loss. MoFlow, the best open-loop baseline, drifts most in closed loop (5.14 m at 20 s, 50% of agents in contact, speed 0.79 vs 0.24 m/s GT).
 
 ## Protocol
 
@@ -269,6 +269,7 @@ pair agents' k-th samples arbitrarily.
 | agentformer_official@4 | 0.76/1.67 | 1.37/3.08 | 2.20/4.87 | 3.12/6.78 | 3.89/8.08 |
 | cv | 0.50/1.10 | 0.94/2.10 | 1.47/3.32 | 1.94/4.32 | 2.54/5.48 |
 | ground_truth | 0.00/0.00 | 0.00/0.00 | 0.00/0.00 | 0.00/0.00 | 0.00/0.00 |
+| moflow_official@4 | 0.96/2.03 | 1.85/4.01 | 3.04/6.35 | 4.16/8.09 | 5.14/9.60 |
 | sgan_official@4 | 1.11/2.28 | 1.96/4.07 | 2.86/5.74 | 3.56/6.67 | 4.16/7.15 |
 | socialvae_official@4 | 0.65/1.39 | 1.17/2.56 | 1.74/3.76 | 2.22/4.75 | 2.73/5.66 |
 | stars_loo@4 | 0.55/1.19 | 1.03/2.29 | 1.63/3.55 | 2.17/4.67 | 2.81/5.99 |
@@ -283,6 +284,7 @@ pair agents' k-th samples arbitrarily.
 | agentformer_official@4 | 0.364 | 0.489 | 0.560 | 0.575 | 0.660 |
 | cv | 0.310 | 0.374 | 0.391 | 0.333 | 0.308 |
 | ground_truth | 0.198 | 0.267 | 0.305 | 0.325 | 0.331 |
+| moflow_official@4 | 0.397 | 0.476 | 0.506 | 0.491 | 0.500 |
 | sgan_official@4 | 0.422 | 0.590 | 0.650 | 0.676 | 0.717 |
 | socialvae_official@4 | 0.372 | 0.455 | 0.464 | 0.460 | 0.468 |
 | stars_loo@4 | 0.263 | 0.343 | 0.358 | 0.335 | 0.321 |
@@ -297,6 +299,7 @@ pair agents' k-th samples arbitrarily.
 | agentformer_official@4 | 0.579 | 0.510 | 0.485 | 0.477 | 0.473 |
 | cv | 0.618 | 0.477 | 0.378 | 0.319 | 0.316 |
 | ground_truth | 0.606 | 0.456 | 0.340 | 0.260 | 0.235 |
+| moflow_official@4 | 0.817 | 0.779 | 0.778 | 0.774 | 0.791 |
 | sgan_official@4 | 0.679 | 0.646 | 0.621 | 0.594 | 0.586 |
 | socialvae_official@4 | 0.582 | 0.437 | 0.347 | 0.300 | 0.295 |
 | stars_loo@4 | 0.627 | 0.490 | 0.405 | 0.367 | 0.370 |
