@@ -121,7 +121,7 @@ leaves out pairs that are a group in the observation.
 | `pooled7` + oversample 4 | 0.551 / 1.058 | 0.221 / 0.349 | 0.426 / 0.807 | 0.076 / 0.229 | 0.057 / 0.173 | 0.607 | 0.091 |
 | new, 3 seeds | 0.540±0.006 / 1.033±0.011 | 0.219±0.000 / 0.347±0.001 | 0.418±0.004 / 0.793±0.009 | 0.098 / 0.300 | 0.081 / 0.248 | 0.612 | 0.084 |
 | **new, 3 seeds + oversample 4 (`stars_improved`)** | **0.536±0.006 / 1.027±0.012** | **0.219±0.000 / 0.348±0.001** | **0.416±0.002 / 0.789±0.004** | **0.071 / 0.214** | **0.053 / 0.162** | 0.611 | 0.087 |
-| collision-aware (`stars_improved_social`, seed 42) | SOCIAL_ROW |
+| collision-aware (`stars_improved_social`, seed 42) | 0.587 / 1.118 | 0.257 / 0.423 | 0.441 / 0.833 | 0.018 / 0.084 | 0.014 / 0.065 | 0.587 | 0.110 |
 | ground truth | | | | 0.020 / 0.073 | 0.010 / 0.039 | 0.625 | |
 
 Per dataset (seed 2; single-sample ADE in m, then close pairs < 0.2 / < 0.4 m in %):
@@ -144,6 +144,11 @@ Per dataset (seed 2; single-sample ADE in m, then close pairs < 0.2 / < 0.4 m in
 - **Remaining gap:** close pairs are still 3-4x ground truth overall. Only the collision-aware variant reaches
   ground-truth rates, at an accuracy cost.
 - **Speed:** net speed is within 2% of ground truth (0.611 vs 0.625).
+- **Collision-aware variant** (`stars_improved_social`): close pairs at ground-truth level (0.018 / 0.084% vs
+  0.020 / 0.073%; UCY 0.91% vs 1.49%, ETH 0.50% vs 0.09%). Its samples are coordinated across agents. The cost
+  against `stars_improved` is single-sample ADE +10% (0.587, about `pooled6` level), minADE +17% (less sample
+  spread), and net speed -4% (0.587 vs 0.625 ground truth). Use it where realistic interaction matters more
+  than best-of-20 accuracy, e.g. as a crowd simulator.
 - **Caveat:** ETH and UCY training scenes overlap the ETH/UCY benchmark test scenes, the same leakage as
   `pooled6` in the forecast benchmark.
 
