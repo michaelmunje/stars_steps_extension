@@ -87,6 +87,33 @@ class Report:
         return out
 
 
+def observed_groups(batch, dt: float) -> torch.Tensor:
+    """``[B, N, N]`` pairs that look like walking groups from the observation alone: within 1 m and
+    with velocities within 0.3 m/s of each other at the last observed step."""
+    observed = batch.to_padded(batch.obs_xy)                           # [B, N, T, 2]
+    last = observed[:, :, -1]
+    velocity = (observed[:, :, -1] - observed[:, :, -2]) / dt
+    gap = torch.linalg.norm(last[:, :, None] - last[:, None], dim=-1)
+    return (gap < 1.0) & (torch.linalg.norm(velocity[:, :, None] - velocity[:, None], dim=-1) < 0.3)
+
+
+def select_scene_samples(prediction: torch.Tensor, batch, keep: int, dt: float, distance: float = 0.4) -> torch.Tensor:
+    """Inference-time rejection: from ``[M, Nt, P, 2]`` scene-frame joint samples keep, per scene, the
+    ``keep`` samples with the fewest close pairs (< ``distance`` at some step) among pairs that are not
+    an observed group (no future information is used)."""
+    pred = batch.to_padded(prediction, node_dim=1)                     # [M, B, N, P, 2]
+    mask = batch.node_mask
+    N = mask.shape[1]
+    upper = mask[:, :, None] & mask[:, None, :] & torch.ones(N, N, dtype=torch.bool, device=mask.device).triu(1)
+    allowed = upper & ~observed_groups(batch, dt)
+    counts = torch.stack([((torch.linalg.norm(sample[:, :, None] - sample[:, None], dim=-1).min(-1).values < distance)
+                           & allowed).float().sum((1, 2)) for sample in pred])          # [M, B]
+    # Stable choice: fewest close pairs, ties broken by sample index (draws are exchangeable).
+    order = torch.argsort(counts + torch.arange(len(pred), device=counts.device)[:, None] * 1e-6, dim=0)[:keep]
+    chosen = pred.gather(0, order[:, :, None, None, None].expand(keep, *pred.shape[1:]))
+    return chosen[:, mask]                                             # [keep, Nt, P, 2]
+
+
 def scene_metrics(report: Report, names: list[str], batch, predictions: dict[str, torch.Tensor], dt: float,
                   *, ground_truth_stats: bool = True) -> None:
     """Add one batch. ``predictions`` maps a name to scene-frame ``[K, Nt, P, 2]`` futures; the first
@@ -115,6 +142,10 @@ def scene_metrics(report: Report, names: list[str], batch, predictions: dict[str
     def pair_distance(xy):                                        # [B, N, P, 2] -> [B, N, N, P]
         return torch.linalg.norm(xy[:, :, None] - xy[:, None], dim=-1)
 
+    group = observed_groups(batch, dt) & upper
+    ungrouped = upper & ~group
+    ng_pairs = ungrouped.float().sum((1, 2))
+
     def collisions(prefix, xy, extra_gt=None):
         distance = pair_distance(xy)
         closest = distance.min(-1).values
@@ -122,6 +153,7 @@ def scene_metrics(report: Report, names: list[str], batch, predictions: dict[str
         for d in COLLISION_DISTANCES:
             per(f"{prefix}_pair{d}", ((closest < d).float() * uf).sum((1, 2)), pairs)
             per(f"{prefix}_pairstep{d}", ((distance < d).float().mean(-1) * uf).sum((1, 2)), pairs)
+            per(f"{prefix}_nogroup_pair{d}", ((closest < d) & ungrouped).float().sum((1, 2)), ng_pairs)
             if extra_gt is not None:
                 per(f"{prefix}_new_pair{d}", ((closest < d) & (extra_gt >= d)).float().mul(uf).sum((1, 2)), pairs)
         per(f"{prefix}_min_distance", (closest.clamp(max=10.0) * uf).sum((1, 2)), pairs)
@@ -132,11 +164,6 @@ def scene_metrics(report: Report, names: list[str], batch, predictions: dict[str
         collisions("gt", future)
         # Ground-truth close pairs: groups (already within 1 m and co-moving at the last observed
         # step) vs others.
-        observed = batch.to_padded(batch.obs_xy)                  # [B, N, T, 2]
-        velocity = (observed[:, :, -1] - observed[:, :, -2]) / dt
-        last_gap = torch.linalg.norm(last[:, :, None] - last[:, None], dim=-1)
-        co_moving = torch.linalg.norm(velocity[:, :, None] - velocity[:, None], dim=-1) < 0.3
-        group = (last_gap < 1.0) & co_moving & upper
         for d in (0.2, 0.4):
             close = (gt_closest < d) & upper
             per(f"gt_pair{d}_group_share_num", (close & group).float().sum((1, 2)), close.float().sum((1, 2)))
@@ -244,6 +271,9 @@ def main() -> None:
     parser.add_argument("--max-windows", type=int, help="Seeded cap of windows per dataset (speed)")
     parser.add_argument("--atc-max-windows", type=int, default=10000)
     parser.add_argument("--goals", action="store_true", help="Load goal columns (needed by goal-conditioned checkpoints)")
+    parser.add_argument("--oversample", type=int, default=1,
+                        help="> 1: draw this many times --samples joint samples per scene and keep the --samples "
+                             "with the fewest non-group close pairs (inference-time rejection)")
     parser.add_argument("--temperature", type=float, default=1.0, help="CVAE prior standard-deviation scale")
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--device", default="cuda")
@@ -307,8 +337,11 @@ def main() -> None:
                             (args.samples, *mu.shape), device=mu.device, dtype=mu.dtype)
                         local = model.decode(batch, encoded, z)
                     else:
-                        local = model.predict(batch, samples=args.samples if model.stochastic else 1)
+                        draws = args.samples * args.oversample if model.stochastic else 1
+                        local = model.predict(batch, samples=draws)
                     predictions[name] = to_scene(local.float(), batch.origin, batch.heading)
+                    if args.oversample > 1 and model.stochastic:
+                        predictions[name] = select_scene_samples(predictions[name], batch, args.samples, dt)
                     if model.latent_dim:
                         encoded = model.encode(batch)
                         z = model.sample_latent(encoded["context"], 1, mean=True)
@@ -326,6 +359,7 @@ def main() -> None:
                     row[f"{name}_allk_" + key[len(prefix):]] = (row[base] + (args.samples - 1) * row[key]) / args.samples
                     del row[key]
     output = {"split": args.split, "windows": args.windows, "samples": args.samples, "temperature": args.temperature,
+              "oversample": args.oversample,
               "checkpoints": {name: str(path) for name, path in zip(models, args.checkpoint)},
               "datasets": store.names, "n_windows": len(store), "seconds": time.time() - started, "metrics": result}
     args.output.parent.mkdir(parents=True, exist_ok=True)
