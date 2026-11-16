@@ -186,6 +186,10 @@ def _parser() -> argparse.ArgumentParser:
                           help="> 0 (CVAE) adds a best-of-many loss: the min over --bom-samples prior samples of "
                                "each agent's ADE (prior samples cover the data instead of regressing to its mean)")
     forecast.add_argument("--bom-samples", type=int, default=4)
+    forecast.add_argument("--collision-fixed-prior", action=argparse.BooleanOptionalAction, default=True,
+                          help="Collision hinge on a prior sample with a gradient-free latent: it trains the "
+                               "decoder only (--no-collision-fixed-prior also lets it widen the prior, which "
+                               "inflated the sample spread)")
     forecast.add_argument("--collision-radius", type=float, default=0.4,
                           help="Collision hinge distance in metres (pairs closer in the ground truth are allowed "
                                "down to their own closest approach)")
@@ -382,9 +386,11 @@ def forecast_loss(model, batch, args, kl_weight: float) -> dict[str, torch.Tenso
     valid = batch.future_valid.to(future_local.dtype)
     collide = getattr(args, "collision_weight", 0.0) > 0
     bom = getattr(args, "bom_weight", 0.0) > 0 and model.latent_dim
+    fixed = collide and getattr(args, "collision_fixed_prior", True)
     if (collide or bom) and model.latent_dim:
         out = model.training_forward(batch, future_local, batch.future_valid,
-                                     prior_samples=max(1, args.bom_samples if bom else 1))
+                                     prior_samples=args.bom_samples if bom else (0 if fixed else 1),
+                                     fixed_prior_samples=1 if fixed else 0)
     else:
         out = model.training_forward(batch, future_local, batch.future_valid)
     if "denoise" in out:  # diffusion decoder: the forecast loss is the denoising (epsilon) MSE
@@ -402,7 +408,8 @@ def forecast_loss(model, batch, args, kl_weight: float) -> dict[str, torch.Tenso
         has = batch.future_valid.any(-1)
         losses["bom"] = (ade.min(0).values * has).sum() / has.sum().clamp(min=1)
     if collide:
-        generated = out["prior_prediction"][0] if model.latent_dim else out["prediction"]
+        generated = (out["fixed_prior_prediction" if fixed else "prior_prediction"][0] if model.latent_dim
+                     else out["prediction"])
         losses["collision"] = collision_loss(generated, batch, args.collision_radius)
     if args.rollout_exec_steps:
         # Closed loop: each agent keeps the intent z inferred from its future for the whole rollout.

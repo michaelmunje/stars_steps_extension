@@ -526,11 +526,13 @@ class StarsMultiAgentForecaster(nn.Module):
         ])
 
     def training_forward(self, data, future_local: torch.Tensor, future_valid: torch.Tensor,
-                         prior_samples: int = 0) -> dict[str, torch.Tensor]:
+                         prior_samples: int = 0, fixed_prior_samples: int = 0) -> dict[str, torch.Tensor]:
         """Teacher-forced prediction with posterior latents; returns ``prediction [N, P, 2]`` and ``kl [N]``.
 
         ``prior_samples`` > 0 (CVAE) also decodes that many reparameterised prior samples
-        (``prior_prediction [S, N, P, 2]``), e.g. for a loss on what the model generates at test time."""
+        (``prior_prediction [S, N, P, 2]``), e.g. for a loss on what the model generates at test time;
+        ``fixed_prior_samples`` decodes prior samples whose latents carry no gradient
+        (``fixed_prior_prediction``), so a loss on them trains the decoder but cannot reshape the prior."""
         encoded = self.encode(data)
         if self.diffusion:
             hidden = self.decoder.hidden(encoded["context"], data.edge_index, encoded["edge_emb"])
@@ -552,6 +554,10 @@ class StarsMultiAgentForecaster(nn.Module):
         if prior_samples:
             noise = torch.randn((prior_samples, *p_mu.shape), device=p_mu.device, dtype=p_mu.dtype)
             out["prior_prediction"] = self.decode(data, encoded, p_mu + torch.exp(0.5 * p_logvar) * noise)
+        if fixed_prior_samples:
+            noise = torch.randn((fixed_prior_samples, *p_mu.shape), device=p_mu.device, dtype=p_mu.dtype)
+            out["fixed_prior_prediction"] = self.decode(data, encoded,
+                                                        (p_mu + torch.exp(0.5 * p_logvar) * noise).detach())
         return out
 
     @torch.no_grad()
