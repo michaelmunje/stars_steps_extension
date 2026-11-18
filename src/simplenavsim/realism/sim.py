@@ -52,7 +52,7 @@ CHECKPOINTS["stars_ep_zs_rft"] = REPO / "experiments/stars_ma/runs/ep_rft_zs_s{s
 _FOLDS = ("eth", "hotel", "univ", "zara1", "zara2")
 PER_DATASET = {"stars_ep_loso": {f: _EP / "ep_loso_s{seed}" / f / "best.pt" for f in _FOLDS},
                "stars_ep_loso_rft": {f: _EP / "ep_loso_rft_s{seed}" / f / "best.pt" for f in _FOLDS}}
-EP_SEED = "42"            # pretraining seed used in the closed loop (set from the protocol README)
+EP_SEED = __import__("os").environ.get("EP_SEED", "42")   # pretraining seed used in the closed loop (env EP_SEED)
 OVERSAMPLE = {"stars_improved": 4, "stars_ep_zs": 4, "stars_ep_loso": 4, "stars_ep_zs_rft": 4, "stars_ep_loso_rft": 4}   # closed-loop rollouts per window; the least-colliding one is kept
 RADIUS = 0.2              # pedestrian body radius (m) used by SFM / ORCA
 ARRIVAL = 0.3             # goal-directed models stop within this distance of the goal (m)
