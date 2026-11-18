@@ -39,11 +39,31 @@ CHECKPOINTS = {"stars_steps": REPO / "experiments/stars_ma/runs/cvae_kl01_finetu
                # STEPS-only diffusion decoders (per agent / joint over the graph), zero-shot on ETH/UCY.
                "stars_steps_diffusion": REPO / "experiments/stars_ma/runs/diffusion_finetune/checkpoints/best.pt",
                "stars_steps_joint_diffusion": REPO / "experiments/stars_ma/runs/joint_diffusion_finetune/checkpoints/best.pt"}
-OVERSAMPLE = {"stars_improved": 4}   # closed-loop rollouts per window; the least-colliding one is kept
+# ETH/UCY protocol (branch ethucy-protocol, results/ethucy_protocol_*): A = pretrained on STEPS, PTDPES, MADRAS,
+# Grand Central only (zero-shot); B = A fine-tuned leave-one-scene-out, one checkpoint per held-out scene
+# (PER_DATASET: each window uses the checkpoint that never saw its scene).
+_EP = REPO / "experiments/forecast_bench/loso"
+CHECKPOINTS["stars_ep_zs"] = REPO / "experiments/stars_ma/runs/ep_pre4_s{seed}/checkpoints/best.pt"
+PER_DATASET = {"stars_ep_loso": {f: _EP / "ep_loso_s{seed}" / f / "best.pt" for f in ("eth", "hotel", "univ", "zara1", "zara2")}}
+EP_SEED = "42"            # pretraining seed used in the closed loop (set from the protocol README)
+OVERSAMPLE = {"stars_improved": 4, "stars_ep_zs": 4, "stars_ep_loso": 4}   # closed-loop rollouts per window; the least-colliding one is kept
 RADIUS = 0.2              # pedestrian body radius (m) used by SFM / ORCA
 ARRIVAL = 0.3             # goal-directed models stop within this distance of the goal (m)
 DEFAULT_SPEED = 1.0       # desired speed of an agent with a single observed position (context agents only)
 SUBSTEPS = 4              # SFM / ORCA integration at 0.1 s
+
+
+class PerDataset(dict):
+    """``{dataset: Stars}``: routes each window group to the checkpoint of its dataset (``dataset=`` keyword)."""
+
+    def __call__(self, x, steps, seed: int = 0, dataset: str = "", **kw):
+        return self[dataset](x, steps, seed=seed, **kw)
+
+    def with_oversample(self, m: int) -> "PerDataset":
+        return PerDataset({k: v.with_oversample(m) for k, v in self.items()})
+
+    def with_mode(self) -> "PerDataset":
+        return PerDataset({k: v.with_mode() for k, v in self.items()})
 
 
 def pad(windows) -> dict:

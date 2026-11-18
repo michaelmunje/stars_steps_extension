@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 from pathlib import Path
 
 import numpy as np
@@ -23,20 +24,30 @@ METHODS = {
     "trajectron_official": ("Trajectron++ (official ckpt)", "none (official LOO)"),
     "agentformer_official": ("AgentFormer (official ckpt)", "none (official LOO)"),
     "sgan_official": ("Social-GAN (official ckpt)", "none (official LOO)"),
+    # ETH/UCY protocol (results/ethucy_protocol_*): seed-averaged rows (mean over the pretraining seeds' metrics)
+    "ep_loso": ("**STARS B: 4-dataset pretrain + LOSO fine-tune**", "none (standard LOSO)"),
+    "ep_loso_os4": ("**STARS B + 4x sample selection**", "none (standard LOSO)"),
+    "ep_loso_mode": ("&nbsp;&nbsp;STARS B, mode (z = prior mean)", "none (standard LOSO)"),
+    "ep_zs": ("**STARS A: 4-dataset pretrain, zero-shot**", "none (no ETH/UCY at all)"),
+    "ep_zs_os4": ("**STARS A + 4x sample selection**", "none (no ETH/UCY at all)"),
+    "ep_zs_mode": ("&nbsp;&nbsp;STARS A, mode (z = prior mean)", "none (no ETH/UCY at all)"),
+    "ep_scratch": ("STARS LOSO from scratch (no pretraining)", "none (standard LOSO)"),
+    "ep_scratch_os4": ("STARS LOSO from scratch + 4x sample selection", "none (standard LOSO)"),
+    "ep_scratch_mode": ("&nbsp;&nbsp;STARS LOSO from scratch, mode", "none (standard LOSO)"),
     "socialvae_steps": ("SocialVAE (ours, STEPS-trained)", "none (zero-shot)"),
     "moflow_steps": ("MoFlow (ours, STEPS-trained)", "none (zero-shot)"),
-    "stars_loo": ("STARS LOO (no-ETH/UCY pretrain + LOO fine-tune)", "none (LOO)"),
+    "stars_loo": ("STARS LOO, first attempt (5-dataset pretrain incl. ATC + 15-epoch LOO fine-tune)", "none (LOO)"),
     "stars_steps": ("STARS STEPS-only", "none (zero-shot)"),
     "stars_noethucy": ("STARS pooled w/o ETH/UCY", "none (zero-shot)"),
     "stars_noethucy_mode": ("&nbsp;&nbsp;mode (z = prior mean)", "none (zero-shot)"),
     "stars_noethucy_goal": ("STARS pooled w/o ETH/UCY + oracle goal †", "none (zero-shot; privileged goal input)"),
     "stars_noethucy_goal_mode": ("&nbsp;&nbsp;mode (z = prior mean) †", "none (zero-shot; privileged goal input)"),
-    "stars_pooled": ("STARS pooled (6 datasets)", "LEAK: hotel, zara1, univ(001 train, 003 val); eth, zara2 clean"),
+    "stars_pooled": ("[LEAKED] STARS pooled (6 datasets)", "LEAK: hotel, zara1, univ(001 train, 003 val); eth, zara2 clean"),
     "stars_pooled_mode": ("&nbsp;&nbsp;mode (z = prior mean)", "LEAK: as STARS pooled"),
-    "stars_improved": ("STARS improved (7 datasets, 4x sample selection)",
+    "stars_improved": ("[LEAKED] STARS improved (7 datasets, 4x sample selection)",
                        "LEAK: hotel, zara1, univ(001 train, 003 val); eth, zara2 clean"),
     "stars_improved_mode": ("&nbsp;&nbsp;mode (z = prior mean)", "LEAK: as STARS pooled"),
-    "stars_improved_social": ("STARS improved, collision-aware (refine + collision loss)",
+    "stars_improved_social": ("[LEAKED] STARS improved, collision-aware (refine + collision loss)",
                               "LEAK: hotel, zara1, univ(001 train, 003 val); eth, zara2 clean"),
     "stars_improved_social_mode": ("&nbsp;&nbsp;mode (z = prior mean)", "LEAK: as STARS pooled"),
     "stars_steps_diffusion": ("STARS STEPS-only, per-agent diffusion", "none (zero-shot)"),
@@ -64,18 +75,40 @@ LEAKED = {m: {"hotel", "univ", "zara1"} for b in ("stars_pooled", "stars_improve
 POOLED = ("steps", "ptdpes", "madras", "grand_central", "atc", "eth", "ucy")
 
 
-def score_all(root: Path) -> pd.DataFrame:
-    rows = []
+def score_all(root: Path, done: pd.DataFrame | None = None) -> pd.DataFrame:
+    """Score every prediction file; with ``done`` (a cached metrics table) only the (set, method) pairs it lacks."""
+    have = set() if done is None else set(zip(done.set, done.method))
+    rows = [] if done is None else done.to_dict("records")
     for wpath in sorted((root / "windows").glob("*.npz")):
         name = wpath.stem
+        todo = [p for p in sorted((root / "preds" / name).glob("*.npz")) if (name, p.stem) not in have]
+        if (name, "ground_truth") in have and not todo:
+            continue
         windows = load(wpath)
-        rows.append({"set": name, "method": "ground_truth", **ground_truth(windows)})
-        for ppath in sorted((root / "preds" / name).glob("*.npz")):
+        if (name, "ground_truth") not in have:
+            rows.append({"set": name, "method": "ground_truth", **ground_truth(windows)})
+        for ppath in todo:
             with np.load(ppath) as f:
                 pred = f["pred"]
             rows.append({"set": name, "method": ppath.stem, **score(windows, pred)})
             print(name, ppath.stem, f"{rows[-1]['min_ade']:.3f}/{rows[-1]['min_fde']:.3f}", flush=True)
     return pd.DataFrame(rows)
+
+
+SEEDED = re.compile(r"(ep_[a-z]+)_s\d+(_os4|_mode)?")
+
+
+def seed_average(df: pd.DataFrame) -> pd.DataFrame:
+    """Replace the per-seed rows ``ep_<kind>_s<seed>[_os4|_mode]`` by their mean over seeds (``ep_<kind>[...]``)."""
+    match = df.method.str.fullmatch(SEEDED.pattern)
+    if not match.any():
+        return df
+    seeded = df[match].copy()
+    seeded["seeds"] = 1
+    seeded["method"] = seeded.method.map(lambda m: "".join(g or "" for g in SEEDED.fullmatch(m).groups()))
+    num = seeded.select_dtypes("number").columns.drop("seeds")
+    avg = seeded.groupby(["set", "method"])[list(num)].mean().join(seeded.groupby(["set", "method"]).seeds.sum())
+    return pd.concat([df[~match], avg.reset_index()], ignore_index=True)
 
 
 def _order(methods) -> list[str]:
@@ -273,13 +306,14 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--root", type=Path, default=ROOT / "experiments/forecast_bench")
     parser.add_argument("--out", type=Path, required=True)
-    parser.add_argument("--rescore", action="store_true")
+    parser.add_argument("--rescore", action="store_true", help="score every prediction again (default: only new ones)")
     args = parser.parse_args()
     args.out.mkdir(parents=True, exist_ok=True)
     cache = args.out / "metrics.csv"
-    df = pd.read_csv(cache) if cache.exists() and not args.rescore else score_all(args.root)
+    df = score_all(args.root, pd.read_csv(cache) if cache.exists() and not args.rescore else None)
     df.to_csv(cache, index=False)
     (args.out / "metrics.json").write_text(json.dumps(df.to_dict(orient="records"), indent=1))
+    df = seed_average(df)
     closed_md, closed = closed_loop_tables(args.root / "closed_loop")
     if not closed.empty:
         closed.to_csv(args.out / "closed_loop_metrics.csv", index=False)

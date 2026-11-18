@@ -1,0 +1,9 @@
+# ETH/UCY protocol pretraining (protocol A): STEPS, PTDPES, MADRAS and Grand Central only. No ATC (noisy) and
+# no ETH or UCY recording at all (eth, hotel, univ/students001/003, uni_examples, zara01-03, arxiepiskopi), so
+# every ETH/UCY scene is unseen for zero-shot evaluation and LOSO fine-tuning (protocol B).
+datasets:
+  - steps
+  - ptdpes
+  - madras
+  - grand_central      # temporal split (registered default)
+learning_rate: 3.0e-4

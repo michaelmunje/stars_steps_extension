@@ -44,11 +44,13 @@ ADAPTERS = {"stars_steps_goal": "stars_steps", "stars_pooled_goal": "stars_poole
             "stars_noethucy_goal_adapter": "stars_noethucy_goal"}
 # Deterministic "mode" rows: name -> checkpoint run with the CVAE prior-mean latent (no sampling, one rollout).
 MODES = {"stars_pooled_mode": "stars_pooled", "stars_noethucy_mode": "stars_noethucy",
-         "stars_improved_mode": "stars_improved", "stars_improved_social_mode": "stars_improved_social"}
+         "stars_improved_mode": "stars_improved", "stars_improved_social_mode": "stars_improved_social",
+         "stars_ep_zs_mode": "stars_ep_zs", "stars_ep_loso_mode": "stars_ep_loso"}
 STARS = ["stars_steps", "stars_pooled", "stars_pooled_mode", "stars_steps_goal", "stars_pooled_goal",
          "stars_noethucy", "stars_noethucy_mode", "stars_noethucy_goal", "stars_noethucy_goal_adapter",
          "stars_improved", "stars_improved_mode", "stars_improved_social", "stars_improved_social_mode",
-         "stars_steps_diffusion", "stars_steps_joint_diffusion"]
+         "stars_steps_diffusion", "stars_steps_joint_diffusion",
+         "stars_ep_zs", "stars_ep_zs_mode", "stars_ep_loso", "stars_ep_loso_mode"]
 BASELINES = ["cv", "goal_straight", "sfm", "orca", "sfm_default", "orca_default"]
 METHODS = ["ground_truth", *STARS, *BASELINES]
 STUDY_MODELS = ["ground_truth", "stars_pooled", "stars_improved", "stars_improved_social", "cv", "sfm", "orca"]   # preference export (schema v1.0)
@@ -64,6 +66,8 @@ LABEL = {"ground_truth": "Ground truth", "stars_steps": "STARS (STEPS-only, zero
          "stars_improved_social": "STARS improved, collision-aware", "stars_improved_social_mode": "STARS collision-aware, mode",
          "stars_steps_diffusion": "STARS diffusion (STEPS-only, zero-shot)",
          "stars_steps_joint_diffusion": "STARS joint diffusion (STEPS-only, zero-shot)",
+         "stars_ep_zs": "STARS A: 4-dataset pretrain, zero-shot (4x oversampling)", "stars_ep_zs_mode": "STARS A, mode",
+         "stars_ep_loso": "STARS B: A + leave-one-scene-out fine-tune (4x oversampling)", "stars_ep_loso_mode": "STARS B, mode",
          "cv": "Constant velocity", "goal_straight": "Straight to goal †",
          "sfm": "Social force (calibrated) †", "orca": "ORCA (calibrated) †", "sfm_default": "Social force (defaults) †",
          "orca_default": "ORCA (published defaults) †"}
@@ -90,7 +94,14 @@ def simulators(cal: dict, device: str) -> dict:
     sims = {"cv": S.cv, "goal_straight": S.goal_straight, "sfm_default": S.sfm,
             "sfm": lambda x, n, **k: S.sfm(x, n, params=sfm_p), "orca_default": S.orca,
             "orca": lambda x, n, **k: S.orca(x, n, params=orca_p, radius=orca_r)}
+    for name, paths in S.PER_DATASET.items():
+        paths = {k: Path(str(v).format(seed=S.EP_SEED)) for k, v in paths.items()}
+        if all(p.exists() for p in paths.values()):
+            sims[name] = S.PerDataset({k: S.Stars(p, device=device) for k, p in paths.items()})
+            if name in S.OVERSAMPLE:
+                sims[name] = sims[name].with_oversample(S.OVERSAMPLE[name])
     for name, path in S.CHECKPOINTS.items():
+        path = Path(str(path).format(seed=S.EP_SEED))
         if path.exists():
             sims[name] = S.Stars(path, device=device)
             if name in S.OVERSAMPLE:
@@ -113,8 +124,11 @@ def chunks(wins, size: int = 32):
 def simulate(fn, wins, seed: int = 0) -> tuple[dict, float]:
     """``{scene_id: [N, steps, 2]}`` and wall time."""
     out, start = {}, time.perf_counter()
-    for group in chunks(wins):
-        traj = fn(S.pad(group), D.MAX_STEPS, seed=seed)
+    groups = chunks(wins)
+    if isinstance(fn, S.PerDataset):   # one checkpoint per dataset: never mix datasets in a batch
+        groups = [[w for w in g if w.dataset == d] for g in groups for d in dict.fromkeys(w.dataset for w in g)]
+    for group in groups:
+        traj = fn(S.pad(group), D.MAX_STEPS, seed=seed, dataset=group[0].dataset)
         for b, w in enumerate(group):
             out[w.scene_id] = traj[b, :len(w.agent_ids), :w.steps]
     return out, time.perf_counter() - start

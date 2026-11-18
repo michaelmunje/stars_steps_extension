@@ -33,6 +33,22 @@ STARS = {  # method -> checkpoint
     # collision-aware variant: refinement round + decoder collision hinge (weight 10), KL 0.15
     "stars_improved_social": RUNS / "si_final_social_s42/checkpoints/best.pt",
 }
+# ETH/UCY protocol (branch ethucy-protocol): ep_zs_s<seed> = protocol A (pretrained on STEPS, PTDPES, MADRAS,
+# Grand Central; zero-shot), ep_loso_s<seed> = protocol B (A fine-tuned leave-one-scene-out, per-fold checkpoint
+# chosen on the fold's val split), ep_scratch_s<seed> = LOSO from scratch (no pretraining). Suffix _os4: 4x
+# joint-sample oversampling with collision-based selection; _mode: prior-mean latent (K = 1).
+PROTOCOL_PRE = RUNS / "ep_pre4_s{seed}/checkpoints/best.pt"
+
+
+def protocol_checkpoint(method: str, fold: str, root: Path) -> tuple[Path, bool, int]:
+    """``ep_<kind>_s<seed>[_os4|_mode]`` -> (checkpoint, mode, oversample) for one ETH/UCY fold."""
+    mode, oversample = method.endswith("_mode"), 4 if method.endswith("_os4") else 1
+    _, kind, seed = method.removesuffix("_mode").removesuffix("_os4").split("_")
+    if kind == "zs":
+        return Path(str(PROTOCOL_PRE).format(seed=seed[1:])), mode, oversample
+    return root / "loso" / f"ep_{kind}_{seed}" / fold / "best.pt", mode, oversample
+
+
 MODE = {f"{m}_mode": m for m in ("stars_pooled", "stars_noethucy", "stars_noethucy_goal", "stars_improved", "stars_improved_social")}
 
 
@@ -54,7 +70,7 @@ def to_store(windows: dict, device):
 
 @torch.no_grad()
 def stars(windows: dict, checkpoint: Path, device: str, samples: int, max_nodes: int, seed: int = 0,
-          mode: bool = False) -> np.ndarray:
+          mode: bool = False, oversample: int = 1) -> np.ndarray:
     from baselines.stars_ma_batch import _ranges, build_batch, node_budget_batches
     from baselines.stars_ma_graph import to_scene
     from baselines.train_stars_ma import load_forecaster
@@ -63,6 +79,8 @@ def stars(windows: dict, checkpoint: Path, device: str, samples: int, max_nodes:
     torch.manual_seed(seed)
     model, payload = load_forecaster(checkpoint, torch.device(device))
     model.eval()
+    if oversample > 1:
+        model.decoder_recipe["oversample"] = oversample
     graph = payload["graph"]
     store = to_store(windows, device)
     k = samples if model.stochastic and not mode else 1
@@ -124,7 +142,7 @@ def stars_predictor(checkpoint: Path, device: str):
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--method", required=True, choices=["cv", "stars_loo", *STARS, *MODE])
+    parser.add_argument("--method", required=True, help="cv, stars_loo, a STARS / MODE key, or ep_<zs|loso|scratch>_s<seed>[_os4|_mode]")
     parser.add_argument("--sets", required=True)
     parser.add_argument("--root", type=Path, default=ROOT / "experiments/forecast_bench")
     parser.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
@@ -142,6 +160,10 @@ def main() -> None:
         elif args.method == "stars_loo":   # per-fold checkpoint from forecast_bench.finetune_stars_loo
             checkpoint = args.root / "stars_loo" / name.removeprefix("ethucy_") / "best.pt"
             pred = stars(windows, checkpoint, args.device, args.samples, args.max_nodes)
+        elif args.method.startswith("ep_"):
+            checkpoint, mode, oversample = protocol_checkpoint(args.method, name.removeprefix("ethucy_"), args.root)
+            pred = stars(windows, checkpoint, args.device, args.samples, args.max_nodes, mode=mode,
+                         oversample=oversample)
         elif args.method in MODE:
             pred = stars(windows, STARS[MODE[args.method]], args.device, args.samples, args.max_nodes, mode=True)
         else:
