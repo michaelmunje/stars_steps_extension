@@ -10,6 +10,15 @@ window. ``--encoder-mode`` chooses a frozen or jointly fine-tuned phase-1 encode
 decoder (phase 3); ``--rollout-exec-steps`` adds a closed-loop multi-step loss (phase 4). Forecast
 checkpoints are selected on validation best-of-K all-agent ADE.
 
+Closed-loop fine-tuning, ``--init-checkpoint`` + ``--rft-steps K``: starting from a trained forecaster,
+every batch is also unrolled in a simulator-faithful closed loop for K steps of 0.4 s
+(``stars_ma_model.closed_loop_rollout``: re-encode from the model's own executed positions, execute
+the first step, prior latents with AR(1) noise as in ``simplenavsim.realism.sim.Stars``), and the
+executed positions are supervised against the ground truth with gradients through the rollout. The
+open-loop CVAE loss stays as a regulariser (``--open-loop-weight``). ``--rft-eval-steps`` adds the
+same closed loop (no gradients, one sample) to validation, and ``--selection closedloop`` selects on
+its per-dataset mean ADE.
+
 Datasets come from a YAML config (``--config``, see ``configs/stars_ma/``) or ``--datasets``.
 Every option below can also be set in the config (same names, underscores); explicit flags win.
 
@@ -45,6 +54,7 @@ from baselines.stars_ma_model import (
     ENCODER_RECIPE,
     StarsMotionVAE,
     StarsMultiAgentForecaster,
+    closed_loop_rollout,
     rollout,
 )
 from baselines.status import RunStatus, checkpoint_metadata
@@ -140,8 +150,9 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--activation-checkpointing", action="store_true",
                         help="Recompute temporal-transformer activations in backward: less memory, more compute")
     parser.add_argument("--eval-every", type=int, default=1, help="Validate every this many epochs")
-    parser.add_argument("--selection", choices=("macro", "pooled"), default="macro",
-                        help="Forecast selection: mean of per-dataset agent ADE (macro) or over all agents")
+    parser.add_argument("--selection", choices=("macro", "pooled", "closedloop"), default="macro",
+                        help="Forecast selection: mean of per-dataset agent ADE (macro) or over all agents, or "
+                             "(with --rft-eval-steps) mean of per-dataset closed-loop ADE")
     graph = parser.add_argument_group("graph")
     graph.add_argument("--knn", type=int, default=16, help="Sources kept per destination (default 16)")
     graph.add_argument("--radius", type=float, default=10.0, help="Neighbourhood radius in metres (default 10)")
@@ -190,6 +201,27 @@ def _parser() -> argparse.ArgumentParser:
                           help="Collision hinge on a prior sample with a gradient-free latent: it trains the "
                                "decoder only (--no-collision-fixed-prior also lets it widen the prior, which "
                                "inflated the sample spread)")
+    rft = parser.add_argument_group("closed-loop fine-tuning (off by default)")
+    rft.add_argument("--init-checkpoint", type=Path,
+                     help="Start from this forecast checkpoint (its encoder/decoder recipes and weights)")
+    rft.add_argument("--rft-steps", type=int, default=0,
+                     help="> 0: closed-loop rollout loss over this many executed 0.4 s steps (<= prediction steps)")
+    rft.add_argument("--rft-start-steps", type=int, help="Curriculum: rollout length at epoch 1 (default --rft-steps)")
+    rft.add_argument("--rft-ramp-epochs", type=int, default=0, help="Curriculum: epochs to reach --rft-steps")
+    rft.add_argument("--rft-weight", type=float, default=1.0)
+    rft.add_argument("--open-loop-weight", type=float, default=1.0,
+                     help="Weight of the open-loop (teacher-forced) forecast + KL loss kept as a regulariser")
+    rft.add_argument("--rft-speed-weight", type=float, default=0.0,
+                     help="> 0: add this x the progress error (m; distance from the start, simulated vs true) to the rollout loss")
+    rft.add_argument("--rft-latent", choices=("prior", "posterior"), default="prior",
+                     help="Latents in the training rollout: prior with AR(1) noise (as the simulator) or posterior")
+    rft.add_argument("--rft-rho", type=float, default=0.8, help="AR(1) correlation of the latent noise (simulator: 0.8)")
+    rft.add_argument("--rft-bptt", type=int, default=0, help="> 0: truncate backprop through the rollout every N steps")
+    rft.add_argument("--rft-eval-steps", type=int, default=0,
+                     help="> 0: validation also reports the simulator-faithful closed loop over this many steps")
+    rft.add_argument("--train-batches", type=int, help="Cap training batches per epoch (fresh random subset each epoch)")
+    rft.add_argument("--val-batches", type=int, help="Cap validation batches (fixed subset)")
+    rft.add_argument("--kl-warmup-epochs", type=int, help="KL weight warm-up epochs (default: the recipe's 10)")
     forecast.add_argument("--collision-radius", type=float, default=0.4,
                           help="Collision hinge distance in metres (pairs closer in the ground truth are allowed "
                                "down to their own closest approach)")
@@ -214,7 +246,7 @@ def parse_args(argv=None) -> argparse.Namespace:
     args.train_entries = dataset_entries(args.datasets if args.datasets is not None else config.get("datasets"))
     val = args.val_datasets if args.val_datasets is not None else config.get("val_datasets")
     args.val_entries = dataset_entries(val) if val is not None else [dict(entry) for entry in args.train_entries]
-    for key in ("run_dir", "encoder_checkpoint", "cache_dir"):
+    for key in ("run_dir", "encoder_checkpoint", "cache_dir", "init_checkpoint"):
         if isinstance(getattr(args, key), str):
             setattr(args, key, Path(getattr(args, key)))
     if not args.phase or not args.run_dir:
@@ -232,6 +264,12 @@ def parse_args(argv=None) -> argparse.Namespace:
             parser.error("--rollout-exec-steps must be >= 0")
         if args.rollout_exec_steps and args.decoder in ("diffusion", "joint_diffusion"):
             parser.error("--rollout-exec-steps is not supported with --decoder diffusion")
+        if args.init_checkpoint and (args.encoder_checkpoint or args.encoder_mode != "scratch"):
+            parser.error("--init-checkpoint replaces --encoder-checkpoint (use --encoder-mode scratch)")
+        if args.rft_steps < 0 or args.rft_eval_steps < 0:
+            parser.error("--rft-steps/--rft-eval-steps must be >= 0")
+        if args.selection == "closedloop" and not args.rft_eval_steps:
+            parser.error("--selection closedloop needs --rft-eval-steps")
     elif args.encoder_checkpoint or args.rollout_exec_steps:
         parser.error("--encoder-checkpoint/--rollout-exec-steps apply to --phase forecast")
     return args
@@ -343,6 +381,11 @@ def epoch_batches(store: WindowStore, args, epoch: int, *, train: bool, weights=
         count = max(args.world_size, len(batches) // args.world_size * args.world_size)
         batches = (batches * math.ceil(count / len(batches)))[:count]
     batches = batches[args.rank::args.world_size]
+    cap = getattr(args, "train_batches" if train else "val_batches", None)
+    if cap:
+        if not train:  # a fixed, evenly spread subset of the (unshuffled, size-sorted) validation batches
+            batches = [batches[i] for i in np.linspace(0, len(batches) - 1, min(cap, len(batches))).astype(int)]
+        batches = batches[:cap]
     return batches[: args.max_batches] if args.max_batches else batches
 
 
@@ -411,13 +454,29 @@ def forecast_loss(model, batch, args, kl_weight: float) -> dict[str, torch.Tenso
         generated = (out["fixed_prior_prediction" if fixed else "prior_prediction"][0] if model.latent_dim
                      else out["prediction"])
         losses["collision"] = collision_loss(generated, batch, args.collision_radius)
+    losses["rft"] = losses["forecast"].new_zeros(())
+    steps = getattr(args, "rft_current_steps", 0)
+    if steps:
+        simulated = closed_loop_rollout(model, batch, steps, latent=args.rft_latent, rho=args.rft_rho,
+                                        bptt=args.rft_bptt)
+        losses["rft"] = _masked_distance(simulated, batch.future[:, :steps], valid[:, :steps])
+        if getattr(args, "rft_speed_weight", 0.0) > 0:
+            # Progress matching: | |p_k - p_0| - |g_k - p_0| | (distance travelled from the start, simulated vs
+            # true) so the rollout loss cannot be lowered by hedging (slowing down under uncertainty). Unlike
+            # a per-step speed match it cannot be met by zig-zagging (that raised turning ~5x).
+            start = batch.obs_xy[:, -1:].float()
+            reach = lambda path: torch.linalg.norm(path - start + 1e-9, dim=-1)
+            gap = (reach(simulated) - reach(torch.nan_to_num(batch.future[:, :steps].float()))).abs()
+            fv = batch.future_valid[:, :steps].float()
+            losses["rft"] = losses["rft"] + args.rft_speed_weight * (gap * fv).sum() / fv.sum().clamp(min=1)
     if args.rollout_exec_steps:
         # Closed loop: each agent keeps the intent z inferred from its future for the whole rollout.
         rounds = math.ceil(model.prediction_steps / args.rollout_exec_steps)
         simulated = rollout(model, batch, rounds=rounds, exec_steps=args.rollout_exec_steps, knn=args.knn,
                             radius=args.radius, z=out["z"], keep_graph=True)[:, :model.prediction_steps]
         losses["rollout"] = _masked_distance(simulated, batch.future, valid)
-    losses["loss"] = (losses["forecast"] + kl_weight * losses["kl"] + args.rollout_weight * losses["rollout"]
+    losses["loss"] = (getattr(args, "open_loop_weight", 1.0) * (losses["forecast"] + kl_weight * losses["kl"])
+                      + getattr(args, "rft_weight", 1.0) * losses["rft"] + args.rollout_weight * losses["rollout"]
                       + getattr(args, "collision_weight", 0.0) * losses["collision"]
                       + getattr(args, "bom_weight", 0.0) * losses["bom"])
     return losses
@@ -442,6 +501,58 @@ def _autocast(args):
 
 
 # ----------------------------------------------------------------------------- evaluation
+
+
+TURN_MIN_STEP = 0.08   # metres per 0.4 s step (0.2 m/s): turning is measured only between moving steps
+
+
+@torch.no_grad()
+def closed_loop_metrics(model, store: WindowStore, batches, args, steps: int) -> dict[str, float]:
+    """Simulator-faithful closed loop (one prior sample, AR(1) latent noise, seeded per batch) over
+    ``steps``: ADE / FDE per dataset (``cl_<name>/ade``) and pooled, mean speed of the simulated
+    vs ground-truth agents over the same supervised steps, and mean absolute turning per step."""
+    model.eval()
+    names = store.names
+    sums = torch.zeros(len(names), 11, dtype=torch.float64, device=store.device)
+    for index, windows in enumerate(batches):
+        batch = _batch(store, windows, args)
+        generator = torch.Generator().manual_seed(1000003 * args.seed + index)
+        with _autocast(args):
+            sim = closed_loop_rollout(model, batch, steps, rho=args.rft_rho, generator=generator).float()
+        truth, valid = torch.nan_to_num(batch.future[:, :steps].float()), batch.future_valid[:, :steps]
+        error = torch.linalg.norm(sim - truth, dim=-1)
+        last = batch.obs_xy[:, -1:].float()
+        step_ok = valid & torch.cat([torch.ones_like(valid[:, :1]), valid[:, :-1]], dim=1)
+        speed = lambda path: torch.linalg.norm(torch.diff(torch.cat([last, path], 1), dim=1), dim=-1) / CANONICAL_DT
+        def turning(path):
+            d = torch.diff(torch.cat([last, path], 1), dim=1)
+            a, b = d[:, :-1], d[:, 1:]
+            angle = torch.atan2(a[..., 0] * b[..., 1] - a[..., 1] * b[..., 0], (a * b).sum(-1)).abs()
+            ok = step_ok[:, 1:] & (torch.linalg.norm(a, dim=-1) > TURN_MIN_STEP) & (torch.linalg.norm(b, dim=-1) > TURN_MIN_STEP)
+            return angle, ok
+        sim_turn, sim_ok = turning(sim)
+        gt_turn, gt_ok = turning(truth)
+        complete = valid.all(-1)
+        graph_dataset = batch.dataset[batch.batch]
+        per_node = torch.stack([(error * valid).sum(-1), valid.sum(-1), error[:, -1] * complete, complete.float(),
+                                (speed(sim) * step_ok).sum(-1), (speed(truth) * step_ok).sum(-1), step_ok.sum(-1),
+                                (sim_turn * sim_ok).sum(-1), sim_ok.sum(-1), (gt_turn * gt_ok).sum(-1), gt_ok.sum(-1)],
+                               -1).double()
+        sums.index_add_(0, graph_dataset, per_node)
+    if args.world_size > 1:
+        dist.all_reduce(sums)
+    out = {}
+
+    def summarise(row, prefix):
+        ratio = lambda a, b: float(row[a] / row[b].clamp(min=1))
+        out.update({f"{prefix}ade": ratio(0, 1), f"{prefix}fde": ratio(2, 3), f"{prefix}speed": ratio(4, 6),
+                    f"{prefix}gt_speed": ratio(5, 6), f"{prefix}turn": ratio(7, 8), f"{prefix}gt_turn": ratio(9, 10)})
+
+    summarise(sums.sum(0), "cl_")
+    for i, name in enumerate(names):
+        if sums[i, 1] > 0:
+            summarise(sums[i], f"cl_{name}/")
+    return out
 
 
 @torch.no_grad()
@@ -488,7 +599,15 @@ def evaluate_ssl(model, store, batches, args, beta) -> dict[str, float]:
     return {key: float(stacked[i] / stacked[-1].clamp(min=1)) for i, key in enumerate(sums)}
 
 
+def selection_name(args, samples: int) -> str:
+    if args.selection == "closedloop":
+        return f"val_closedloop{args.rft_eval_steps}_ADE_macro"
+    return f"val_top{samples}_agent_ADE_{args.selection}"
+
+
 def selection_metric(metrics: dict[str, float], names: list[str], how: str) -> float:
+    if how == "closedloop":
+        return float(np.mean([metrics[f"cl_{name}/ade"] for name in names if f"cl_{name}/ade" in metrics]))
     if how == "macro":
         values = [metrics[f"{name}/agent_ade"] for name in names if f"{name}/agent_ade" in metrics]
         if values:
@@ -572,6 +691,9 @@ def _build_model(args, payload):
         return model, groups
     model = StarsMultiAgentForecaster(args.obs, args.pred, dt=CANONICAL_DT,
                                       encoder_recipe=args.encoder_recipe, decoder_recipe=args.decoder_recipe)
+    if getattr(args, "init_payload", None) is not None:
+        model.load_state_dict(args.init_payload["state_dict"])
+        args.run.log("forecaster initialised", checkpoint=str(args.init_checkpoint))
     if payload is not None:
         encoder_state = {key.removeprefix("encoder."): value for key, value in payload["state_dict"].items()
                          if key.startswith("encoder.")}
@@ -628,6 +750,21 @@ def train(args) -> None:
         **({"hidden_dim": args.decoder_hidden_dim} if args.decoder_hidden_dim else {}),
         **({"dropout": args.decoder_dropout} if args.decoder_dropout is not None else {}),
     }
+    args.init_payload = None
+    if args.phase == "forecast" and args.init_checkpoint:
+        # Fine-tuning: the architecture is the checkpoint's, whatever the decoder flags say.
+        init = torch.load(args.init_checkpoint, map_location="cpu", weights_only=False)
+        if init.get("model") != "stars_ma" or init.get("phase") != "forecast":
+            raise ValueError(f"{args.init_checkpoint} is not a multi-agent STARS forecast checkpoint")
+        if init["graph"] != {"knn": args.knn, "radius": args.radius}:
+            raise ValueError(f"Graph topology differs from the init checkpoint ({init['graph']})")
+        if (init["window"]["observation_steps"], init["window"]["prediction_steps"]) != (args.obs, args.pred):
+            raise ValueError(f"Window differs from the init checkpoint ({init['window']})")
+        args.encoder_recipe, args.decoder_recipe = dict(init["encoder_recipe"]), dict(init["decoder_recipe"])
+        args.goal = bool(args.decoder_recipe.get("goal", False))
+        args.init_payload = init
+    if args.rft_steps > args.pred or args.rft_eval_steps > args.pred:
+        raise ValueError(f"--rft-steps/--rft-eval-steps must be <= the prediction steps ({args.pred})")
     args.goals = args.goal
     base_recipe = SSL_RECIPE if args.phase == "ssl" else FORECAST_RECIPE
     args.recipe = {**base_recipe, **({"max_epochs": args.epochs} if args.epochs else {})}
@@ -643,7 +780,7 @@ def train(args) -> None:
         torch.cuda.manual_seed_all(args.seed)
         torch.backends.cuda.matmul.allow_tf32 = True
         torch.backends.cudnn.allow_tf32 = True
-    skip = {"device_realized", "run_config", "run", "main"}
+    skip = {"device_realized", "run_config", "run", "main", "init_payload"}
     args.run_config = {
         **{key: (str(value) if isinstance(value, Path) else value) for key, value in vars(args).items() if key not in skip},
         "model": "stars_ma",
@@ -712,6 +849,20 @@ def train(args) -> None:
                        latest.with_suffix(".tmp"))
             os.replace(latest.with_suffix(".tmp"), latest)
 
+        if args.init_payload is not None and start_epoch == 1 and args.phase == "forecast" and not args.benchmark:
+            # Epoch 0: the initial checkpoint on the same validation, so best.pt is never worse than it.
+            val_batches = epoch_batches(val_store, args, 0, train=False)
+            metrics = evaluate_forecaster(model, val_store, val_batches, args, samples=samples,
+                                          rollout_exec_steps=args.rollout_exec_steps)
+            if args.rft_eval_steps:
+                metrics.update(closed_loop_metrics(model, val_store, val_batches, args, args.rft_eval_steps))
+            selection = selection_metric(metrics, val_store.names, args.selection)
+            run.metric({"stage": args.phase, "epoch": 0, "selection": selection, **{f"val_{k}": v for k, v in metrics.items()}})
+            stopper.update(selection)
+            best_epoch = 0
+            if args.main:
+                _save(checkpoint, model, args, selection={"metric": selection_name(args, samples), "value": selection,
+                                                          "best_epoch": 0, "metrics": metrics})
         for epoch in range(start_epoch, args.recipe["max_epochs"] + 1):
             model.train()
             if getattr(model, "freeze_encoder", False):
@@ -720,7 +871,12 @@ def train(args) -> None:
                 r = args.recipe
                 weight = min(r["beta_max"], r["beta_max"] * epoch / max(1, r["beta_warmup_epochs"]))
             else:
-                weight = args.recipe["kl_weight"] * min(1.0, epoch / max(1, args.recipe["kl_warmup_epochs"]))
+                warm = args.kl_warmup_epochs if args.kl_warmup_epochs is not None else args.recipe["kl_warmup_epochs"]
+                weight = args.recipe["kl_weight"] * min(1.0, epoch / max(1, warm))
+                if args.rft_steps:  # curriculum: rollout length from --rft-start-steps to --rft-steps
+                    start = args.rft_start_steps or args.rft_steps
+                    ramp = min(1.0, (epoch - 1) / args.rft_ramp_epochs) if args.rft_ramp_epochs else 1.0
+                    args.rft_current_steps = int(round(start + (args.rft_steps - start) * ramp))
             batches = epoch_batches(train_store, args, epoch, train=True, weights=weights)
             if args.benchmark:
                 batches = (batches * math.ceil(args.benchmark / max(1, len(batches))))[: args.benchmark]
@@ -786,9 +942,13 @@ def train(args) -> None:
             else:
                 metrics = evaluate_forecaster(model, val_store, val_batches, args, samples=samples,
                                               rollout_exec_steps=args.rollout_exec_steps)
-                selection, name = selection_metric(metrics, val_store.names, args.selection), f"val_top{samples}_agent_ADE_{args.selection}"
+                if args.rft_eval_steps:
+                    metrics.update(closed_loop_metrics(model, val_store, val_batches, args, args.rft_eval_steps))
+                selection, name = selection_metric(metrics, val_store.names, args.selection), selection_name(args, samples)
             if args.schedule == "plateau":
                 scheduler.step(selection)
+            if getattr(args, "rft_current_steps", 0):
+                metrics["rft_steps"] = args.rft_current_steps
             run.metric({"stage": args.phase, "epoch": epoch, "beta" if args.phase == "ssl" else "kl_weight": weight,
                         "selection": selection, **train_metrics, **throughput,
                         **{f"val_{k}": v for k, v in metrics.items()}})

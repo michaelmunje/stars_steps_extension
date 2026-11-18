@@ -32,7 +32,11 @@ CHECKPOINTS = {"stars_steps": REPO / "experiments/stars_ma/runs/cvae_kl01_finetu
                # results/stars_improve_2026-11-15: all 7 datasets, seed 2 (best validation); used with oversample=4.
                "stars_improved": REPO / "experiments/stars_ma/runs/si_final_base_s2/checkpoints/best.pt",
                # Collision-aware variant: refinement round + decoder-only collision loss, KL 0.15.
-               "stars_improved_social": REPO / "experiments/stars_ma/runs/si_final_social_s42/checkpoints/best.pt"}
+               "stars_improved_social": REPO / "experiments/stars_ma/runs/si_final_social_s42/checkpoints/best.pt",
+               # results/stars_rollout_ft_2026-11-18: stars_improved(_social) fine-tuned on their own closed-loop
+               # 12-step rollouts (train_stars_ma --init-checkpoint ... --rft-steps 12).
+               "stars_rft": REPO / "experiments/stars_ma/runs/rft_base_progress_noatc/checkpoints/best.pt",
+               "stars_rft_social": REPO / "experiments/stars_ma/runs/rft_social_progress_noatc/checkpoints/best.pt"}
 OVERSAMPLE = {"stars_improved": 4}   # closed-loop rollouts per window; the least-colliding one is kept
 RADIUS = 0.2              # pedestrian body radius (m) used by SFM / ORCA
 ARRIVAL = 0.3             # goal-directed models stop within this distance of the goal (m)

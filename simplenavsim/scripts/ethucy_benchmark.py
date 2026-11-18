@@ -42,7 +42,8 @@ REPO = Path(__file__).resolve().parents[2]
 ADAPTERS = {"stars_steps_goal": "stars_steps", "stars_pooled_goal": "stars_pooled",
             "stars_noethucy_goal_adapter": "stars_noethucy_goal"}
 STARS = ["stars_steps", "stars_pooled", "stars_steps_goal", "stars_pooled_goal",
-         "stars_noethucy", "stars_noethucy_goal", "stars_noethucy_goal_adapter", "stars_improved", "stars_improved_social"]
+         "stars_noethucy", "stars_noethucy_goal", "stars_noethucy_goal_adapter", "stars_improved", "stars_improved_social",
+         "stars_rft", "stars_rft_os4", "stars_rft_social"]
 BASELINES = ["cv", "goal_straight", "sfm", "orca", "sfm_default", "orca_default"]
 METHODS = ["ground_truth", *STARS, *BASELINES]
 STUDY_MODELS = ["ground_truth", "stars_pooled", "stars_improved", "stars_improved_social", "cv", "sfm", "orca"]   # preference export (schema v1.0)
@@ -51,7 +52,8 @@ LABEL = {"ground_truth": "Ground truth", "stars_steps": "STARS (STEPS-only, zero
          "stars_pooled_goal": "STARS pooled + goal adapter",
          "stars_noethucy": "STARS (no ETH/UCY, zero-shot)", "stars_noethucy_goal": "STARS goal-conditioned (no ETH/UCY, zero-shot)",
          "stars_noethucy_goal_adapter": "STARS goal-conditioned + goal adapter",
-         "stars_improved": "STARS improved (7 datasets, 4x oversampling)", "stars_improved_social": "STARS improved, collision-aware", "cv": "Constant velocity", "goal_straight": "Straight to goal",
+         "stars_improved": "STARS improved (7 datasets, 4x oversampling)", "stars_improved_social": "STARS improved, collision-aware", "stars_rft": "STARS closed-loop fine-tuned",
+         "stars_rft_os4": "STARS closed-loop fine-tuned, 4x oversampling", "stars_rft_social": "STARS closed-loop fine-tuned, collision-aware", "cv": "Constant velocity", "goal_straight": "Straight to goal",
          "sfm": "Social force (calibrated)", "orca": "ORCA (calibrated)", "sfm_default": "Social force (defaults)",
          "orca_default": "ORCA (published defaults)"}
 CAL_HORIZON = 20                       # calibrate on ADE at 8 s
@@ -81,6 +83,8 @@ def simulators(cal: dict, device: str) -> dict:
             sims[name] = S.Stars(path, device=device)
             if name in S.OVERSAMPLE:
                 sims[name] = sims[name].with_oversample(S.OVERSAMPLE[name])
+    if "stars_rft" in sims:   # same checkpoint, least-colliding of 4 rollouts (as stars_improved)
+        sims["stars_rft_os4"] = sims["stars_rft"].with_oversample(4)
     for name, base in ADAPTERS.items():
         if base in sims:
             sims[name] = sims[base].with_goal(cal.get("goal_weight", {}).get(base, 0.3))
