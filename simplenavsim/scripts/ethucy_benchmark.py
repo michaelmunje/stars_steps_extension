@@ -20,6 +20,7 @@ import hashlib
 import itertools
 import json
 import platform
+import re
 import shutil
 import subprocess
 import sys
@@ -41,25 +42,38 @@ REPO = Path(__file__).resolve().parents[2]
 # Adapter rows: name -> checkpoint it steers (inference-time goal-steering adapter, weight calibrated).
 ADAPTERS = {"stars_steps_goal": "stars_steps", "stars_pooled_goal": "stars_pooled",
             "stars_noethucy_goal_adapter": "stars_noethucy_goal"}
-STARS = ["stars_steps", "stars_pooled", "stars_steps_goal", "stars_pooled_goal",
-         "stars_noethucy", "stars_noethucy_goal", "stars_noethucy_goal_adapter", "stars_improved", "stars_improved_social"]
+# Deterministic "mode" rows: name -> checkpoint run with the CVAE prior-mean latent (no sampling, one rollout).
+MODES = {"stars_pooled_mode": "stars_pooled", "stars_noethucy_mode": "stars_noethucy",
+         "stars_improved_mode": "stars_improved", "stars_improved_social_mode": "stars_improved_social"}
+STARS = ["stars_steps", "stars_pooled", "stars_pooled_mode", "stars_steps_goal", "stars_pooled_goal",
+         "stars_noethucy", "stars_noethucy_mode", "stars_noethucy_goal", "stars_noethucy_goal_adapter",
+         "stars_improved", "stars_improved_mode", "stars_improved_social", "stars_improved_social_mode",
+         "stars_steps_diffusion", "stars_steps_joint_diffusion"]
 BASELINES = ["cv", "goal_straight", "sfm", "orca", "sfm_default", "orca_default"]
 METHODS = ["ground_truth", *STARS, *BASELINES]
 STUDY_MODELS = ["ground_truth", "stars_pooled", "stars_improved", "stars_improved_social", "cv", "sfm", "orca"]   # preference export (schema v1.0)
+# "†": the method reads the oracle goal (the track's last recorded position), privileged information that
+# constant velocity and the goal-free STARS rows do not have.
 LABEL = {"ground_truth": "Ground truth", "stars_steps": "STARS (STEPS-only, zero-shot)",
-         "stars_pooled": "STARS (pooled, in-domain)", "stars_steps_goal": "STARS STEPS + goal adapter",
-         "stars_pooled_goal": "STARS pooled + goal adapter",
-         "stars_noethucy": "STARS (no ETH/UCY, zero-shot)", "stars_noethucy_goal": "STARS goal-conditioned (no ETH/UCY, zero-shot)",
-         "stars_noethucy_goal_adapter": "STARS goal-conditioned + goal adapter",
-         "stars_improved": "STARS improved (7 datasets, 4x oversampling)", "stars_improved_social": "STARS improved, collision-aware", "cv": "Constant velocity", "goal_straight": "Straight to goal",
-         "sfm": "Social force (calibrated)", "orca": "ORCA (calibrated)", "sfm_default": "Social force (defaults)",
-         "orca_default": "ORCA (published defaults)"}
+         "stars_pooled": "STARS (pooled, in-domain)", "stars_pooled_mode": "STARS (pooled), mode",
+         "stars_steps_goal": "STARS STEPS + goal adapter †", "stars_pooled_goal": "STARS pooled + goal adapter †",
+         "stars_noethucy": "STARS (no ETH/UCY, zero-shot)", "stars_noethucy_mode": "STARS (no ETH/UCY), mode",
+         "stars_noethucy_goal": "STARS goal-conditioned (no ETH/UCY, zero-shot) †",
+         "stars_noethucy_goal_adapter": "STARS goal-conditioned + goal adapter †",
+         "stars_improved": "STARS improved (7 datasets, 4x oversampling)", "stars_improved_mode": "STARS improved, mode",
+         "stars_improved_social": "STARS improved, collision-aware", "stars_improved_social_mode": "STARS collision-aware, mode",
+         "stars_steps_diffusion": "STARS diffusion (STEPS-only, zero-shot)",
+         "stars_steps_joint_diffusion": "STARS joint diffusion (STEPS-only, zero-shot)",
+         "cv": "Constant velocity", "goal_straight": "Straight to goal †",
+         "sfm": "Social force (calibrated) †", "orca": "ORCA (calibrated) †", "sfm_default": "Social force (defaults) †",
+         "orca_default": "ORCA (published defaults) †"}
 CAL_HORIZON = 20                       # calibrate on ADE at 8 s
 GRIDS = {"sfm": {"ped_strength": [1.0, 2.1, 4.0], "ped_range": [0.2, 0.3, 0.5], "tau": [0.5, 1.0]},
          "orca": {"time_horizon": [1.0, 2.0, 5.0], "neighbor_dist": [3.0, 5.0, 10.0], "radius": [0.2, 0.3]},
          "goal_weight": [0.1, 0.2, 0.3, 0.5, 0.7]}
 RATIOS = {"ade": ("ade_sum", "agents"), "fde": ("fde_sum", "agents"), "sde": ("sde_sum", "agents"),
-          "nade": ("nade_sum", "nonlinear_agents"), "mde_goal": ("mde_goal_sum", "agents"),
+          "nade": ("nade_sum", "nonlinear_agents"), "lade": ("lade_sum", "linear_agents"),
+          "contact20": ("contact20_agents", "agents"), "contact40": ("contact40_agents", "agents"), "mde_goal": ("mde_goal_sum", "agents"),
           "goal_reached": ("goal_reached", "agents"), "mde_end": ("mde_end_sum", "agents"),
           "collision_pairs": ("colliding_pairs", "pairs"), "collision_pair_time": ("colliding_pair_steps", "pair_steps"),
           "agent_collision": ("agents_in_collision", "agents"), "hacs": ("hacs_sum", "agent_steps"),
@@ -81,6 +95,9 @@ def simulators(cal: dict, device: str) -> dict:
             sims[name] = S.Stars(path, device=device)
             if name in S.OVERSAMPLE:
                 sims[name] = sims[name].with_oversample(S.OVERSAMPLE[name])
+    for name, base in MODES.items():
+        if base in sims:
+            sims[name] = sims[base].with_mode()
     for name, base in ADAPTERS.items():
         if base in sims:
             sims[name] = sims[base].with_goal(cal.get("goal_weight", {}).get(base, 0.3))
@@ -174,18 +191,29 @@ def run(args) -> None:
     tdir.mkdir(parents=True, exist_ok=True)
     rows, agents, runtime, kin = [], [], [], {}
     for method in args.methods:
-        seeds = range(args.seeds) if method in STARS else [0]
+        seeds = range(args.seeds) if method in STARS and method not in MODES else [0]
+        saved = sorted(int(m[1]) for p in tdir.glob(f"{method}_s*.npz") if (m := re.fullmatch(rf"{method}_s(\d+)", p.stem)))
+        if args.reuse and saved:
+            seeds = saved
         for seed in seeds:
+            path = tdir / f"{method}_s{seed}.npz"
             if method == "ground_truth":
                 trajs, secs = {w.scene_id: w.future for w in wins}, 0.0
+            elif args.reuse and path.exists():   # rescore saved rollouts (no simulation)
+                with np.load(path) as f:
+                    trajs, secs = {k: f[k] for k in f.files}, None
             else:
                 trajs, secs = simulate(sims[method], wins, seed)
-            np.savez_compressed(tdir / f"{method}_s{seed}.npz", **trajs)
+            if secs is not None:
+                np.savez_compressed(path, **trajs)
             k = {}
             rows += score(trajs, wins, agents_out=agents, kin_out=k, method=method, seed=seed)
             for name, v in k.items():
                 kin.setdefault(method, {}).setdefault(name, []).extend(v)
             steps = sum(len(w.agent_ids) * w.steps for w in wins)
+            if secs is None:
+                print(f"{method} seed {seed}: rescored", flush=True)
+                continue
             runtime.append({"method": method, "seed": seed, "seconds": secs, "windows": len(wins), "agent_steps": steps,
                             "ms_per_window": 1e3 * secs / len(wins), "us_per_agent_step": 1e6 * secs / steps,
                             "device": args.device if method.startswith("stars") else "cpu"})
@@ -194,6 +222,10 @@ def run(args) -> None:
     mdir = args.run / "metrics"
     mdir.mkdir(exist_ok=True)
     rows, agents, runtime = pd.DataFrame(rows), pd.DataFrame(agents), pd.DataFrame(runtime)
+    if args.reuse and (mdir / "runtime.csv").exists():   # rescored rollouts keep their recorded runtime
+        old = pd.read_csv(mdir / "runtime.csv")
+        timed = set(zip(runtime.method, runtime.seed)) if len(runtime) else set()
+        runtime = pd.concat([old[[(m, s) not in timed for m, s in zip(old.method, old.seed)]], runtime])
     if args.append:   # keep the other methods' results (same windows: checked through the scenario manifest)
         old = [json.loads(line)["init_hash"] for line in open(args.run / "scenario_manifest.jsonl")]
         assert old == [R.init_hash(w.agent_ids, w.obs, w.goal) for w in wins], "--append needs the same windows"
@@ -322,7 +354,7 @@ def kinematics_table(args) -> None:
     rows = []
     for m in methods:
         row = {"method": m}
-        for q in ("speed", "acceleration", "turning"):
+        for q in [q for q in ("speed", "acceleration", "turning", "nn_distance") if f"{m}/{q}" in kin.files]:
             v = kin[f"{m}/{q}"]
             row.update({f"{q}_mean": float(v.mean()), f"{q}_p90": float(np.quantile(v, 0.9)) if len(v) else np.nan,
                         f"{q}_w1_vs_gt": wasserstein(v, kin[f"ground_truth/{q}"])})
@@ -336,7 +368,9 @@ def kinematics_table(args) -> None:
 COLORS = {"ground_truth": "#222222", "stars_steps": "#2b6cb0", "stars_pooled": "#6b46c1", "stars_steps_goal": "#63a4e0",
           "stars_pooled_goal": "#a78bdb",
           "stars_noethucy": "#319795", "stars_noethucy_goal": "#b83280", "stars_noethucy_goal_adapter": "#ed64a6", "cv": "#c05621", "goal_straight": "#d69e2e", "sfm": "#2f855a", "orca": "#c53030",
-          "sfm_default": "#9ae6b4", "orca_default": "#feb2b2"}
+          "sfm_default": "#9ae6b4", "orca_default": "#feb2b2", "stars_improved": "#4c51bf", "stars_improved_social": "#0bc5ea",
+          "stars_steps_diffusion": "#718096", "stars_steps_joint_diffusion": "#a0aec0"}
+COLORS.update({m: COLORS[base] for m, base in MODES.items()})   # mode rows: the sampled model's colour, dotted line
 
 
 def plot(args) -> None:
@@ -353,8 +387,8 @@ def plot(args) -> None:
             f = agg[(agg.method == m) & (agg.metric == metric) & (agg.level == level)].sort_values("horizon_s")
             if f.empty:
                 continue
-            ax.plot(f.horizon_s, f.value, "o-", color=COLORS[m], label=LABEL[m], lw=1.6, ms=3,
-                    ls="--" if m.endswith("_default") else "-")
+            ax.plot(f.horizon_s, f.value, marker="o", color=COLORS[m], label=LABEL[m], lw=1.6, ms=3,
+                    ls="--" if m.endswith("_default") else ":" if m in MODES else "-")
             ax.fill_between(f.horizon_s, f.ci_low, f.ci_high, color=COLORS[m], alpha=0.12, lw=0)
         ax.set_xlabel("horizon (s)"), ax.set_title(title, fontsize=10), ax.grid(alpha=0.3)
 
@@ -578,6 +612,28 @@ def fmt(r):
     return f"{r.value:.3f} [{r.ci_low:.3f}, {r.ci_high:.3f}]"
 
 
+def realism_table(agg, kin, methods, horizon: float = 8.0) -> str:
+    """One row per method at ``horizon``: ADE (all / near-straight / non-linear agents), non-group close contacts,
+    and Wasserstein-1 distances of the kinematic and nearest-neighbour distributions to the recording."""
+    f = agg[(agg.level == "micro") & (agg.horizon_s == horizon)].set_index(["method", "metric"]).value
+    k = kin.set_index("method")
+    cols = [("ADE", "ade", "m"), ("ADE straight", "lade", "m"), ("ADE non-linear", "nade", "m"),
+            ("contact < 0.2 m", "contact20", "%"), ("contact < 0.4 m", "contact40", "%")]
+    w1 = [("W1 speed (m/s)", "speed"), ("W1 accel (m/s²)", "acceleration"), ("W1 turn (deg/s)", "turning"),
+          ("W1 NN dist (m)", "nn_distance")]
+    lines = ["| method | " + " | ".join(c[0] + (" (m)" if c[2] == "m" else "") for c in cols) + " | "
+             + " | ".join(c[0] for c in w1) + " |", "|---|" + "---:|" * (len(cols) + len(w1))]
+    for m in methods:
+        cells = []
+        for _, metric, unit in cols:
+            v = f.get((m, metric), np.nan)
+            cells.append("" if m == "ground_truth" and unit == "m" else f"{100 * v:.2f}%" if unit == "%" else f"{v:.3f}")
+        cells += ["" if m == "ground_truth" else f"{k.loc[m, f'{q}_w1_vs_gt']:.3f}" if f"{q}_w1_vs_gt" in k.columns and m in k.index
+                  else "–" for _, q in w1]
+        lines.append(f"| {LABEL[m]} | " + " | ".join(cells) + " |")
+    return "\n".join(lines)
+
+
 def report(args) -> None:
     mdir = args.run / "metrics"
     agg, scene = pd.read_csv(mdir / "aggregate.csv"), pd.read_csv(mdir / "per_scene.csv")
@@ -616,7 +672,21 @@ def report(args) -> None:
     out.append(f"- Paired micro-ADE comparisons where a STARS variant is significantly lower than a baseline (CI of the "
                f"difference < 0): {len(sig_better)} of {len(win)}" + (": " + ", ".join(
                    f"{a} < {b} at {h:g} s" for a, b, h in sig_better[["a", "b", "horizon_s"]].itertuples(index=False)) if len(sig_better) else "."))
-    out += ["", "## Windows and agents per horizon", "", md(c.reset_index()), "",
+    raw = pd.read_csv(mdir / "per_rollout.csv").query("method == 'ground_truth'").groupby("horizon_s")[["nonlinear_agents", "agents"]].sum()
+    share = (raw.nonlinear_agents / raw.agents).to_dict()
+    out += ["", "## Realism summary at 8 s (micro; STARS sampled rows: expected value over seeds)", "",
+            realism_table(agg, kin, methods), "",
+            "*mode* rows decode the CVAE prior mean (z = μ, no sampling): a deterministic rollout, the fair comparison to "
+            "constant velocity; the other STARS rows draw one latent per rollout. "
+            "† reads the oracle goal (the track's last recorded position), privileged information that constant velocity and "
+            "the goal-free STARS rows do not have. ADE straight / non-linear: agents whose recorded future stays within / "
+            f"departs from its start-end chord by more than {M.NONLINEAR} m on average (non-linear share: "
+            + ", ".join(f"{100 * v:.0f}% at {h:g} s" for h, v in share.items()) + "). Contact: share of scored agents within "
+            "0.2 / 0.4 m of another scored agent at some step, ignoring pairs that are a walking group in the observation "
+            "(within 1 m, velocities within 0.3 m/s at the last observed step). W1: Wasserstein-1 distance to the recording's "
+            f"per-step speed, acceleration, turning-rate (steps above 0.2 m/s) and nearest-neighbour-distance (clipped at "
+            f"{M.NN_CLIP:g} m) distributions of the scored agents at 8 s.", "",
+            "## Windows and agents per horizon", "", md(c.reset_index()), "",
             "Windows start every 10 steps (4 s); one agent can be scored in several overlapping windows (the block "
             "bootstrap accounts for this). Context agents (short history or track ending before the horizon) are simulated "
             "but not scored. Late arrivals are not simulated (fixed cohort).", "",
@@ -626,6 +696,9 @@ def report(args) -> None:
             "## ADE (m), held-out recordings of the pooled checkpoint (eth + zara2)", "", table("ade", "heldout_eth_zara2"), "",
             "## Squared displacement error (m², mean over steps), micro", "", table("sde", "micro"), "",
             "## nADE (m, non-linear agents), micro", "", table("nade", "micro"), "",
+            "## ADE on near-straight agents (m), micro", "", table("lade", "micro"), "",
+            "## Agents in a non-group close contact (< 0.2 m / < 0.4 m), micro", "", table("contact20", "micro"), "",
+            table("contact40", "micro"), "",
             "## Colliding pair-steps / pair-steps (d ≤ 0.4 m), micro", "", table("collision_pair_time", "micro"), "",
             "## Colliding pairs / pairs, micro", "", table("collision_pairs", "micro"), "",
             "## hACS / sACS, micro", "", table("hacs", "micro"), "", table("sacs", "micro"), "",
@@ -682,6 +755,8 @@ def main(argv=None) -> None:
     parser.add_argument("--scenarios", type=int, default=10, help="random media / preference scenarios")
     parser.add_argument("--case-studies", type=int, default=3)
     parser.add_argument("--media-seed", type=int, default=2026)
+    parser.add_argument("--reuse", action="store_true",
+                        help="run: rescore saved trajectories/<method>_s<seed>.npz instead of simulating them again")
     parser.add_argument("--append", action="store_true",
                         help="calibrate/run: add --methods to an existing --run (other methods' rows and calibration kept)")
     args = parser.parse_args(argv)

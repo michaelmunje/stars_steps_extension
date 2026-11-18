@@ -7,6 +7,9 @@ integrate at 0.1 s; STARS re-forecasts every 0.4 s from its own simulated histor
 forecast's first step (closed loop). The ``goal`` adapter steers STARS' executed steps toward the
 oracle goal at the forecast's own speed (an inference-time adapter). A goal-conditioned checkpoint
 (``decoder_recipe["goal"]``, ``stars_noethucy_goal``) instead reads every agent's oracle goal as an input.
+``Stars(mode=True)`` uses the CVAE prior mean as the latent (deterministic "mode" rollout, no sampling).
+STARS diffusion checkpoints run the same loop: every re-forecast is one DDIM chain whose initial noise is
+temporally correlated across re-forecasts, as the CVAE latent is.
 """
 from __future__ import annotations
 
@@ -32,7 +35,10 @@ CHECKPOINTS = {"stars_steps": REPO / "experiments/stars_ma/runs/cvae_kl01_finetu
                # results/stars_improve_2026-11-15: all 7 datasets, seed 2 (best validation); used with oversample=4.
                "stars_improved": REPO / "experiments/stars_ma/runs/si_final_base_s2/checkpoints/best.pt",
                # Collision-aware variant: refinement round + decoder-only collision loss, KL 0.15.
-               "stars_improved_social": REPO / "experiments/stars_ma/runs/si_final_social_s42/checkpoints/best.pt"}
+               "stars_improved_social": REPO / "experiments/stars_ma/runs/si_final_social_s42/checkpoints/best.pt",
+               # STEPS-only diffusion decoders (per agent / joint over the graph), zero-shot on ETH/UCY.
+               "stars_steps_diffusion": REPO / "experiments/stars_ma/runs/diffusion_finetune/checkpoints/best.pt",
+               "stars_steps_joint_diffusion": REPO / "experiments/stars_ma/runs/joint_diffusion_finetune/checkpoints/best.pt"}
 OVERSAMPLE = {"stars_improved": 4}   # closed-loop rollouts per window; the least-colliding one is kept
 RADIUS = 0.2              # pedestrian body radius (m) used by SFM / ORCA
 ARRIVAL = 0.3             # goal-directed models stop within this distance of the goal (m)
@@ -153,6 +159,7 @@ class Stars:
     intent_correlation: float = 0.8
     goal_weight: float = 0.0          # > 0: inference-time goal-steering adapter
     oversample: int = 1               # > 1: M rollouts per window, keep the one with the fewest close pairs
+    mode: bool = False                # CVAE: latent = prior mean (deterministic rollout)
 
     def __post_init__(self):
         from baselines.train_stars_ma import load_forecaster
@@ -171,6 +178,12 @@ class Stars:
         other = object.__new__(Stars)
         other.__dict__.update(self.__dict__)
         other.oversample = m
+        return other
+
+    def with_mode(self) -> "Stars":
+        """Deterministic copy: prior-mean latent, a single rollout."""
+        other = self.with_oversample(1)
+        other.mode = True
         return other
 
     def __call__(self, x, steps, seed: int = 0, hook=None, **_):
@@ -203,7 +216,7 @@ class Stars:
         goal = torch.as_tensor(x["goal"], dtype=torch.float32, device=dev)
         B, N = valid.shape[:2]
         gen = torch.Generator().manual_seed(seed)
-        latent = max(1, self.model.latent_dim)
+        latent = 2 * self.model.prediction_steps if self.model.diffusion else max(1, self.model.latent_dim)
         eps = torch.randn((B, N, latent), generator=gen)
         rho, out = self.intent_correlation, []
         for k in range(steps):
@@ -222,12 +235,17 @@ class Stars:
                 graph = graph_batch_from_padded(take(xy), take(valid), packed, dt=DT, knn=self.knn, radius=self.radius,
                                                 prediction_steps=self.model.prediction_steps, goal=goals)
                 encoded = self.model.encode(graph)
-                z = None
-                if self.model.latent_dim:
-                    mu, logvar = self.model.decoder.prior_params(encoded["context"])
-                    e = take(eps.to(dev))[graph.node_mask]
-                    z = (mu + torch.exp(0.5 * logvar) * e)[None]
-                local = self.model.decode(graph, encoded, z)[0].float()
+                e = take(eps.to(dev))[graph.node_mask]
+                if self.model.diffusion:    # one DDIM chain from the correlated initial noise
+                    hidden = self.model.decoder.hidden(encoded["context"], graph.edge_index, encoded["edge_emb"])
+                    local = self.model.decoder.sample(hidden, graph.node_attr[:, -1, 2:4], self.model.dt, 1, graph.edge_index,
+                                                      encoded["edge_emb"], noise=e)[0].float()
+                else:
+                    z = None
+                    if self.model.latent_dim:
+                        mu, logvar = self.model.decoder.prior_params(encoded["context"])
+                        z = (mu if self.mode else mu + torch.exp(0.5 * logvar) * e)[None]
+                    local = self.model.decode(graph, encoded, z)[0].float()
                 first = graph.to_padded(to_scene(local, graph.origin, graph.heading)[:, 0])   # [B, N, 2] packed
                 unpacked = torch.zeros_like(first).scatter_(1, order[..., None].expand_as(first), first)
                 nxt = torch.where(node_mask[..., None], unpacked, cur)
