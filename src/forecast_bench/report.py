@@ -31,6 +31,12 @@ METHODS = {
     "ep_zs": ("**STARS A: 4-dataset pretrain, zero-shot**", "none (no ETH/UCY at all)"),
     "ep_zs_os4": ("**STARS A + 4x sample selection**", "none (no ETH/UCY at all)"),
     "ep_zs_mode": ("&nbsp;&nbsp;STARS A, mode (z = prior mean)", "none (no ETH/UCY at all)"),
+    "ep_zs_rft": ("STARS A + closed-loop fine-tune", "none (no ETH/UCY at all)"),
+    "ep_zs_rft_os4": ("STARS A + closed-loop fine-tune + 4x sample selection", "none (no ETH/UCY at all)"),
+    "ep_zs_rft_mode": ("&nbsp;&nbsp;STARS A + closed-loop fine-tune, mode", "none (no ETH/UCY at all)"),
+    "ep_loso_rft": ("STARS B + closed-loop fine-tune", "none (standard LOSO)"),
+    "ep_loso_rft_os4": ("STARS B + closed-loop fine-tune + 4x sample selection", "none (standard LOSO)"),
+    "ep_loso_rft_mode": ("&nbsp;&nbsp;STARS B + closed-loop fine-tune, mode", "none (standard LOSO)"),
     "ep_scratch": ("STARS LOSO from scratch (no pretraining)", "none (standard LOSO)"),
     "ep_scratch_os4": ("STARS LOSO from scratch + 4x sample selection", "none (standard LOSO)"),
     "ep_scratch_mode": ("&nbsp;&nbsp;STARS LOSO from scratch, mode", "none (standard LOSO)"),
@@ -95,7 +101,7 @@ def score_all(root: Path, done: pd.DataFrame | None = None) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
-SEEDED = re.compile(r"(ep_[a-z]+)_s\d+(_os4|_mode)?")
+SEEDED = re.compile(r"(ep_[a-z_]+?)_s\d+(_os4|_mode)?")
 
 
 def seed_average(df: pd.DataFrame) -> pd.DataFrame:

@@ -107,7 +107,7 @@ def load_method(method: str, fold: str, root: Path) -> np.ndarray | None:
     if (d / f"{method}.npz").exists():
         with np.load(d / f"{method}.npz") as f:
             return f["pred"][None]
-    m = re.fullmatch(r"ep_([a-z]+)(_os4|_mode)?", method)
+    m = re.fullmatch(r"ep_([a-z_]+?)(_os4|_mode)?", method)
     if not m:
         return None
     files = sorted(p for p in d.glob(f"ep_{m[1]}_s*{m[2] or ''}.npz")

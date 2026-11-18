@@ -618,6 +618,61 @@ def _rebuild(batch, window: torch.Tensor, valid: torch.Tensor, *, dt: float, knn
     return Batch.from_data_list(graphs)
 
 
+def closed_loop_rollout(model: StarsMultiAgentForecaster, batch, steps: int, *, latent: str = "prior",
+                        rho: float = 0.8, bptt: int = 0, generator: torch.Generator | None = None) -> torch.Tensor:
+    """Simulator-faithful closed loop (``simplenavsim.realism.sim.Stars._rollout``) on a ``GraphBatch``:
+    every 0.4 s re-encode the scene from the agents' own simulated history, decode, execute the first
+    step, shift the window and rebuild the graph. Returns scene-frame positions ``[N, steps, 2]``.
+
+    CVAE latents are re-drawn every step as ``mu_t + sigma_t * eps_t`` from the current context with
+    AR(1) noise ``eps_t = rho eps_{t-1} + sqrt(1 - rho^2) n_t`` (as in the simulator). ``latent``
+    ``"posterior"`` uses the posterior of the remaining ground-truth future instead (teacher intent;
+    agents with none left use the prior). Differentiable when grad is enabled: gradients flow through
+    the executed positions into later rounds' graphs (the edge choice itself is not differentiable);
+    ``bptt`` > 0 detaches the window every ``bptt`` rounds (truncated BPTT). ``generator`` (CPU) makes
+    the noise reproducible.
+    """
+    if model.diffusion:
+        raise ValueError("Closed-loop rollout is not implemented for the diffusion decoder")
+    if latent not in ("prior", "posterior"):
+        raise ValueError("latent must be 'prior' or 'posterior'")
+    window, valid = batch.obs_xy, batch.valid_mask.bool()
+    current, out = batch, []
+    N, Z, P = window.shape[0], max(1, model.latent_dim), model.prediction_steps
+
+    def noise():
+        if generator is not None:
+            return torch.randn((N, Z), generator=generator).to(window.device)
+        return torch.randn((N, Z), device=window.device)
+
+    eps = noise()
+    for k in range(steps):
+        if k:
+            eps = rho * eps + (1 - rho * rho) ** 0.5 * noise()
+        encoded = model.encode(current)
+        z = None
+        if model.latent_dim:
+            mu, logvar = model.decoder.prior_params(encoded["context"])
+            if latent == "posterior":
+                future = torch.cat([batch.future[:, k:], batch.future.new_zeros(N, k, 2)], dim=1)[:, :P]
+                fvalid = torch.cat([batch.future_valid[:, k:], batch.future_valid.new_zeros(N, k)], dim=1)[:, :P]
+                q_mu, q_logvar = model.decoder.posterior_params(
+                    encoded["context"], to_local(future, current.origin, current.heading).to(mu.dtype), fvalid)
+                has = fvalid.any(-1, keepdim=True)
+                mu, logvar = torch.where(has, q_mu, mu), torch.where(has, q_logvar, logvar)
+            z = (mu + torch.exp(0.5 * logvar) * eps.to(mu.dtype))[None]
+        local = model.decode(current, encoded, z)[0]
+        step = to_scene(local[:, :1].float(), current.origin.float(), current.heading.float())   # [N, 1, 2]
+        out.append(step)
+        if k + 1 < steps:
+            if bptt and (k + 1) % bptt == 0:
+                window, step = window.detach(), step.detach()
+            window = torch.cat([window[:, 1:], step.to(window.dtype)], dim=1)
+            valid = torch.cat([valid[:, 1:], valid[:, -1:]], dim=1)
+            current = batch.rebuild(window, valid)
+    return torch.cat(out, dim=1)
+
+
 def rollout(model: StarsMultiAgentForecaster, batch, *, rounds: int, exec_steps: int, knn: int | None,
             radius: float | None, z: torch.Tensor | None = None, keep_graph: bool = False) -> torch.Tensor:
     """Closed-loop multi-agent simulation from a batch's observed windows.

@@ -1,0 +1,9 @@
+# Closed-loop rollout fine-tuning data (runs/stars_rollout_ft/rft.sh): the six datasets of all.yaml, no ATC
+# (too noisy). Recipe values come from the --init-checkpoint; this file only lists the data.
+datasets:
+  - steps
+  - ptdpes
+  - madras
+  - grand_central      # temporal split (registered default)
+  - ucy
+  - eth

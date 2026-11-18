@@ -50,7 +50,8 @@ STARS = ["stars_steps", "stars_pooled", "stars_pooled_mode", "stars_steps_goal",
          "stars_noethucy", "stars_noethucy_mode", "stars_noethucy_goal", "stars_noethucy_goal_adapter",
          "stars_improved", "stars_improved_mode", "stars_improved_social", "stars_improved_social_mode",
          "stars_steps_diffusion", "stars_steps_joint_diffusion",
-         "stars_ep_zs", "stars_ep_zs_mode", "stars_ep_loso", "stars_ep_loso_mode"]
+         "stars_ep_zs", "stars_ep_zs_mode", "stars_ep_loso", "stars_ep_loso_mode",
+         "stars_rft", "stars_rft_os4", "stars_rft_social", "stars_ep_zs_rft", "stars_ep_loso_rft"]
 BASELINES = ["cv", "goal_straight", "sfm", "orca", "sfm_default", "orca_default"]
 METHODS = ["ground_truth", *STARS, *BASELINES]
 STUDY_MODELS = ["ground_truth", "stars_pooled", "stars_improved", "stars_improved_social", "cv", "sfm", "orca"]   # preference export (schema v1.0)
@@ -68,6 +69,10 @@ LABEL = {"ground_truth": "Ground truth", "stars_steps": "STARS (STEPS-only, zero
          "stars_steps_joint_diffusion": "STARS joint diffusion (STEPS-only, zero-shot)",
          "stars_ep_zs": "STARS A: 4-dataset pretrain, zero-shot (4x oversampling)", "stars_ep_zs_mode": "STARS A, mode",
          "stars_ep_loso": "STARS B: A + leave-one-scene-out fine-tune (4x oversampling)", "stars_ep_loso_mode": "STARS B, mode",
+         "stars_rft": "STARS closed-loop fine-tuned", "stars_rft_os4": "STARS closed-loop fine-tuned, 4x oversampling",
+         "stars_rft_social": "STARS closed-loop fine-tuned, collision-aware",
+         "stars_ep_zs_rft": "STARS A + closed-loop fine-tune (4x oversampling)",
+         "stars_ep_loso_rft": "STARS B + closed-loop fine-tune (4x oversampling)",
          "cv": "Constant velocity", "goal_straight": "Straight to goal †",
          "sfm": "Social force (calibrated) †", "orca": "ORCA (calibrated) †", "sfm_default": "Social force (defaults) †",
          "orca_default": "ORCA (published defaults) †"}
@@ -109,6 +114,8 @@ def simulators(cal: dict, device: str) -> dict:
     for name, base in MODES.items():
         if base in sims:
             sims[name] = sims[base].with_mode()
+    if "stars_rft" in sims:   # same checkpoint, least-colliding of 4 rollouts (as stars_improved)
+        sims["stars_rft_os4"] = sims["stars_rft"].with_oversample(4)
     for name, base in ADAPTERS.items():
         if base in sims:
             sims[name] = sims[base].with_goal(cal.get("goal_weight", {}).get(base, 0.3))
@@ -383,7 +390,9 @@ COLORS = {"ground_truth": "#222222", "stars_steps": "#2b6cb0", "stars_pooled": "
           "stars_pooled_goal": "#a78bdb",
           "stars_noethucy": "#319795", "stars_noethucy_goal": "#b83280", "stars_noethucy_goal_adapter": "#ed64a6", "cv": "#c05621", "goal_straight": "#d69e2e", "sfm": "#2f855a", "orca": "#c53030",
           "sfm_default": "#9ae6b4", "orca_default": "#feb2b2", "stars_improved": "#4c51bf", "stars_improved_social": "#0bc5ea",
-          "stars_steps_diffusion": "#718096", "stars_steps_joint_diffusion": "#a0aec0"}
+          "stars_steps_diffusion": "#718096", "stars_steps_joint_diffusion": "#a0aec0", "stars_rft": "#805ad5",
+          "stars_rft_os4": "#9f7aea", "stars_rft_social": "#38b2ac", "stars_ep_zs": "#dd6b20", "stars_ep_loso": "#2c7a7b",
+          "stars_ep_zs_rft": "#f6ad55", "stars_ep_loso_rft": "#4fd1c5"}
 COLORS.update({m: COLORS[base] for m, base in MODES.items()})   # mode rows: the sampled model's colour, dotted line
 
 

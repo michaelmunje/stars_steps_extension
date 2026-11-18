@@ -38,15 +38,22 @@ CHECKPOINTS = {"stars_steps": REPO / "experiments/stars_ma/runs/cvae_kl01_finetu
                "stars_improved_social": REPO / "experiments/stars_ma/runs/si_final_social_s42/checkpoints/best.pt",
                # STEPS-only diffusion decoders (per agent / joint over the graph), zero-shot on ETH/UCY.
                "stars_steps_diffusion": REPO / "experiments/stars_ma/runs/diffusion_finetune/checkpoints/best.pt",
-               "stars_steps_joint_diffusion": REPO / "experiments/stars_ma/runs/joint_diffusion_finetune/checkpoints/best.pt"}
+               "stars_steps_joint_diffusion": REPO / "experiments/stars_ma/runs/joint_diffusion_finetune/checkpoints/best.pt",
+               # results/stars_rollout_ft_2026-11-18: stars_improved(_social) fine-tuned on their own closed-loop
+               # 12-step rollouts (train_stars_ma --init-checkpoint ... --rft-steps 12).
+               "stars_rft": REPO / "experiments/stars_ma/runs/rft_base_noatc/checkpoints/best.pt",
+               "stars_rft_social": REPO / "experiments/stars_ma/runs/rft_social_coll_progress_noatc/checkpoints/best.pt"}
 # ETH/UCY protocol (branch ethucy-protocol, results/ethucy_protocol_*): A = pretrained on STEPS, PTDPES, MADRAS,
 # Grand Central only (zero-shot); B = A fine-tuned leave-one-scene-out, one checkpoint per held-out scene
 # (PER_DATASET: each window uses the checkpoint that never saw its scene).
 _EP = REPO / "experiments/forecast_bench/loso"
 CHECKPOINTS["stars_ep_zs"] = REPO / "experiments/stars_ma/runs/ep_pre4_s{seed}/checkpoints/best.pt"
-PER_DATASET = {"stars_ep_loso": {f: _EP / "ep_loso_s{seed}" / f / "best.pt" for f in ("eth", "hotel", "univ", "zara1", "zara2")}}
+CHECKPOINTS["stars_ep_zs_rft"] = REPO / "experiments/stars_ma/runs/ep_rft_zs_s{seed}/checkpoints/best.pt"
+_FOLDS = ("eth", "hotel", "univ", "zara1", "zara2")
+PER_DATASET = {"stars_ep_loso": {f: _EP / "ep_loso_s{seed}" / f / "best.pt" for f in _FOLDS},
+               "stars_ep_loso_rft": {f: _EP / "ep_loso_rft_s{seed}" / f / "best.pt" for f in _FOLDS}}
 EP_SEED = "42"            # pretraining seed used in the closed loop (set from the protocol README)
-OVERSAMPLE = {"stars_improved": 4, "stars_ep_zs": 4, "stars_ep_loso": 4}   # closed-loop rollouts per window; the least-colliding one is kept
+OVERSAMPLE = {"stars_improved": 4, "stars_ep_zs": 4, "stars_ep_loso": 4, "stars_ep_zs_rft": 4, "stars_ep_loso_rft": 4}   # closed-loop rollouts per window; the least-colliding one is kept
 RADIUS = 0.2              # pedestrian body radius (m) used by SFM / ORCA
 ARRIVAL = 0.3             # goal-directed models stop within this distance of the goal (m)
 DEFAULT_SPEED = 1.0       # desired speed of an agent with a single observed position (context agents only)

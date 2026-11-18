@@ -41,12 +41,16 @@ PROTOCOL_PRE = RUNS / "ep_pre4_s{seed}/checkpoints/best.pt"
 
 
 def protocol_checkpoint(method: str, fold: str, root: Path) -> tuple[Path, bool, int]:
-    """``ep_<kind>_s<seed>[_os4|_mode]`` -> (checkpoint, mode, oversample) for one ETH/UCY fold."""
-    mode, oversample = method.endswith("_mode"), 4 if method.endswith("_os4") else 1
-    _, kind, seed = method.removesuffix("_mode").removesuffix("_os4").split("_")
+    """``ep_<kind>_s<seed>[_os4|_mode]`` -> (checkpoint, mode, oversample) for one ETH/UCY fold. Kinds: zs, zs_rft
+    (pretraining run), loso, loso_rft, scratch (per-fold checkpoints under ``<root>/loso``)."""
+    import re
+    kind, seed, suffix = re.fullmatch(r"ep_([a-z_]+?)_s(\d+)(_os4|_mode)?", method).groups()
+    mode, oversample = suffix == "_mode", 4 if suffix == "_os4" else 1
     if kind == "zs":
-        return Path(str(PROTOCOL_PRE).format(seed=seed[1:])), mode, oversample
-    return root / "loso" / f"ep_{kind}_{seed}" / fold / "best.pt", mode, oversample
+        return Path(str(PROTOCOL_PRE).format(seed=seed)), mode, oversample
+    if kind == "zs_rft":
+        return RUNS / f"ep_rft_zs_s{seed}/checkpoints/best.pt", mode, oversample
+    return root / "loso" / f"ep_{kind}_s{seed}" / fold / "best.pt", mode, oversample
 
 
 MODE = {f"{m}_mode": m for m in ("stars_pooled", "stars_noethucy", "stars_noethucy_goal", "stars_improved", "stars_improved_social")}

@@ -7,7 +7,9 @@ ETH/UCY) and trains the whole model on the held-out fold's standard Social-GAN t
 ``train_stars_ma`` (teacher-forced L2 + KL). AdamW with a linear warmup and cosine decay to 0 over
 ``--epochs``, optionally a lower learning rate for the encoder, early stopping after ``--patience`` epochs
 without a validation improvement. ``--scratch`` re-initialises the weights (same architecture): the
-"LOSO from scratch" control, with a KL warmup. Resumable (``latest.pt`` every epoch).
+"LOSO from scratch" control, with a KL warmup. ``--rft-steps K`` adds closed-loop rollout fine-tuning
+(``train_stars_ma``'s rollout loss on the fold's training scenes, curriculum from ``--rft-start-steps``) and
+selects on the K-step closed-loop ADE of the fold's val split. Resumable (``latest.pt`` every epoch).
 
     python -m forecast_bench.finetune_stars_loo --fold eth --init <pretrained best.pt> --lr 1e-4 \
         --out experiments/forecast_bench/loso/<name>/eth
@@ -41,7 +43,7 @@ def main() -> None:
     from baselines.stars_ma_batch import build_batch, node_budget_batches
     from baselines.stars_ma_graph import to_scene
     from baselines.stars_ma_model import StarsMultiAgentForecaster
-    from baselines.train_stars_ma import forecast_loss, load_forecaster
+    from baselines.train_stars_ma import closed_loop_metrics, forecast_loss, load_forecaster
     from data import CANONICAL_DT
 
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -57,6 +59,10 @@ def main() -> None:
     parser.add_argument("--kl-weight", type=float, default=0.1)
     parser.add_argument("--kl-warmup-epochs", type=float, default=0.0, help="linear KL ramp (scratch runs)")
     parser.add_argument("--scratch", action="store_true", help="re-initialise all weights (no pretraining)")
+    parser.add_argument("--rft-steps", type=int, default=0, help="closed-loop rollout fine-tuning steps (0: off)")
+    parser.add_argument("--rft-start-steps", type=int, default=4)
+    parser.add_argument("--rft-ramp-epochs", type=int, default=3)
+    parser.add_argument("--rft-speed-weight", type=float, default=1.0)
     parser.add_argument("--max-nodes", type=int, default=2048)
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--device", default="cuda")
@@ -76,7 +82,10 @@ def main() -> None:
                                           encoder_recipe=payload["encoder_recipe"],
                                           decoder_recipe=payload["decoder_recipe"]).to(device)
     graph = payload["graph"]
-    loss_args = SimpleNamespace(rollout_exec_steps=0, rollout_weight=0.0, knn=graph["knn"], radius=graph["radius"])
+    loss_args = SimpleNamespace(rollout_exec_steps=0, rollout_weight=0.0, knn=graph["knn"], radius=graph["radius"],
+                                rft_current_steps=0, rft_latent="prior", rft_rho=0.8, rft_bptt=0,
+                                rft_speed_weight=args.rft_speed_weight, seed=args.seed, amp=True,
+                                device_realized=device, world_size=1)
     stores = {split: to_store(fold_windows(args.fold, split), args.device) for split in ("train", "val")}
     batch = lambda store, w: build_batch(store, w.to(store.device), dt=CANONICAL_DT, knn=graph["knn"],
                                          radius=graph["radius"])
@@ -93,6 +102,12 @@ def main() -> None:
 
     @torch.no_grad()
     def validate() -> dict:
+        if args.rft_steps:   # select on the closed loop (one prior sample, AR(1) latent noise, seeded)
+            store = stores["val"]
+            cl = closed_loop_metrics(model, store, node_budget_batches(store.sizes, 4096, shuffle=False), loss_args,
+                                     args.rft_steps)
+            return {"val_min_ade": cl["cl_ade"], "val_cl_fde": cl["cl_fde"], "val_cl_speed": cl["cl_speed"],
+                    "val_cl_turn": cl["cl_turn"]}
         model.eval()
         store, best, mean = stores["val"], [], []
         for w in node_budget_batches(store.sizes, 8192, shuffle=False):
@@ -125,6 +140,9 @@ def main() -> None:
             break
         model.train()
         t0, losses = time.time(), []
+        if args.rft_steps:
+            ramp = min(1.0, (epoch - 1) / args.rft_ramp_epochs) if args.rft_ramp_epochs else 1.0
+            loss_args.rft_current_steps = int(round(args.rft_start_steps + (args.rft_steps - args.rft_start_steps) * ramp))
         kl = args.kl_weight * (min(1.0, (epoch - 1) / args.kl_warmup_epochs) if args.kl_warmup_epochs else 1.0)
         for w in node_budget_batches(stores["train"].sizes, args.max_nodes, generator=generator,
                                      shuffle=True)[:args.max_batches]:
