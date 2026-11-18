@@ -13,9 +13,12 @@ resume=""; [ -f $run/checkpoints/latest.pt ] && resume=--resume
 if [ -f $run/status.json ] && grep -q '"status": "complete"' $run/status.json; then echo "complete: $run"; exit 0; fi
 graph=$(python -c "import torch,sys; g=torch.load(sys.argv[1],map_location='cpu',weights_only=False)['graph']; \
 print(f\"--knn {g['knn']} --radius {g['radius']}\" if g['knn'] is not None else '--fully-connected')" $init)
-kl=$(python -c "import torch,sys; print(torch.load(sys.argv[1],map_location='cpu',weights_only=False)['recipe']['kl_weight'])" $init)
+# The checkpoint's own open-loop loss terms (KL weight, collision hinge, best-of-many) carry over to the regulariser.
+inherit=$(python -c "import torch,sys; p=torch.load(sys.argv[1],map_location='cpu',weights_only=False); c=p.get('run_config',{}); \
+print(f\"--kl-weight {p['recipe']['kl_weight']} --collision-weight {c.get('collision_weight',0.0)} --collision-radius {c.get('collision_radius',0.4)} \
+--bom-weight {c.get('bom_weight',0.0)} --bom-samples {c.get('bom_samples',4)}\" + ('' if c.get('collision_fixed_prior',True) else ' --no-collision-fixed-prior'))" $init)
 python -m baselines.train_stars_ma --phase forecast --config configs/stars_ma/rft_no_atc.yaml --encoder-mode scratch \
-  --init-checkpoint $init $graph --kl-weight $kl --kl-warmup-epochs 0 \
+  --init-checkpoint $init $graph $inherit --kl-warmup-epochs 0 \
   --epochs 12 --max-nodes 2048 --learning-rate 5e-5 --lr-scaling none --warmup-epochs 0.2 --weight-decay 0.00217 \
   --rft-steps 12 --rft-start-steps 4 --rft-ramp-epochs 3 --rft-speed-weight 1.0 \
   --rft-eval-steps 12 --selection closedloop --samples 20 --train-batches 300 --val-batches 150 \
