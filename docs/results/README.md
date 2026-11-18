@@ -24,6 +24,11 @@ How to run the simulator: [`../../simplenavsim/README.md`](../../simplenavsim/RE
 
 GIFs on ETH/UCY: [`closed_loop_examples/`](closed_loop_examples/).
 
+## Forecasting benchmark (ETH/UCY + our datasets, official baselines)
+
+See [`forecasting_benchmark/`](forecasting_benchmark/): accuracy vs collisions for STARS and five official
+pretrained baselines (MoFlow, AgentFormer, SocialVAE, Trajectron++, Social-GAN), plus a 20 s closed loop.
+
 ## Navigation (SimpleNavSim, 270 test scenes: 9 kinds x 30)
 
 GIFs and full tables: [`evaluation/`](evaluation/). The objective has a disruption term only in
