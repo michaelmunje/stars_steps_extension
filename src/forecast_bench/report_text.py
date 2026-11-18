@@ -24,12 +24,30 @@ with >= 2 observed points (observed steps only).
 agent error: sample k as one joint scene); collisions = P(an agent's prediction comes within 0.2 / 0.4 m of another
 scored agent's prediction of the *same sample* at the same step), per (agent, sample) and per (scene, sample), over
 windows with >= 2 scored agents; the "Ground truth" row is the same rate on the real futures. Speed: mean predicted
-speed vs GT and the 1-D Wasserstein distance of per-step speeds.
+speed vs GT and the 1-D Wasserstein distance of per-step speeds. Realism (headline tables, same definitions as the
+closed-loop ETH/UCY benchmark on branch `stars-improve`): contact rates at 0.2 / 0.4 m that ignore pairs forming a
+walking group in the observation (within 1 m, velocities within 0.3 m/s at the last observed step); Wasserstein-1
+distances to GT of per-step speed, acceleration, turning rate (steps > 0.2 m/s) and nearest-neighbour distance
+(to the closest other scored agent of the same sample, clipped at 5 m), pooled over samples; single-sample ADE split
+into near-straight vs non-linear agents (GT future more than 0.2 m from its start-end chord on average; about 9% of
+ETH/UCY scored agents are non-linear).
 
-**Sample structure.** Joint scene samples: STARS CVAE (one latent per agent but decoded jointly), STARS joint
-diffusion, AgentFormer, Social-GAN. Independent per agent: SocialVAE, Trajectron++, STARS per-agent diffusion
-(decoded per agent). MoFlow (ETH setting) is single-agent. For independent samplers the joint / collision metrics
-pair agents' k-th samples arbitrarily.
+**How the 20 samples are drawn (checked in each model's code as our adapters call it).** The minJoint columns
+(scene-level best of 20: one sample index for all agents) are only meaningful when sample k of different agents
+belongs together; with independent samplers the pairing across agents is arbitrary.
+
+| Model | Randomness | Interaction between agents' samples |
+|---|---|---|
+| AgentFormer | DLow, deterministic at test time (`mean=True`): K latents per agent from the scene encoder | joint: the autoregressive decoder attends to other agents' predicted positions within the same sample k |
+| Social-GAN (sgan-p) | one global noise vector per scene per sample (`noise_mix_type='global'`) | pooling over observed states only (`pool_every_timestep=False`); sample k shares the scene noise |
+| Trajectron++ | latent and GMM steps drawn independently per agent | neighbours only through the encoded history; no pairing across agents |
+| SocialVAE | latent drawn per agent and per step | social attention over observed history only; decoder sees no neighbour |
+| MoFlow (ETH setting) | noise per agent and sample | none: each agent is modelled alone (`agents = 1`) |
+| STARS CVAE (pooled, w/o ETH/UCY, improved) | one latent per agent | decoded jointly: a social layer mixes the neighbours' latent-conditioned states, so sample k is a scene sample; `stars_improved` also draws 4x20 and keeps the 20 scene samples with the fewest non-group close pairs |
+| STARS collision-aware | one latent per agent | as above plus a refinement round over the neighbours' predicted futures (trained with a collision loss) |
+| STARS per-agent / joint diffusion | DDIM noise per agent | per-agent: none during denoising; joint: social layers over the scene inside the denoiser |
+| STARS mode rows, CV | none (deterministic, K = 1) | - |
+
 """
 
 METHODS = """## Methods and leakage
@@ -42,6 +60,7 @@ METHODS = """## Methods and leakage
 | STARS LOO | `cvae_noethucy_nogoal`, fine-tuned per fold on the standard `train` files, selected on `val` (`finetune_stars_loo.py`, 30 epochs) | no |
 | STARS STEPS-only (CVAE / per-agent diffusion / joint diffusion) | `cvae_kl01_finetune`, `diffusion_finetune`, `joint_diffusion_finetune` | no (zero-shot) |
 | STARS pooled w/o ETH/UCY (+ oracle goal) | `cvae_noethucy_{nogoal,goal}` (5 datasets) | no (zero-shot); the goal model receives each agent's track end (privileged) |
+| STARS ... mode | the same checkpoint decoding the CVAE prior mean (z = μ, no sampling): one deterministic prediction, the fair comparison to CV | as the sampled row |
 | STARS pooled (6 datasets) | `cvae_all_lr3e-4_seed42` | **yes for hotel, zara1, univ** (students001 train, students003 val) -> cells marked `*`; eth and zara2 clean |
 """
 

@@ -15,13 +15,32 @@ Per window (averaged over windows with >= 2 scored agents for collisions, all wi
   The same collision rates on the ground-truth futures are the ``ground_truth`` row.
 Kinematics: mean predicted speed (m/s, including the step from the last observation) vs GT, and the
 1-D Wasserstein distance between the predicted and GT per-step speed distributions.
+Realism (same definitions as the closed-loop ETH/UCY benchmark, ``simplenavsim.realism.metrics``), pooled over
+all K samples:
+  mean_ade_straight / mean_ade_nonlinear   mean_ade over agents whose GT future stays within / departs from its
+                          start-end chord by more than 0.2 m on average (``nonlinear``); nonlinear_share
+  contact{20,40}_agent    like col{20,40}_agent but ignoring pairs that are a walking group in the observation
+                          (within 1 m, velocities within 0.3 m/s at the last observed step; no future information)
+  accel_w1 / turn_w1      W1 to GT of per-step acceleration (m/s^2) and turning rate (deg/s, steps > 0.2 m/s)
+  nn_w1                   W1 to GT of the distance from each scored agent to its nearest other scored agent
+                          at every step (same sample; windows with >= 2 scored agents; clipped at 5 m)
 """
 from __future__ import annotations
 
 import numpy as np
 
+from simplenavsim.realism.metrics import kinematics, nonlinear
+
 DT = 0.4
 THRESHOLDS = (0.2, 0.4)
+NN_CLIP = 5.0
+
+
+def observed_groups(obs: np.ndarray) -> np.ndarray:
+    """[A, A] walking-group pairs of ``obs [A, 8, 2]``: within 1 m and velocities within 0.3 m/s at the last
+    observed step (``baselines.stars_ma_model.observed_groups``)."""
+    last, vel = obs[:, -1], (obs[:, -1] - obs[:, -2]) / DT
+    return (np.linalg.norm(last[:, None] - last[None], axis=-1) < 1.0) & (np.linalg.norm(vel[:, None] - vel[None], axis=-1) < 0.3)
 
 
 def scored(windows: dict) -> dict:
@@ -32,10 +51,13 @@ def scored(windows: dict) -> dict:
                 obs=windows["obs"][mask])
 
 
-def _collisions(pred: np.ndarray, window: np.ndarray, threshold: float, chunk: int = 4096):
-    """pred [E, K, T, 2] -> (agent collides [E, K] bool, scene has >= 2 agents per agent [E])."""
+def _proximity(pred: np.ndarray, window: np.ndarray, obs: np.ndarray):
+    """pred [E, K, T, 2] -> closest approach to any other scored agent of the window [E, K] (all pairs, and
+    without observed-group pairs), nearest-neighbour distance [E, K, T], scene has >= 2 agents [E]."""
     order = np.argsort(window, kind="stable")
-    hit = np.zeros(pred.shape[:2], dtype=bool)
+    closest = np.full(pred.shape[:2], np.inf)
+    closest_ng = np.full(pred.shape[:2], np.inf)
+    nn = np.full(pred.shape[:3], np.inf, dtype=np.float32)
     bounds = np.flatnonzero(np.r_[True, window[order][1:] != window[order][:-1], True])
     multi = np.zeros(len(window), dtype=bool)
     for a, b in zip(bounds[:-1], bounds[1:]):
@@ -46,8 +68,11 @@ def _collisions(pred: np.ndarray, window: np.ndarray, threshold: float, chunk: i
         p = pred[idx]                                   # [n, K, T, 2]
         d = np.linalg.norm(p[:, None] - p[None], axis=-1)  # [n, n, K, T]
         d[np.arange(len(idx)), np.arange(len(idx))] = np.inf
-        hit[idx] = (d < threshold).any(-1).any(1)
-    return hit, multi
+        nn[idx] = d.min(1)
+        pair = d.min(-1)                                # [n, n, K]
+        closest[idx] = pair.min(1)
+        closest_ng[idx] = np.where(observed_groups(obs[idx])[..., None], np.inf, pair).min(1)
+    return closest, closest_ng, nn, multi
 
 
 def speeds(last: np.ndarray, traj: np.ndarray) -> np.ndarray:
@@ -79,29 +104,40 @@ def score(windows: dict, pred: np.ndarray) -> dict[str, float]:
         per_window = np.zeros((len(counts), e.shape[1]))
         np.add.at(per_window, window, e)
         out[f"min_joint_{name}"] = (per_window[present] / counts[present, None]).min(1).mean()
-    out.update(collision_rates(pred, window, prefix=""))
     sp, sp_gt = speeds(s["last"][:, None], pred), speeds(s["last"], gt)
     out.update(speed_mean=sp.mean(), speed_gt=sp_gt.mean(), speed_w1=wasserstein(sp.ravel(), sp_gt.ravel()))
+    lin = ~nonlinear(s["last"], gt)
+    out.update(mean_ade_straight=ade[lin].mean(), mean_ade_nonlinear=ade[~lin].mean(), nonlinear_share=1 - lin.mean())
+    out.update(realism(s, pred, reference=realism(s, gt[:, None])))
     return {k: float(v) for k, v in out.items()}
 
 
-def collision_rates(pred: np.ndarray, window: np.ndarray, prefix: str = "") -> dict[str, float]:
+def realism(s: dict, pred: np.ndarray, reference: dict | None = None) -> dict:
+    """Contact rates and distribution samples of ``pred [E, K, T, 2]``; with ``reference`` (the GT's own
+    output), the W1 distances to it instead of the samples."""
+    closest, closest_ng, nn, multi = _proximity(pred, s["window"], s["obs"])
     out = {}
     for threshold in THRESHOLDS:
-        hit, multi = _collisions(pred, window, threshold)
-        tag = f"{prefix}col{int(round(threshold * 100))}"
-        out[f"{tag}_agent"] = hit[multi].mean() if multi.any() else np.nan
-        scene = np.zeros((window.max() + 1, pred.shape[1]), dtype=bool)
-        np.logical_or.at(scene, window[multi], hit[multi])
-        windows_multi = np.unique(window[multi])
-        out[f"{tag}_scene"] = scene[windows_multi].mean() if len(windows_multi) else np.nan
-    return out
+        tag = int(round(threshold * 100))
+        out[f"col{tag}_agent"] = (closest[multi] < threshold).mean() if multi.any() else np.nan
+        out[f"contact{tag}_agent"] = (closest_ng[multi] < threshold).mean() if multi.any() else np.nan
+        scene = np.zeros((s["window"].max() + 1, pred.shape[1]), dtype=bool)
+        np.logical_or.at(scene, s["window"][multi], closest[multi] < threshold)
+        windows_multi = np.unique(s["window"][multi])
+        out[f"col{tag}_scene"] = scene[windows_multi].mean() if len(windows_multi) else np.nan
+    E, K, T = pred.shape[:3]
+    kin = kinematics(np.repeat(s["last"], K, axis=0), pred.reshape(E * K, T, 2))
+    samples = {"accel": kin["acceleration"], "turn": kin["turning"], "nn": np.minimum(nn[multi], NN_CLIP).ravel()}
+    if reference is None:
+        return {**out, "_samples": samples}
+    return {**out, **{f"{k}_w1": wasserstein(v, reference["_samples"][k]) for k, v in samples.items()}}
 
 
 def ground_truth(windows: dict) -> dict[str, float]:
     s = scored(windows)
     out = {"agents": len(s["gt"]), "windows": len(np.unique(s["window"])), "k": 1}
-    out.update(collision_rates(s["gt"][:, None], s["window"]))
+    out.update({k: v for k, v in realism(s, s["gt"][:, None]).items() if k != "_samples"})
     sp = speeds(s["last"], s["gt"])
-    out.update(speed_mean=sp.mean(), speed_gt=sp.mean(), speed_w1=0.0)
+    out.update(speed_mean=sp.mean(), speed_gt=sp.mean(), speed_w1=0.0, accel_w1=0.0, turn_w1=0.0, nn_w1=0.0,
+               nonlinear_share=1 - (~nonlinear(s["last"], s["gt"])).mean())
     return {k: float(v) for k, v in out.items()}

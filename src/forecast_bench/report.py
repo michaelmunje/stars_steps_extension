@@ -28,12 +28,17 @@ METHODS = {
     "stars_loo": ("STARS LOO (no-ETH/UCY pretrain + LOO fine-tune)", "none (LOO)"),
     "stars_steps": ("STARS STEPS-only", "none (zero-shot)"),
     "stars_noethucy": ("STARS pooled w/o ETH/UCY", "none (zero-shot)"),
-    "stars_noethucy_goal": ("STARS pooled w/o ETH/UCY + oracle goal", "none (zero-shot; privileged goal input)"),
+    "stars_noethucy_mode": ("&nbsp;&nbsp;mode (z = prior mean)", "none (zero-shot)"),
+    "stars_noethucy_goal": ("STARS pooled w/o ETH/UCY + oracle goal †", "none (zero-shot; privileged goal input)"),
+    "stars_noethucy_goal_mode": ("&nbsp;&nbsp;mode (z = prior mean) †", "none (zero-shot; privileged goal input)"),
     "stars_pooled": ("STARS pooled (6 datasets)", "LEAK: hotel, zara1, univ(001 train, 003 val); eth, zara2 clean"),
+    "stars_pooled_mode": ("&nbsp;&nbsp;mode (z = prior mean)", "LEAK: as STARS pooled"),
     "stars_improved": ("STARS improved (7 datasets, 4x sample selection)",
                        "LEAK: hotel, zara1, univ(001 train, 003 val); eth, zara2 clean"),
+    "stars_improved_mode": ("&nbsp;&nbsp;mode (z = prior mean)", "LEAK: as STARS pooled"),
     "stars_improved_social": ("STARS improved, collision-aware (refine + collision loss)",
                               "LEAK: hotel, zara1, univ(001 train, 003 val); eth, zara2 clean"),
+    "stars_improved_social_mode": ("&nbsp;&nbsp;mode (z = prior mean)", "LEAK: as STARS pooled"),
     "stars_steps_diffusion": ("STARS STEPS-only, per-agent diffusion", "none (zero-shot)"),
     "stars_steps_joint_diffusion": ("STARS STEPS-only, joint diffusion", "none (zero-shot)"),
 }
@@ -54,8 +59,8 @@ PUBLISHED = {
 }
 PUB_NOTE = {"trajectron_official": "paper (future-leaking features)",
             "sgan_official": "MODEL_ZOO (scene-joint min: compare minJoint)"}
-LEAKED = {"stars_pooled": {"hotel", "univ", "zara1"}, "stars_improved": {"hotel", "univ", "zara1"},
-          "stars_improved_social": {"hotel", "univ", "zara1"}}
+LEAKED = {m: {"hotel", "univ", "zara1"} for b in ("stars_pooled", "stars_improved", "stars_improved_social")
+          for m in (b, f"{b}_mode")}
 POOLED = ("steps", "ptdpes", "madras", "grand_central", "atc", "eth", "ucy")
 
 
@@ -117,6 +122,51 @@ def social_table(df: pd.DataFrame, sets: list[str], cols: list[str]) -> str:
         lines.append(f"| {METHODS.get(method, (method,))[0]} | " +
                      " | ".join(f"{r[c].mean():.3f}" for c in cols) + " |")
     return "\n".join(lines)
+
+
+# Headline columns: (header, metric a, metric b or None, kind) -- "m": metres a/b, "%": percent, "x": plain
+HEADLINE_ACC = [("minADE/FDE (per agent)", "min_ade", "min_fde", "m"),
+                ("minJointADE/FDE (scene)", "min_joint_ade", "min_joint_fde", "m"),
+                ("single-sample ADE/FDE", "mean_ade", "mean_fde", "m"),
+                ("ADE straight / non-linear", "mean_ade_straight", "mean_ade_nonlinear", "m")]
+HEADLINE_REAL = [("contact < 0.2 m", "contact20_agent", None, "%"), ("contact < 0.4 m", "contact40_agent", None, "%"),
+                 ("W1 speed (m/s)", "speed_w1", None, "x"), ("W1 accel (m/s²)", "accel_w1", None, "x"),
+                 ("W1 turn (deg/s)", "turn_w1", None, "x1"), ("W1 NN dist (m)", "nn_w1", None, "x")]
+
+
+def headline_table(df: pd.DataFrame, sets: list[str], cols: list) -> str:
+    """Macro average over ``sets`` per method; methods missing a set are skipped."""
+    sub = df[df.set.isin(sets)]
+    lines = ["| Method | " + " | ".join(c[0] for c in cols) + " |", "|---|" + "---:|" * len(cols)]
+    for method in _order(sub.method.unique()):
+        r = sub[sub.method == method]
+        if r.set.nunique() < len(sets):
+            continue
+        cells = []
+        for _, a, b, kind in cols:
+            if method == "ground_truth" and kind == "m" or a not in r or r[a].isna().all():
+                cells.append("")
+            elif kind == "m":
+                cells.append(f"{r[a].mean():.2f}/{r[b].mean():.2f}")
+            elif kind == "%":
+                cells.append(f"{100 * r[a].mean():.1f}%")
+            else:
+                cells.append(f"{r[a].mean():.{1 if kind == 'x1' else 3}f}")
+        lines.append(f"| {METHODS.get(method, (method,))[0]} | " + " | ".join(cells) + " |")
+    return "\n".join(lines)
+
+
+HEADLINE_NOTE = ("minADE/FDE: per-agent best of 20 (each agent picks its own best sample); minJointADE/FDE: "
+                 "scene-level best of 20 (one sample index for all agents of a window). Single-sample = "
+                 "mean over the 20 samples of the per-sample error (deterministic methods: their one prediction). "
+                 "*mode* rows decode the STARS CVAE prior mean (z = μ, no sampling): one deterministic prediction, the "
+                 "fair comparison to constant velocity. Straight / non-linear: agents whose real future stays within / "
+                 "departs from its start-end chord by more than 0.2 m on average. Contact: share of agents within "
+                 "0.2 / 0.4 m of another scored agent's prediction (same sample, same step), ignoring pairs that are a "
+                 "walking group in the observation (within 1 m, velocities within 0.3 m/s at the last observed step). "
+                 "W1: Wasserstein-1 distance to the real per-step speed, acceleration, turning-rate and "
+                 "nearest-neighbour-distance (clipped at 5 m) distributions, pooled over samples. † oracle goal input "
+                 "(privileged). STARS pooled / improved rows (and their modes) trained on hotel, univ and zara1.")
 
 
 def pooled_table(df: pd.DataFrame, a: str, b: str) -> str:
@@ -235,7 +285,13 @@ def main() -> None:
         closed.to_csv(args.out / "closed_loop_metrics.csv", index=False)
     eth = [f"ethucy_{f}" for f in FOLDS]
     pooled = [s for s in (f"pooled_{d}" for d in POOLED) if s in set(df.set)]
+    share = df[df.set.isin(eth) & (df.method == "ground_truth")].get("nonlinear_share", pd.Series(dtype=float)).mean()
     sections = [
+        ("ETH/UCY headline: accuracy (mean over 5 folds, m)", headline_table(df, eth, HEADLINE_ACC) + "\n\n" + HEADLINE_NOTE
+         + f" Non-linear agents: {100 * share:.0f}% of ETH/UCY scored agents."),
+        ("ETH/UCY headline: realism (mean over 5 folds)", headline_table(df, eth, HEADLINE_REAL)),
+        ("Our datasets headline: accuracy (mean over datasets, m)", headline_table(df, pooled, HEADLINE_ACC)),
+        ("Our datasets headline: realism (mean over datasets)", headline_table(df, pooled, HEADLINE_REAL)),
         ("ETH/UCY leave-one-out: minADE20/minFDE20 (m)", ethucy_table(df, "min_ade", "min_fde", published=True)),
         ("ETH/UCY: mean-over-20-samples ADE/FDE (m)", ethucy_table(df, "mean_ade", "mean_fde")),
         ("ETH/UCY: first-sample ADE/FDE (m)", ethucy_table(df, "s0_ade", "s0_fde")),

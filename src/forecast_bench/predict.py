@@ -3,6 +3,9 @@
     python -m forecast_bench.predict --method cv --sets ethucy_eth,...
     python -m forecast_bench.predict --method stars_pooled --sets ... --device cuda
 
+``<stars method>_mode`` (e.g. ``stars_pooled_mode``) decodes the CVAE prior mean (z = mu, no sampling):
+one deterministic prediction (K = 1), the fair comparison to deterministic baselines such as CV.
+
 Writes ``<root>/preds/<set>/<method>.npz`` (``pred [E, K, 12, 2]`` for the scored nodes, see
 ``forecast_bench.metrics``).
 """
@@ -30,6 +33,7 @@ STARS = {  # method -> checkpoint
     # collision-aware variant: refinement round + decoder collision hinge (weight 10), KL 0.15
     "stars_improved_social": RUNS / "si_final_social_s42/checkpoints/best.pt",
 }
+MODE = {f"{m}_mode": m for m in ("stars_pooled", "stars_noethucy", "stars_noethucy_goal", "stars_improved", "stars_improved_social")}
 
 
 def constant_velocity(windows: dict) -> np.ndarray:
@@ -49,7 +53,8 @@ def to_store(windows: dict, device):
 
 
 @torch.no_grad()
-def stars(windows: dict, checkpoint: Path, device: str, samples: int, max_nodes: int, seed: int = 0) -> np.ndarray:
+def stars(windows: dict, checkpoint: Path, device: str, samples: int, max_nodes: int, seed: int = 0,
+          mode: bool = False) -> np.ndarray:
     from baselines.stars_ma_batch import _ranges, build_batch, node_budget_batches
     from baselines.stars_ma_graph import to_scene
     from baselines.train_stars_ma import load_forecaster
@@ -60,13 +65,17 @@ def stars(windows: dict, checkpoint: Path, device: str, samples: int, max_nodes:
     model.eval()
     graph = payload["graph"]
     store = to_store(windows, device)
-    k = samples if model.stochastic else 1
+    k = samples if model.stochastic and not mode else 1
     out = np.zeros((len(windows["obs"]), k, PRED, 2), dtype=np.float32)
     for batch_windows in node_budget_batches(store.sizes, max_nodes, shuffle=False):
         batch_windows = batch_windows.to(store.device)
         batch = build_batch(store, batch_windows, dt=CANONICAL_DT, knn=graph["knn"], radius=graph["radius"])
         with torch.autocast("cuda", dtype=torch.bfloat16, enabled=device.startswith("cuda")):
-            local = model.predict(batch, samples=k)
+            if mode:    # prior-mean latent: one deterministic prediction
+                encoded = model.encode(batch)
+                local = model.decode(batch, encoded, model.sample_latent(encoded["context"], 1, mean=True))
+            else:
+                local = model.predict(batch, samples=k)
         scene = to_scene(local.float(), batch.origin, batch.heading)          # [K, n, P, 2]
         nodes = _ranges(store.ptr[batch_windows], store.sizes[batch_windows])
         out[nodes.cpu().numpy()] = scene.transpose(0, 1).cpu().numpy()
@@ -115,7 +124,7 @@ def stars_predictor(checkpoint: Path, device: str):
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--method", required=True, choices=["cv", "stars_loo", *STARS])
+    parser.add_argument("--method", required=True, choices=["cv", "stars_loo", *STARS, *MODE])
     parser.add_argument("--sets", required=True)
     parser.add_argument("--root", type=Path, default=ROOT / "experiments/forecast_bench")
     parser.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
@@ -133,6 +142,8 @@ def main() -> None:
         elif args.method == "stars_loo":   # per-fold checkpoint from forecast_bench.finetune_stars_loo
             checkpoint = args.root / "stars_loo" / name.removeprefix("ethucy_") / "best.pt"
             pred = stars(windows, checkpoint, args.device, args.samples, args.max_nodes)
+        elif args.method in MODE:
+            pred = stars(windows, STARS[MODE[args.method]], args.device, args.samples, args.max_nodes, mode=True)
         else:
             pred = stars(windows, STARS[args.method], args.device, args.samples, args.max_nodes)
         path.parent.mkdir(parents=True, exist_ok=True)
