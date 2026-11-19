@@ -262,9 +262,105 @@ def primary_table(df: pd.DataFrame) -> pd.DataFrame:
     return out
 
 
+AGREED = [f"{m}@{h}" for h in HORIZONS for m in ("ade", "fde", "mode_ade", "mode_fde", "nll", "col20")]
+
+
+def agreed_agent(windows: dict, path: Path) -> dict[str, np.ndarray]:
+    """Per scored agent, one prediction file: single-sample ADE/FDE (mean over K), KDE NLL (mean over steps up to
+    the horizon) and the share of samples within 0.2 m of another scored agent (NaN when alone) at each horizon;
+    with the ``_mode`` file next to it, mode ADE/FDE."""
+    from forecast_bench.metrics import _proximity, scored
+
+    s = scored(windows)
+    pred = np.load(path)["pred"].astype(np.float32)
+    err = np.linalg.norm(pred - s["gt"][:, None], axis=-1)
+    nll = kde_nll(pred, s["gt"]) if pred.shape[1] > 1 else None
+    mode = path.with_name(path.stem + "_mode.npz")
+    merr = np.linalg.norm(np.load(mode)["pred"][:, 0] - s["gt"], axis=-1) if mode.exists() else None
+    out = {}
+    for h, t in HORIZONS.items():
+        out[f"ade@{h}"], out[f"fde@{h}"] = err[..., :t].mean((1, 2)), err[..., t - 1].mean(1)
+        out[f"nll@{h}"] = nll[:, :t].mean(1) if nll is not None else np.full(len(err), np.nan)
+        out[f"mode_ade@{h}"] = merr[:, :t].mean(1) if merr is not None else np.full(len(err), np.nan)
+        out[f"mode_fde@{h}"] = merr[:, t - 1] if merr is not None else np.full(len(err), np.nan)
+        closest, _, _, multi = _proximity(pred[:, :, :t], s["window"], s["obs"])
+        out[f"col20@{h}"] = np.where(multi, (closest < 0.2).mean(1), np.nan)
+    return out
+
+
+def paired(comparisons: list[tuple[str, str, str]], root: Path = BENCH, seed: int = 0) -> pd.DataFrame:
+    """``(name, a, b)`` with ``a``/``b`` = ``stem@s1,s2`` (e.g. ``ep_zs_ts@1,2,3``): per-agent metrics averaged over
+    the listed seeds' prediction files, 5-fold mean of each, and the 95% block-bootstrap CI of a - b (same resampled
+    blocks for both; per fold, metric = sum over agents / count over agents with a value)."""
+    rng = np.random.default_rng(seed)
+    cache, rows = {}, []
+    folds = {}
+    for fold in FOLDS:
+        windows = load(root / "windows" / f"ethucy_{fold}.npz")
+        blk = blocks(windows)
+        nb = blk.max() + 1
+        w_agent = blk[scored_window(windows)]
+        weights = rng.multinomial(nb, np.full(nb, 1 / nb), size=REPS).astype(float)   # [R, nb]
+        folds[fold] = (windows, w_agent, weights, nb)
+
+    def spec(sp, fold):
+        stem, seeds = sp.split("@")
+        key = (sp, fold)
+        if key not in cache:
+            windows = folds[fold][0]
+            per = [agreed_agent(windows, root / "preds" / f"ethucy_{fold}" /
+                                (f"{stem}_s{x}.npz" if x else f"{stem}.npz")) for x in seeds.split(",")]
+            cache[key] = {k: np.mean([p[k] for p in per], 0) for k in AGREED}
+        return cache[key]
+
+    for name, a, b in comparisons:
+        row = {"comparison": name, "a": a, "b": b}
+        for k in AGREED:
+            pa, pb, diffs = [], [], []
+            for fold in FOLDS:
+                _, w_agent, weights, nb = folds[fold]
+                xa, xb = spec(a, fold)[k], spec(b, fold)[k]
+                ok = ~np.isnan(xa) & ~np.isnan(xb)
+                if not ok.any():
+                    break
+                cnt = np.bincount(w_agent[ok], None, nb)
+                sa, sb = np.bincount(w_agent[ok], xa[ok], nb), np.bincount(w_agent[ok], xb[ok], nb)
+                pa.append(sa.sum() / cnt.sum()); pb.append(sb.sum() / cnt.sum())
+                den = weights @ cnt
+                diffs.append((weights @ sa - weights @ sb) / np.maximum(den, 1e-9))
+            if len(pa) < len(FOLDS):
+                continue
+            d = np.mean(diffs, 0)
+            row[f"{k}_a"], row[f"{k}_b"] = np.mean(pa), np.mean(pb)
+            row[f"{k}_diff"] = np.mean(pa) - np.mean(pb)
+            row[f"{k}_lo"], row[f"{k}_hi"] = np.percentile(d, [2.5, 97.5])
+        rows.append(row)
+        print(name, f"ade@4.8 {row.get('ade@4.8_diff', np.nan):+.4f} [{row.get('ade@4.8_lo', np.nan):+.4f}, "
+              f"{row.get('ade@4.8_hi', np.nan):+.4f}]", flush=True)
+    return pd.DataFrame(rows)
+
+
+def scored_window(windows: dict) -> np.ndarray:
+    """Window index of every scored agent."""
+    node_window = np.repeat(np.arange(len(windows["ptr"]) - 1), np.diff(windows["ptr"]))
+    return node_window[windows["eval_mask"]]
+
+
+TWO_STAGE = [("A' vs A (seeds 1-3)", "ep_zs_ts@1,2,3", "ep_zs@1,2,3"),
+             ("B' vs B (seeds 1-3)", "ep_loso_ts@1,2,3", "ep_loso@1,2,3"),
+             ("A' frozen vs A (seed 1)", "ep_zs_tsf@1", "ep_zs@1"),
+             ("A' frozen vs A' fine-tuned (seed 1)", "ep_zs_tsf@1", "ep_zs_ts@1"),
+             ("B vs A (seeds 1-3)", "ep_loso@1,2,3", "ep_zs@1,2,3"),
+             ("B' vs A' (seeds 1-3)", "ep_loso_ts@1,2,3", "ep_zs_ts@1,2,3"),
+             ("B vs LOSO from scratch (seeds 0-2 vs 1-3)", "ep_loso@1,2,3", "ep_scratch@0,1,2"),
+             ("B' vs LOSO from scratch", "ep_loso_ts@1,2,3", "ep_scratch@0,1,2"),
+             ("B vs SocialVAE", "ep_loso@1,2,3", "socialvae_official@"),
+             ("B vs constant velocity", "ep_loso@1,2,3", "cv@")]
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("stage", choices=["select", "ci", "primary"])
+    parser.add_argument("stage", choices=["select", "ci", "primary", "paired"])
     parser.add_argument("--root", type=Path, default=BENCH)
     parser.add_argument("--out", type=Path)
     parser.add_argument("--methods", default="socialvae_official,moflow_official,agentformer_official,trajectron_official,"
@@ -273,6 +369,11 @@ def main() -> None:
     args = parser.parse_args()
     if args.stage == "select":
         select(args.root)
+        return
+    if args.stage == "paired":
+        args.out.mkdir(parents=True, exist_ok=True)
+        df = paired(TWO_STAGE, args.root)
+        df.to_csv(args.out / "two_stage_paired.csv", index=False)
         return
     if args.stage == "primary":
         args.out.mkdir(parents=True, exist_ok=True)

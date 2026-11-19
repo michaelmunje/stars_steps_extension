@@ -252,7 +252,8 @@ def run(args) -> None:
         assert old == [R.init_hash(w.agent_ids, w.obs, w.goal) for w in wins], "--append needs the same windows"
         keep = lambda f: f[~f.method.isin(args.methods)]
         rows = pd.concat([keep(pd.read_csv(mdir / "per_rollout.csv")), rows])
-        agents = pd.concat([keep(pd.read_csv(mdir / "per_agent.csv.gz")), agents])
+        if (mdir / "per_agent.csv.gz").exists():   # large and not committed: may be absent in a fresh checkout
+            agents = pd.concat([keep(pd.read_csv(mdir / "per_agent.csv.gz")), agents])
         runtime = pd.concat([keep(pd.read_csv(mdir / "runtime.csv")), runtime])
         previous = np.load(mdir / "kinematics_8s.npz")
         for key in previous.files:
