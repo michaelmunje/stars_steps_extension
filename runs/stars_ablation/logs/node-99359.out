@@ -1,8 +1,0 @@
-node c109-007.horizon.tacc.utexas.edu job 99359 Wed Nov 18 11:32:59 PM CST 2026
-GPU 0: NVIDIA GB200 (UUID: GPU-78a0ce30-d76c-5306-f316-5c4e1d936e27)
-GPU 1: NVIDIA GB200 (UUID: GPU-71ad8bfb-f8fa-c730-a000-afc9c1968cb2)
-GPU 2: NVIDIA GB200 (UUID: GPU-cf457ef1-1cd0-46a2-0c37-bab5317ecf8a)
-GPU 3: NVIDIA GB200 (UUID: GPU-66787fac-4291-c5f4-d6da-38538a595cc1)
-requeue at Wed Nov 18 11:59:56 PM CST 2026
-requeued runs/stars_ablation/queue/55_L5_s2.running.99359
-requeued runs/stars_ablation/queue/55_L5scratch_s1.running.99359

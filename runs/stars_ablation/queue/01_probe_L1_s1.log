@@ -1,8 +1,0 @@
-== Wed Nov 18 08:06:57 PM CST 2026 c109-007.horizon.tacc.utexas.edu gpu=0 job=99009
-/scratch/09865/mmunje/stars-forecasting/.venv/lib64/python3.12/site-packages/torch/nn/modules/transformer.py:392: UserWarning: enable_nested_tensor is True, but self.use_nested_tensor is False because encoder_layer.norm_first was True
-  warnings.warn(
-abl_L1_s1 eth: val ADE 0.463 (epoch 48), test ADE 1.050, 30307 train rows, 332 s
-abl_L1_s1 hotel: val ADE 0.481 (epoch 37), test ADE 0.455, 29676 train rows, 576 s
-abl_L1_s1 univ: val ADE 0.438 (epoch 23), test ADE 0.560, 9874 train rows, 665 s
-abl_L1_s1 zara1: val ADE 0.477 (epoch 54), test ADE 0.450, 28577 train rows, 973 s
-abl_L1_s1 zara2: val ADE 0.504 (epoch 24), test ADE 0.412, 26076 train rows, 1135 s

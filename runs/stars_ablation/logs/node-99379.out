@@ -1,7 +1,0 @@
-node c127-018.horizon.tacc.utexas.edu job 99379 Thu Nov 19 12:02:50 AM CST 2026
-GPU 0: NVIDIA GB200 (UUID: GPU-b2eb2ab5-f681-6365-82d5-a5dacd1b1259)
-GPU 1: NVIDIA GB200 (UUID: GPU-17b0aa3b-7aa9-86ac-4c12-ca2ae22e4511)
-GPU 2: NVIDIA GB200 (UUID: GPU-a8f0c13c-80df-f546-0474-053b8daebb7d)
-GPU 3: NVIDIA GB200 (UUID: GPU-ed2e044b-d4c6-a839-b4a4-f14fe8da29bd)
-requeue at Thu Nov 19 12:30:00 AM CST 2026
-requeued runs/stars_ablation/queue/30_probe_long_s3_a.running.99379
