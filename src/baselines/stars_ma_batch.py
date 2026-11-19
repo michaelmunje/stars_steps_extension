@@ -25,7 +25,7 @@ from pathlib import Path
 import numpy as np
 import torch
 
-from baselines.stars_data import MIN_HISTORY_POINTS, NODE_TYPE_HUMAN
+from baselines.stars_data import MIN_HISTORY_POINTS, NODE_TYPE_HUMAN, NODE_TYPE_TARGET
 from baselines.stars_ma_graph import MOTION_EPSILON, NODE_FEATURE_DIM, rotate
 
 CACHE_VERSION = 1
@@ -285,8 +285,8 @@ def fill_observed_padded(xy: torch.Tensor, valid: torch.Tensor) -> torch.Tensor:
     return torch.where(valid[..., None], xy, value)
 
 
-def headings_padded(xy: torch.Tensor) -> torch.Tensor:
-    """``headings_from_motion(xy, backfill=True)`` for ``[..., T, 2]`` positions: ``[..., T]``."""
+def headings_padded(xy: torch.Tensor, backfill: bool = True) -> torch.Tensor:
+    """``headings_from_motion(xy, backfill=backfill)`` for ``[..., T, 2]`` positions: ``[..., T]``."""
     displacement = xy[..., 1:, :] - xy[..., :-1, :]
     moving = displacement.abs().sum(dim=-1) > MOTION_EPSILON
     angle = torch.atan2(displacement[..., 1], displacement[..., 0])
@@ -296,6 +296,8 @@ def headings_padded(xy: torch.Tensor) -> torch.Tensor:
     last = torch.cummax(torch.where(moving, step, torch.full_like(step, -1)), dim=-1).values
     held = torch.where(last >= 0, torch.gather(angle, -1, last.clamp(min=0)), torch.zeros_like(angle))
     theta = torch.cat([torch.zeros_like(held[..., :1]), held], dim=-1)
+    if not backfill:  # STARS's _xy_to_theta: 0 (the scene x axis) until an agent first moves
+        return theta
     has_moved = moving.any(dim=-1, keepdim=True)
     first = moving.float().argmax(dim=-1, keepdim=True)
     initial = torch.gather(angle, -1, first)
@@ -327,6 +329,10 @@ class GraphBatch:
     radius: float | None = None
     dt: float = 0.4
     goal: torch.Tensor | None = None  # [Nt, 3] scene-frame goal x, y and valid (None: no goals)
+    # STARS-fidelity options (ablation ladder; defaults = the multi-agent graph): see ``batched_graph``
+    resample: int | None = None
+    heading_backfill: bool = True
+    target_slot: bool = False
 
     @property
     def num_graphs(self) -> int:
@@ -347,29 +353,64 @@ class GraphBatch:
     def rebuild(self, window: torch.Tensor, valid: torch.Tensor) -> "GraphBatch":
         """The same windows' graphs from new per-node scene-frame states ``[Nt, T, 2]`` / ``[Nt, T]``."""
         graph = batched_graph(self.to_padded(window), self.to_padded(valid.to(torch.bool), False), self.node_mask,
-                              dt=self.dt, knn=self.knn, radius=self.radius)
+                              dt=self.dt, knn=self.knn, radius=self.radius, resample=self.resample,
+                              heading_backfill=self.heading_backfill)
+        if self.target_slot:
+            graph["node_type"][self.ptr[:-1]] = NODE_TYPE_TARGET
         return GraphBatch(**graph, future=self.future, future_valid=self.future_valid, is_target=self.is_target,
                           batch=self.batch, ptr=self.ptr, node_mask=self.node_mask, dataset=self.dataset,
-                          windows=self.windows, knn=self.knn, radius=self.radius, dt=self.dt, goal=self.goal)
+                          windows=self.windows, knn=self.knn, radius=self.radius, dt=self.dt, goal=self.goal,
+                          resample=self.resample, heading_backfill=self.heading_backfill, target_slot=self.target_slot)
 
 
 def batched_graph(xy: torch.Tensor, valid: torch.Tensor, node_mask: torch.Tensor, *, dt: float,
-                  knn: int | None, radius: float | None) -> dict[str, torch.Tensor]:
+                  knn: int | None, radius: float | None, resample: int | None = None,
+                  heading_backfill: bool = True) -> dict[str, torch.Tensor]:
     """``build_graph`` for padded ``xy [B, N, T, 2]``, ``valid [B, N, T]``, ``node_mask [B, N]``, flattened.
 
     Every real node must be valid at the last step. Edges follow ``neighbourhood_edges``: no
     self-loops, endpoints share a valid step, within ``radius`` of the destination at the last step,
     and each destination keeps its ``knn`` nearest sources (``None``/``None``: fully connected).
+
+    STARS-fidelity options: ``resample`` (e.g. 40) linearly resamples node/edge features and the
+    validity mask onto STARS's fixed grid (``stars_data.resample_linear`` / ``resample_valid``); origin,
+    heading and ``obs_xy`` stay at the native rate. ``heading_backfill=False`` is STARS's heading rule.
     """
     with torch.autocast(device_type=xy.device.type, enabled=False):
-        return _batched_graph(xy.float(), valid, node_mask, dt=dt, knn=knn, radius=radius)
+        graph = _batched_graph(xy.float(), valid, node_mask, dt=dt, knn=knn, radius=radius, backfill=heading_backfill)
+    if resample and resample != xy.shape[2]:
+        graph["node_attr"] = resample_steps(graph["node_attr"], resample)
+        graph["edge_attr"] = resample_steps(graph["edge_attr"], resample)
+        graph["valid_mask"] = resample_valid_steps(graph["valid_mask"].bool(), resample).to(graph["valid_mask"].dtype)
+    return graph
 
 
-def _batched_graph(xy, valid, node_mask, *, dt, knn, radius):
+def _grid(steps: int, size: int, device) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+    position = torch.linspace(0.0, steps - 1, size, dtype=torch.float64, device=device)
+    low = torch.floor(position).long()
+    high = (low + 1).clamp(max=steps - 1)
+    return position, low, high, (position - low).float()
+
+
+def resample_steps(values: torch.Tensor, size: int) -> torch.Tensor:
+    """``[S, T, F]`` -> ``[S, size, F]``, linear with aligned corners (``stars_data.resample_linear``)."""
+    _, low, high, weight = _grid(values.shape[1], size, values.device)
+    weight = weight[None, :, None].to(values.dtype)
+    return (1.0 - weight) * values[:, low] + weight * values[:, high]
+
+
+def resample_valid_steps(valid: torch.Tensor, size: int) -> torch.Tensor:
+    """``[S, T]`` validity on the resampled grid: both bracketing steps valid (``stars_data.resample_valid``)."""
+    position, low, high, _ = _grid(valid.shape[1], size, valid.device)
+    exact = torch.isclose(position, low.double())
+    return valid[:, low] & (exact | valid[:, high])
+
+
+def _batched_graph(xy, valid, node_mask, *, dt, knn, radius, backfill=True):
     B, N, T, _ = xy.shape
     valid = valid & node_mask[..., None]
     filled = fill_observed_padded(xy, valid)
-    theta = headings_padded(filled)
+    theta = headings_padded(filled, backfill)
     origin, heading = filled[:, :, -1], theta[:, :, -1]
     local = rotate(filled - origin[:, :, None], -heading[:, :, None])
     velocity = torch.cat([torch.zeros_like(local[:, :, :1]), (local[:, :, 1:] - local[:, :, :-1]) / dt], dim=2)
@@ -420,23 +461,84 @@ def _batched_graph(xy, valid, node_mask, *, dt, knn, radius):
 
 
 def build_batch(store: WindowStore, windows: torch.Tensor, *, dt: float, knn: int | None,
-                radius: float | None) -> GraphBatch:
-    """Gather ``windows`` of ``store`` (on the store's device) and build their graphs at once."""
+                radius: float | None, resample: int | None = None, heading_backfill: bool = True,
+                target_slot: bool = False) -> GraphBatch:
+    """Gather ``windows`` of ``store`` (on the store's device) and build their graphs at once.
+
+    ``target_slot``: each window's first node (its target, see ``per_target_store``) takes STARS's
+    robot slot (node type 0), as the single-target STARS probe (``stars_data``)."""
     windows = torch.as_tensor(windows, dtype=torch.long, device=store.ptr.device)
     sizes = store.sizes[windows]
     B, N = len(windows), int(sizes.max())
     node_mask = torch.arange(N, device=store.ptr.device)[None] < sizes[:, None]
     nodes = _ranges(store.ptr[windows], sizes)
     pad = lambda value, fill: _scatter_padded(value[nodes], node_mask, fill)
-    graph = batched_graph(pad(store.obs_xy, 0.0), pad(store.obs_valid, False), node_mask, dt=dt, knn=knn, radius=radius)
+    graph = batched_graph(pad(store.obs_xy, 0.0), pad(store.obs_valid, False), node_mask, dt=dt, knn=knn, radius=radius,
+                          resample=resample, heading_backfill=heading_backfill)
     ptr = torch.zeros(B + 1, dtype=torch.long, device=store.ptr.device)
     ptr[1:] = sizes.cumsum(0)
+    if target_slot:
+        graph["node_type"][ptr[:-1]] = NODE_TYPE_TARGET
     is_target = torch.zeros(len(nodes), dtype=torch.bool, device=store.ptr.device)
     is_target[ptr[:-1]] = True
     return GraphBatch(**graph, future=store.future[nodes], future_valid=store.future_valid[nodes], is_target=is_target,
                       batch=torch.repeat_interleave(torch.arange(B, device=store.ptr.device), sizes), ptr=ptr,
                       node_mask=node_mask, dataset=store.dataset[windows], windows=windows, knn=knn, radius=radius,
-                      dt=dt, goal=None if store.goal is None else store.goal[nodes, :3])
+                      dt=dt, goal=None if store.goal is None else store.goal[nodes, :3], resample=resample,
+                      heading_backfill=heading_backfill, target_slot=target_slot)
+
+
+GRAPH_OPTIONS = ("resample", "heading_backfill", "target_slot")
+
+
+def graph_options(graph: dict) -> dict:
+    """``build_batch`` keyword arguments of a checkpoint's ``graph`` entry (old checkpoints: knn/radius only)."""
+    return {"knn": graph["knn"], "radius": graph["radius"],
+            **{key: graph[key] for key in GRAPH_OPTIONS if key in graph}}
+
+
+def per_target_store(store: WindowStore, *, targets: str, max_graph_nodes: int | None = None,
+                     seed: int = 0) -> tuple[WindowStore, torch.Tensor]:
+    """One window per (window, target), the target first, as the single-target STARS probe's graphs.
+
+    ``targets``: ``"scored"`` = every node observed at all observed and future steps (the benchmark's scored
+    agents), ``"one"`` = one node per window drawn (seeded) among the nodes observed at every observed step
+    (self-supervised pretraining), ``"observed"`` = all of those. ``max_graph_nodes`` keeps the target and its
+    nearest other nodes at the last observed step (STARS's graphs have at most 18 nodes). Returns the new store
+    and, per new window, the target's node index in ``store``.
+    """
+    store = store.to("cpu")
+    full_obs = store.obs_valid.all(1)
+    eligible = full_obs & store.future_valid.all(1) if targets == "scored" else full_obs
+    window_of = torch.repeat_interleave(torch.arange(len(store)), store.sizes)
+    if targets == "one":
+        g = torch.Generator().manual_seed(seed)
+        score = torch.rand(len(eligible), generator=g).masked_fill(~eligible, -1.0)
+        best = torch.full((len(store),), -1.0).scatter_reduce(0, window_of, score, "amax")
+        chosen = eligible & (score == best[window_of])
+    else:
+        chosen = eligible
+    target_nodes = torch.nonzero(chosen).flatten()
+    ptr = store.ptr
+    order, sizes = [], []
+    last = store.obs_xy[:, -1]
+    for node in target_nodes.tolist():
+        w = int(window_of[node])
+        a, b = int(ptr[w]), int(ptr[w + 1])
+        others = torch.tensor([i for i in range(a, b) if i != node], dtype=torch.long)
+        if max_graph_nodes is not None and len(others) > max_graph_nodes - 1:
+            distance = torch.linalg.norm(last[others] - last[node], dim=-1)
+            others = others[torch.argsort(distance, stable=True)[: max_graph_nodes - 1]]
+        order.append(torch.cat([torch.tensor([node]), others]))
+        sizes.append(len(others) + 1)
+    nodes = torch.cat(order)
+    new_ptr = torch.zeros(len(sizes) + 1, dtype=torch.long)
+    new_ptr[1:] = torch.tensor(sizes).cumsum(0)
+    windows = window_of[target_nodes]
+    out = WindowStore(store.obs_xy[nodes], store.obs_valid[nodes], store.future[nodes], store.future_valid[nodes],
+                      new_ptr, store.dataset[windows], store.sample_index[windows], list(store.names),
+                      goal=None if store.goal is None else store.goal[nodes])
+    return out, target_nodes
 
 
 def graph_batch_from_padded(xy: torch.Tensor, valid: torch.Tensor, node_mask: torch.Tensor, *, dt: float,

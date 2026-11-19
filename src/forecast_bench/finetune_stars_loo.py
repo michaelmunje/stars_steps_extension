@@ -11,6 +11,11 @@ without a validation improvement. ``--scratch`` re-initialises the weights (same
 (``train_stars_ma``'s rollout loss on the fold's training scenes, curriculum from ``--rft-start-steps``) and
 selects on the K-step closed-loop ADE of the fold's val split. Resumable (``latest.pt`` every epoch).
 
+``--encoder <ssl best.pt>`` (ablation ladder L4-L6) instead builds a new forecaster: the self-supervised
+``train_stars_ma --phase ssl`` encoder (``--encoder-mode frozen`` / ``finetune``; ``scratch`` re-initialises it)
+with a fresh deterministic or CVAE decoder (``--decoder``). ``--select mean_ade`` selects on the expected
+single-sample ADE (average over the K = 20 draws; the ADE itself for deterministic decoders).
+
     python -m forecast_bench.finetune_stars_loo --fold eth --init <pretrained best.pt> --lr 1e-4 \
         --out experiments/forecast_bench/loso/<name>/eth
 """
@@ -37,6 +42,30 @@ def fold_windows(fold: str, split: str) -> dict:
     for path in sorted((SGAN_SPLITS / fold / split).glob("*.txt")):
         windows += sgan_windows(path)
     return _pack(windows)
+
+
+def new_forecaster(args, device):
+    """A forecaster from a ``--phase ssl`` encoder and a fresh decoder, with a ``load_forecaster``-style payload."""
+    from baselines.stars_ma_model import DECODER_RECIPE, StarsMultiAgentForecaster
+    from data import CANONICAL_DT
+
+    ssl = torch.load(args.encoder, map_location="cpu", weights_only=False)
+    if ssl.get("model") != "stars_ma" or ssl.get("phase") != "ssl":
+        raise ValueError(f"{args.encoder} is not a train_stars_ma --phase ssl checkpoint")
+    if set(ssl["graph"]) != {"knn", "radius"}:
+        raise ValueError(f"the decoder needs per-window graphs at the native rate, not {ssl['graph']}")
+    decoder_recipe = {**DECODER_RECIPE, "latent_dim": args.cvae_latent_dim if args.decoder == "cvae" else 0,
+                      "hidden_dim": args.decoder_hidden_dim, "dropout": args.decoder_dropout}
+    window = {**ssl["window"], "dt": CANONICAL_DT}
+    model = StarsMultiAgentForecaster(window["observation_steps"], window["prediction_steps"], dt=window["dt"],
+                                      encoder_recipe=ssl["encoder_recipe"], decoder_recipe=decoder_recipe)
+    if args.encoder_mode != "scratch":
+        model.encoder.load_state_dict({k.removeprefix("encoder."): v for k, v in ssl["state_dict"].items()
+                                       if k.startswith("encoder.")})
+    payload = {"model": "stars_ma", "phase": "forecast", "encoder_recipe": ssl["encoder_recipe"],
+               "decoder_recipe": decoder_recipe, "graph": ssl["graph"], "window": window,
+               "ssl_encoder": str(args.encoder), "encoder_mode": args.encoder_mode}
+    return model.to(device), payload
 
 
 def main() -> None:
@@ -67,6 +96,13 @@ def main() -> None:
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--device", default="cuda")
     parser.add_argument("--max-batches", type=int, help="Smoke test: cap training batches per epoch")
+    parser.add_argument("--encoder", type=Path, help="ssl checkpoint: new forecaster with a fresh decoder (replaces --init)")
+    parser.add_argument("--encoder-mode", choices=("frozen", "finetune", "scratch"), default="finetune")
+    parser.add_argument("--decoder", choices=("deterministic", "cvae"), default="cvae")
+    parser.add_argument("--cvae-latent-dim", type=int, default=64)
+    parser.add_argument("--decoder-hidden-dim", type=int, default=512)
+    parser.add_argument("--decoder-dropout", type=float, default=0.0633)
+    parser.add_argument("--select", choices=("min_ade", "mean_ade"), default="min_ade")
     args = parser.parse_args()
     torch.manual_seed(args.seed)
     args.out.mkdir(parents=True, exist_ok=True)
@@ -75,7 +111,10 @@ def main() -> None:
         return
 
     device = torch.device(args.device)
-    model, payload = load_forecaster(STARS.get(args.init, Path(args.init)), device)
+    if args.encoder:
+        model, payload = new_forecaster(args, device)
+    else:
+        model, payload = load_forecaster(STARS.get(args.init, Path(args.init)), device)
     if args.scratch:
         window = payload["window"]
         model = StarsMultiAgentForecaster(window["observation_steps"], window["prediction_steps"], dt=window["dt"],
@@ -89,10 +128,14 @@ def main() -> None:
     stores = {split: to_store(fold_windows(args.fold, split), args.device) for split in ("train", "val")}
     batch = lambda store, w: build_batch(store, w.to(store.device), dt=CANONICAL_DT, knn=graph["knn"],
                                          radius=graph["radius"])
+    frozen = bool(args.encoder) and args.encoder_mode == "frozen"
+    model.freeze_encoder = frozen
     encoder = [p for n, p in model.named_parameters() if n.startswith("encoder.")]
     rest = [p for n, p in model.named_parameters() if not n.startswith("encoder.")]
-    optimizer = torch.optim.AdamW([{"params": encoder, "lr": args.lr * args.encoder_lr_mult},
-                                   {"params": rest, "lr": args.lr}], weight_decay=args.weight_decay)
+    for p in encoder:
+        p.requires_grad_(not frozen)
+    groups = [{"params": rest, "lr": args.lr}] + ([] if frozen else [{"params": encoder, "lr": args.lr * args.encoder_lr_mult}])
+    optimizer = torch.optim.AdamW(groups, weight_decay=args.weight_decay)
     generator = torch.Generator().manual_seed(args.seed)
     steps = len(node_budget_batches(stores["train"].sizes, args.max_nodes, shuffle=False)[:args.max_batches])
     warmup, total = max(1, int(args.warmup_epochs * steps)), args.epochs * steps
@@ -118,7 +161,9 @@ def main() -> None:
             err = torch.linalg.norm(pred - b.future[None], dim=-1).mean(-1)[:, full]
             best.append(err.min(0).values)
             mean.append(err.mean(0))
-        return {"val_min_ade": float(torch.cat(best).mean()), "val_mean_ade": float(torch.cat(mean).mean())}
+        out = {"val_min_ade": float(torch.cat(best).mean()), "val_mean_ade": float(torch.cat(mean).mean())}
+        out["val_select"] = out[f"val_{args.select}"]
+        return out
 
     latest = args.out / "latest.pt"
     if latest.exists():   # resume
@@ -131,7 +176,7 @@ def main() -> None:
         start, best, best_epoch = state["epoch"] + 1, state["best"], state["best_epoch"]
     else:
         val = validate()
-        best, best_epoch, start = val["val_min_ade"], 0, 1
+        best, best_epoch, start = val.get("val_select", val["val_min_ade"]), 0, 1
         with open(args.out / "log.jsonl", "w") as log:
             print(json.dumps({"epoch": 0, **val}), file=log, flush=True)
         torch.save({**meta, "state_dict": model.state_dict(), "epoch": 0}, args.out / "best.pt")
@@ -139,6 +184,8 @@ def main() -> None:
         if args.patience and epoch - best_epoch > args.patience:
             break
         model.train()
+        if frozen:
+            model.encoder.eval()  # frozen features: no encoder dropout
         t0, losses = time.time(), []
         if args.rft_steps:
             ramp = min(1.0, (epoch - 1) / args.rft_ramp_epochs) if args.rft_ramp_epochs else 1.0
@@ -158,15 +205,15 @@ def main() -> None:
         with open(args.out / "log.jsonl", "a") as log:
             print(json.dumps({"epoch": epoch, "train_loss": float(np.mean(losses)), **val,
                               "lr": scheduler.get_last_lr()[-1], "seconds": time.time() - t0}), file=log, flush=True)
-        if val["val_min_ade"] < best:
-            best, best_epoch = val["val_min_ade"], epoch
+        if val.get("val_select", val["val_min_ade"]) < best:
+            best, best_epoch = val.get("val_select", val["val_min_ade"]), epoch
             torch.save({**meta, "state_dict": model.state_dict(), "epoch": epoch}, args.out / "best.pt")
         torch.save({"state_dict": model.state_dict(), "optimizer": optimizer.state_dict(),
                     "scheduler": scheduler.state_dict(), "generator": generator.get_state(),
                     "torch_rng": torch.get_rng_state(), "epoch": epoch, "best": best, "best_epoch": best_epoch},
                    latest.with_suffix(".tmp"))
         latest.with_suffix(".tmp").replace(latest)
-    (args.out / "summary.json").write_text(json.dumps({"fold": args.fold, "best_val_min_ade": best,
+    (args.out / "summary.json").write_text(json.dumps({"fold": args.fold, "best_val_min_ade": best, "select": args.select,
                                                        "best_epoch": best_epoch, **vars(args)}, default=str, indent=1))
     latest.unlink(missing_ok=True)
     print(f"{args.fold}: best val minADE20 {best:.3f} at epoch {best_epoch}")

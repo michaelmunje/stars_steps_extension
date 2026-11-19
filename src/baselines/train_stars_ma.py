@@ -46,7 +46,8 @@ from torch import nn
 from baselines.device import training_device
 from baselines.early_stopping import EarlyStopping
 from baselines.stars import REFERENCE, UPSTREAM_COMMIT, UPSTREAM_REPOSITORY, VAE_RECIPE
-from baselines.stars_ma_batch import WindowStore, build_batch, cached_store, concat_stores, node_budget_batches, window_weights
+from baselines.stars_ma_batch import (WindowStore, build_batch, cached_store, concat_stores, graph_options,
+                                      node_budget_batches, per_target_store, window_weights)
 from baselines.stars_ma_graph import to_local, to_scene
 from baselines.stars_ma_metrics import MetricAccumulator, batch_metrics
 from baselines.stars_ma_model import (
@@ -157,10 +158,19 @@ def _parser() -> argparse.ArgumentParser:
     graph.add_argument("--knn", type=int, default=16, help="Sources kept per destination (default 16)")
     graph.add_argument("--radius", type=float, default=10.0, help="Neighbourhood radius in metres (default 10)")
     graph.add_argument("--fully-connected", action="store_true", help="STARS's topology: ignore --knn/--radius")
+    graph.add_argument("--stars-grid", type=int, help="STARS fidelity: resample node/edge sequences to this many steps (STARS: 40)")
+    graph.add_argument("--stars-heading", action="store_true", help="STARS fidelity: heading 0 until an agent first moves (no back-fill)")
+    graph.add_argument("--target-slot", action="store_true",
+                       help="STARS fidelity (ssl): one graph per (window, target), target in the robot slot (node type 0); "
+                            "one seeded target per window")
+    graph.add_argument("--max-graph-nodes", type=int, help="With --target-slot: keep the target and its nearest nodes (STARS: 18)")
     encoder = parser.add_argument_group("encoder")
     encoder.add_argument("--hidden-dim", type=int)
     encoder.add_argument("--latent-dim", type=int)
     encoder.add_argument("--edge-only", action="store_true", help="Ablation: STARS's edge-only encoder (no node motion)")
+    encoder.add_argument("--beta-warmup-epochs", type=int, help="ssl: KL beta warm-up epochs (default STARS's 50)")
+    encoder.add_argument("--ssl-val-beta", type=float,
+                         help="ssl: validate (and select) at this fixed beta instead of the current warm-up beta")
     encoder.add_argument("--node-loss-weight", type=float, default=1.0, help="ssl: weight of node-motion reconstruction")
     forecast = parser.add_argument_group("forecast")
     forecast.add_argument("--encoder-checkpoint", type=Path, help="A --phase ssl checkpoint (frozen/finetune)")
@@ -255,6 +265,12 @@ def parse_args(argv=None) -> argparse.Namespace:
         parser.error("No training datasets: give --datasets or a config with `datasets`")
     if args.fully_connected:
         args.knn = args.radius = None
+    if (args.target_slot or args.max_graph_nodes) and args.phase != "ssl":
+        parser.error("--target-slot/--max-graph-nodes apply to --phase ssl (heads: forecast_bench.stars_ablation)")
+    if args.max_graph_nodes and not args.target_slot:
+        parser.error("--max-graph-nodes needs --target-slot")
+    if args.phase == "forecast" and (args.stars_grid or args.stars_heading):
+        parser.error("--stars-grid/--stars-heading apply to --phase ssl")
     if args.phase == "forecast":
         if args.encoder_mode != "scratch" and not args.encoder_checkpoint:
             parser.error(f"--encoder-mode {args.encoder_mode} needs --encoder-checkpoint")
@@ -389,8 +405,17 @@ def epoch_batches(store: WindowStore, args, epoch: int, *, train: bool, weights=
     return batches[: args.max_batches] if args.max_batches else batches
 
 
+def _graph(args) -> dict:
+    """The checkpoint's ``graph`` entry; the STARS-fidelity keys only when set (old checkpoints compare equal)."""
+    graph = {"knn": args.knn, "radius": args.radius}
+    extra = {"resample": getattr(args, "stars_grid", None), "heading_backfill": False if getattr(args, "stars_heading", False) else None,
+             "target_slot": True if getattr(args, "target_slot", False) else None,
+             "max_graph_nodes": getattr(args, "max_graph_nodes", None)}
+    return {**graph, **{key: value for key, value in extra.items() if value is not None}}
+
+
 def _batch(store, windows, args):
-    return build_batch(store, windows.to(store.device), dt=CANONICAL_DT, knn=args.knn, radius=args.radius)
+    return build_batch(store, windows.to(store.device), dt=CANONICAL_DT, **graph_options(_graph(args)))
 
 
 # ----------------------------------------------------------------------------- losses
@@ -628,7 +653,7 @@ def _save(path: Path, model, args, *, selection, extra=None) -> None:
         "encoder_recipe": args.encoder_recipe,
         "decoder_recipe": args.decoder_recipe,
         "recipe": args.recipe,
-        "graph": {"knn": args.knn, "radius": args.radius},
+        "graph": _graph(args),
         "window": {"observation_steps": args.obs, "prediction_steps": args.pred, "dt": CANONICAL_DT},
         "datasets": {"train": args.train_entries, "val": args.val_entries},
         "checkpoint_selection": selection,
@@ -727,7 +752,8 @@ def train(args) -> None:
     args.obs, args.pred = forecasting.window.observation_steps, forecasting.window.prediction_steps
     payload = None
     encoder_overrides = {"hidden_dim": args.hidden_dim, "latent_dim": args.latent_dim,
-                         "use_node_features": False if args.edge_only else None, "dropout": args.dropout}
+                         "use_node_features": False if args.edge_only else None, "dropout": args.dropout,
+                         "timesteps": args.stars_grid}
     args.encoder_recipe = {**ENCODER_RECIPE, **{k: v for k, v in encoder_overrides.items() if v is not None}}
     if args.encoder_checkpoint:
         payload = torch.load(args.encoder_checkpoint, map_location="cpu", weights_only=False)
@@ -773,6 +799,8 @@ def train(args) -> None:
         args.recipe["weight_decay"] = args.weight_decay
     if args.phase == "forecast":
         args.recipe["kl_weight"] = args.kl_weight
+    elif args.beta_warmup_epochs is not None:
+        args.recipe["beta_warmup_epochs"] = args.beta_warmup_epochs
 
     torch.manual_seed(args.seed)
     np.random.seed(args.seed)
@@ -799,6 +827,11 @@ def train(args) -> None:
         device = args.device_realized
         train_store = load_stores(args.train_entries, "train", args, forecasting).to(device)
         val_store = load_stores(args.val_entries, "val", args, forecasting).to(device)
+        if args.target_slot:  # STARS's single-target graphs: one seeded target per window, robot slot
+            train_store = per_target_store(train_store, targets="one", max_graph_nodes=args.max_graph_nodes,
+                                           seed=args.data_seed)[0].to(device)
+            val_store = per_target_store(val_store, targets="one", max_graph_nodes=args.max_graph_nodes,
+                                         seed=args.data_seed)[0].to(device)
         weights = window_weights(train_store, {entry["name"]: entry["weight"] for entry in args.train_entries})
         counts = {name: int((train_store.dataset == i).sum()) for i, name in enumerate(train_store.names)}
         run.update(stage="datasets_ready", n_train_windows=len(train_store), n_val_windows=len(val_store),
@@ -937,7 +970,8 @@ def train(args) -> None:
                 continue
             val_batches = epoch_batches(val_store, args, 0, train=False)
             if args.phase == "ssl":
-                metrics = evaluate_ssl(model, val_store, val_batches, args, weight)
+                metrics = evaluate_ssl(model, val_store, val_batches, args,
+                                       weight if args.ssl_val_beta is None else args.ssl_val_beta)
                 selection, name = metrics["loss"], "val_ssl_loss"
             else:
                 metrics = evaluate_forecaster(model, val_store, val_batches, args, samples=samples,

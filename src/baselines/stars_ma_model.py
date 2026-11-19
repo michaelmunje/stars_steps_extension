@@ -117,6 +117,10 @@ class StarsMotionEncoder(nn.Module):
         super().__init__()
         recipe = {**ENCODER_RECIPE, **(recipe or {})}
         self.recipe = recipe
+        # Optional "timesteps" (e.g. 40): the temporal transformers' length when graphs are resampled onto
+        # STARS's grid (``batched_graph(resample=...)``); default the observation length.
+        observation_steps = int(recipe.get("timesteps") or observation_steps)
+        self.timesteps = observation_steps
         upstream = upstream_model_module()
         self.base = upstream.CombinedHGNNEncoder(
             hidden_dim=recipe["hidden_dim"],
@@ -205,7 +209,7 @@ class StarsMotionVAE(nn.Module):
         self.encoder = StarsMotionEncoder(observation_steps, recipe)
         r = self.encoder.recipe
         self.decoder = MotionReconstructionDecoder(
-            r["latent_dim"], r["hidden_dim"], observation_steps, r["dropout"], node_features=r["use_node_features"]
+            r["latent_dim"], r["hidden_dim"], self.encoder.timesteps, r["dropout"], node_features=r["use_node_features"]
         )
 
     def loss(self, data, beta: float, node_weight: float = 1.0) -> dict[str, torch.Tensor]:

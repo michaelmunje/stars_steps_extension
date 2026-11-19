@@ -164,6 +164,12 @@ def main() -> None:
         elif args.method == "stars_loo":   # per-fold checkpoint from forecast_bench.finetune_stars_loo
             checkpoint = args.root / "stars_loo" / name.removeprefix("ethucy_") / "best.pt"
             pred = stars(windows, checkpoint, args.device, args.samples, args.max_nodes)
+        elif args.method.startswith("abl_"):   # ablation ladder: forecast_bench.finetune_stars_loo --encoder runs
+            import re
+            run, suffix = re.fullmatch(r"abl_(.+?)(_mode|_os4)?", args.method).groups()
+            checkpoint = args.root / "ablation" / "loso" / run / name.removeprefix("ethucy_") / "best.pt"
+            pred = stars(windows, checkpoint, args.device, args.samples, args.max_nodes, mode=suffix == "_mode",
+                         oversample=4 if suffix == "_os4" else 1)
         elif args.method.startswith("ep_"):
             checkpoint, mode, oversample = protocol_checkpoint(args.method, name.removeprefix("ethucy_"), args.root)
             pred = stars(windows, checkpoint, args.device, args.samples, args.max_nodes, mode=mode,
