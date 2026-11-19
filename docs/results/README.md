@@ -26,6 +26,9 @@ GIFs on ETH/UCY: [`closed_loop_examples/`](closed_loop_examples/).
 
 ## Forecasting benchmark (ETH/UCY + our datasets, official baselines)
 
+Clean ETH/UCY protocol (2026-11-19: zero-shot A, leave-one-scene-out B, two-stage study, closed loop):
+[`../../results/ethucy_protocol_2026-11-18/README.md`](../../results/ethucy_protocol_2026-11-18/README.md).
+
 See [`forecasting_benchmark/`](forecasting_benchmark/): accuracy vs collisions for STARS and five official
 pretrained baselines (MoFlow, AgentFormer, SocialVAE, Trajectron++, Social-GAN), plus a 20 s closed loop.
 

@@ -1,39 +1,27 @@
 {
  "run_id": "ethucy_2026-11-16_improved",
- "created_utc": "2026-11-18T20:00:48.788867+00:00",
- "git_commit": "bb9e146566556c0f42a51b4104e088bd8b061d33",
- "git_branch": "stars-improve",
+ "created_utc": "2026-11-19T10:06:37.233479+00:00",
+ "git_commit": "9f105f277cdf5b510d24c002e21ca74cda4cdcee",
+ "git_branch": "ethucy-protocol",
  "git_dirty": true,
  "command": [
   "simplenavsim/scripts/ethucy_benchmark.py",
   "run",
   "--run",
   "results/ethucy_2026-11-16_improved",
+  "--append",
   "--reuse",
   "--device",
-  "cpu",
+  "cuda",
+  "--seeds",
+  "5",
   "--methods",
-  "cv",
-  "goal_straight",
-  "ground_truth",
-  "orca",
-  "orca_default",
-  "sfm",
-  "sfm_default",
-  "stars_improved",
-  "stars_improved_mode",
-  "stars_improved_social",
-  "stars_improved_social_mode",
-  "stars_noethucy",
-  "stars_noethucy_goal",
-  "stars_noethucy_mode",
-  "stars_pooled",
-  "stars_pooled_goal",
-  "stars_pooled_mode",
-  "stars_steps",
-  "stars_steps_diffusion",
-  "stars_steps_goal",
-  "stars_steps_joint_diffusion"
+  "stars_ep_zs",
+  "stars_ep_zs_mode",
+  "stars_ep_loso",
+  "stars_ep_loso_mode",
+  "stars_ep_zs_rft",
+  "stars_ep_loso_rft"
  ],
  "checkpoints": {
   "stars_steps": {
@@ -67,6 +55,14 @@
   "stars_steps_joint_diffusion": {
    "path": "experiments/stars_ma/runs/joint_diffusion_finetune/checkpoints/best.pt",
    "sha256": "sha256:30d671480abd9afedaa25a2768ab250b9e383c2f4b377775f2b270959a392f9e"
+  },
+  "stars_rft": {
+   "path": "experiments/stars_ma/runs/rft_base_noatc/checkpoints/best.pt",
+   "sha256": "sha256:9f6cbfde15b9bbbca6a3b0a9745dabba169a851b5e82331480bcc7cb8f9b45eb"
+  },
+  "stars_rft_social": {
+   "path": "experiments/stars_ma/runs/rft_social_coll_progress_noatc/checkpoints/best.pt",
+   "sha256": "sha256:9d00693a8f7e4f00c2aab44f5da23740cb0b087770c8778adc8b58e5f93465fe"
   }
  },
  "data": {

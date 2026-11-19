@@ -1,11 +1,50 @@
-# Forecasting benchmark (2026-11-16)
+# Forecasting benchmark
+
+## Update 2026-11-19: clean ETH/UCY protocol (A zero-shot, B leave-one-scene-out)
+
+Full results: [`results/ethucy_protocol_2026-11-18/README.md`](../../../results/ethucy_protocol_2026-11-18/README.md).
+Two-stage study: [`two_stage.md`](../../../results/ethucy_protocol_2026-11-18/two_stage.md). Benchmark report with
+the new rows: [`results/forecasting_2026-11-19_ethucy_protocol/`](../../../results/forecasting_2026-11-19_ethucy_protocol/report.md).
+
+The two new STARS models:
+- **A** is pretrained on STEPS, PTDPES, MADRAS and Grand Central only. It sees no ATC and no ETH/UCY, so
+  every test scene is unseen.
+- **B** is A fine-tuned leave-one-scene-out on the standard train/val files of the other 4 scenes, the same
+  protocol the official baselines use. These are the rows to compare with the baselines.
+
+The older STARS rows below (pooled / improved / collision-aware) trained on hotel, univ and zara1 and are
+**not comparable** ([LEAKED]).
+
+Agreed metrics at 4.8 s, 5-fold mean, mean ± std over 4 seeds:
+
+| Row | single-sample ADE / FDE | mode ADE / FDE | KDE NLL | collisions < 0.2 m |
+|---|---|---|---|---|
+| STARS A (zero-shot) | 0.581±0.008 / 1.201±0.012 | 0.467±0.002 / 0.979±0.006 | 5.76±0.30 | 5.0% (4x: 3.4%) |
+| **STARS B (LOSO)** | 0.574±0.006 / 1.221±0.010 | 0.455±0.001 / 0.960±0.005 | 4.16±0.70 | 5.5% (4x: 3.7%) |
+| SocialVAE | 0.656 / 1.419 | – | 1.46 | 9.7% |
+| MoFlow | 0.985 / 2.094 | – | 1.05 | 7.6% |
+| AgentFormer | 1.051 / 2.343 | – | 1.23 | 7.4% |
+| Constant velocity | 0.534 / 1.148 | 0.534 / 1.148 | – | 6.9% |
+| Ground truth | | | | 0.5% |
+
+What the paired CIs support:
+- **B vs the learned baselines.** B has lower single-sample ADE/FDE than every official baseline (vs SocialVAE
+  at 4.8 s: -0.079 m [-0.107, -0.048]) and fewer collisions.
+- **B vs constant velocity.** CV is better than B's random sample, but B's mode is better than CV.
+- **KDE NLL is worse than the baselines'.** STARS samples are too narrow.
+- **Best-of-20, for comparison with papers.** Per agent, B is not significantly different from SocialVAE,
+  AgentFormer or MoFlow on minADE. At scene level (minJointADE), B is better than all of them.
+- **Closed loop.** B degrades: 0.70 m vs A's 0.56 at 4.8 s, because its agents speed up under their own rollouts.
+  Closed-loop rollout fine-tuning fixes it (B + RFT 0.49, level with CV).
+
+![accuracy vs collisions](accuracy_vs_collisions.png)
+
+## Earlier benchmark (2026-11-16)
 
 Open-loop trajectory forecasting (observe 3.2 s, predict 4.8 s, dt 0.4 s) on the standard ETH/UCY
 leave-one-out protocol and on each of our datasets' test splits, plus a closed loop up to 20 s.
 Full report, tables and commands: [`results/forecasting_2026-11-16_89f5e72/report.md`](../../../results/forecasting_2026-11-16_89f5e72/report.md).
 Figures: `python results/forecasting_2026-11-16_89f5e72/figures/make_summary.py`.
-
-![accuracy vs collisions](accuracy_vs_collisions.png)
 
 | ETH/UCY (mean of 5 scenes) | Best of 20, per agent ADE / FDE | Best of 20, scene ADE / FDE | Single sample ADE / FDE | Single-sample ADE straight / non-linear | Contacts < 0.2 / < 0.4 m | Samples drawn |
 | --- | --- | --- | --- | --- | --- | --- |
