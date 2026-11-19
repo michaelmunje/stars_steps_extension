@@ -147,39 +147,42 @@ def fmt(mean: float, std: float, digits: int = 3) -> str:
     return f"{mean:.{digits}f}" + (f" ± {std:.{digits}f}" if np.isfinite(std) else "")
 
 
-RAMP = ["#b7d3f6", "#9ec5f4", "#86b6ef", "#6da7ec", "#5598e7", "#3987e5", "#2a78d6", "#256abf", "#1c5cab",
-        "#184f95", "#104281", "#0d366b"]
+PALETTE = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4"]   # categorical slots 1-5 (fixed order)
 
 
 def figure(summary: pd.DataFrame, rungs: list[str], path: Path, reference: str = "cv") -> None:
-    """Single-sample ADE vs horizon per rung (5-fold average, band = +- 1 seed std); ordinal blue ramp, CV dashed."""
+    """Single-sample ADE vs horizon, as the difference to constant velocity (5-scene mean; band = +- 1 seed std).
+    Two panels so each holds <= 5 series: the linear-probe rungs (L0-L3) and the decoder rungs (L4-L7 + scratch)."""
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
     seconds = [0.4 * h for h in HORIZONS]
-    fig, ax = plt.subplots(figsize=(7.2, 4.4), dpi=200)
-    colours = [RAMP[int(round(i * (len(RAMP) - 1) / max(1, len(rungs) - 1)))] for i in range(len(rungs))]
-    for rung, colour in zip(rungs, colours):
-        if rung not in summary.index:
-            continue
-        mean = np.array([summary.loc[rung, f"ss_ade@{h}"] for h in HORIZONS])
-        std = np.nan_to_num(np.array([summary.loc[rung, f"ss_ade@{h}_std"] for h in HORIZONS]))
-        ax.plot(seconds, mean, color=colour, lw=2, marker="o", ms=4, label=rung)
-        ax.fill_between(seconds, mean - std, mean + std, color=colour, alpha=0.18, lw=0)
-    if reference in summary.index:
-        ax.plot(seconds, [summary.loc[reference, f"ss_ade@{h}"] for h in HORIZONS], color="#6b6a64", lw=1.5,
-                ls="--", label="constant velocity")
-    ax.set_xlabel("prediction horizon (s)")
-    ax.set_ylabel("single-sample ADE (m), 5-scene mean")
-    ax.set_xticks(seconds)
-    ax.grid(axis="y", color="#e4e3dd", lw=0.8)
-    for side in ("top", "right"):
-        ax.spines[side].set_visible(False)
-    ax.legend(frameon=False, fontsize=7.5, loc="upper left")
-    ax.set_title("STARS ablation ladder on ETH/UCY (leave-one-scene-out)", fontsize=10, loc="left")
+    cv = np.array([summary.loc[reference, f"ss_ade@{h}"] for h in HORIZONS])
+    main = [r for r in rungs if not r.startswith("sensitivity") and r in summary.index]
+    panels = [("Linear-probe rungs (frozen encoder)", [r for r in main if r[:2] in ("L0", "L1", "L2", "L3")]),
+              ("Decoder rungs", [r for r in main if r[:2] in ("L4", "L5", "L6", "L7")])]
+    fig, axes = plt.subplots(1, 2, figsize=(10, 4.6), dpi=200, sharey=True)
+    for ax, (title, names) in zip(axes, panels):
+        ax.axhline(0, color="#6b6a64", lw=1.2, ls="--")
+        if ax is axes[0]:
+            ax.text(seconds[-1], -0.003, "constant velocity", color="#55544f", fontsize=7.5, va="top", ha="right")
+        for name, colour in zip(names, PALETTE):
+            mean = np.array([summary.loc[name, f"ss_ade@{h}"] for h in HORIZONS]) - cv
+            std = np.nan_to_num(np.array([summary.loc[name, f"ss_ade@{h}_std"] for h in HORIZONS]))
+            ax.fill_between(seconds, mean - std, mean + std, color=colour, alpha=0.15, lw=0)
+            ax.plot(seconds, mean, color=colour, lw=2, marker="o", ms=4.5, label=name)
+        ax.set_title(title, fontsize=9.5, loc="left")
+        ax.set_xticks(seconds)
+        ax.set_xlabel("prediction horizon (s)")
+        ax.grid(axis="y", color="#e4e3dd", lw=0.8)
+        for side in ("top", "right"):
+            ax.spines[side].set_visible(False)
+        ax.legend(frameon=False, fontsize=7, loc="upper center", bbox_to_anchor=(0.5, -0.2), ncol=1)
+    axes[0].set_ylabel("single-sample ADE minus CV (m)\n(below 0 = better than CV)")
+    fig.suptitle("STARS ablation ladder, ETH/UCY leave-one-scene-out, 3 seeds", fontsize=10.5, x=0.01, ha="left")
     fig.tight_layout()
-    fig.savefig(path)
+    fig.savefig(path, bbox_inches="tight")
 
 
 def markdown_tables(df: pd.DataFrame, summary: pd.DataFrame, rungs: list[str], baselines: list[str]) -> str:
