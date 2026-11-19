@@ -734,6 +734,8 @@ def train(args) -> None:
         if payload.get("model") != "stars_ma" or payload.get("phase") != "ssl":
             raise ValueError(f"{args.encoder_checkpoint} is not a multi-agent STARS --phase ssl checkpoint")
         args.encoder_recipe = dict(payload["encoder_recipe"])
+        if args.dropout is not None:   # dropout is not a weight: the forecasting recipe's value applies
+            args.encoder_recipe["dropout"] = args.dropout
         if payload["graph"] != {"knn": args.knn, "radius": args.radius}:
             raise ValueError(f"Graph topology differs from the encoder checkpoint ({payload['graph']})")
     args.decoder_recipe = {

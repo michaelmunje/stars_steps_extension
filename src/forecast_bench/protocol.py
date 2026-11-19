@@ -211,7 +211,7 @@ def primary_scores(windows: dict, pred: np.ndarray) -> dict[str, float]:
     return out
 
 
-def primary(root: Path = BENCH, kinds=("zs", "loso", "scratch", "zs_rft", "loso_rft"),
+def primary(root: Path = BENCH, kinds=("zs", "loso", "scratch", "zs_rft", "loso_rft", "zs_ts", "loso_ts", "zs_tsf"),
             baselines=("socialvae_official", "moflow_official", "agentformer_official", "trajectron_official",
                        "sgan_official", "cv")) -> pd.DataFrame:
     """Per (row, fold, seed) primary metrics. Rows: ``ep_<kind>`` (sampled, mode from ``_mode``), ``ep_<kind>_os4``

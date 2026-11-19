@@ -48,6 +48,8 @@ def protocol_checkpoint(method: str, fold: str, root: Path) -> tuple[Path, bool,
     mode, oversample = suffix == "_mode", 4 if suffix == "_os4" else 1
     if kind == "zs":
         return Path(str(PROTOCOL_PRE).format(seed=seed)), mode, oversample
+    if kind in ("zs_ts", "zs_tsf"):   # two-stage: SSL encoder (finetuned / frozen) + forecaster, else as zs
+        return RUNS / f"ep_{kind.removeprefix('zs_')}_pre4_s{seed}/checkpoints/best.pt", mode, oversample
     if kind == "zs_rft":
         return RUNS / f"ep_rft_zs_s{seed}/checkpoints/best.pt", mode, oversample
     return root / "loso" / f"ep_{kind}_s{seed}" / fold / "best.pt", mode, oversample
