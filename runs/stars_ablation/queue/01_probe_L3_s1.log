@@ -1,0 +1,18 @@
+== Wed Nov 18 08:10:41 PM CST 2026 c109-008.horizon.tacc.utexas.edu gpu=0 job=99004
+/scratch/09865/mmunje/stars-forecasting/.venv/lib64/python3.12/site-packages/torch/nn/modules/transformer.py:392: UserWarning: enable_nested_tensor is True, but self.use_nested_tensor is False because encoder_layer.norm_first was True
+  warnings.warn(
+abl_L3_s1 eth: val ADE 0.472 (epoch 29), test ADE 1.053, 48351 train rows, 313 s
+abl_L3_s1 hotel: val ADE 0.486 (epoch 31), test ADE 0.475, 47296 train rows, 641 s
+Terminated
+== Wed Nov 18 08:26:00 PM CST 2026 c109-007.horizon.tacc.utexas.edu gpu=0 job=99009
+/scratch/09865/mmunje/stars-forecasting/.venv/lib64/python3.12/site-packages/torch/nn/modules/transformer.py:392: UserWarning: enable_nested_tensor is True, but self.use_nested_tensor is False because encoder_layer.norm_first was True
+  warnings.warn(
+Terminated
+== Wed Nov 18 08:29:23 PM CST 2026 c101-011.horizon.tacc.utexas.edu gpu=3 job=99043
+/scratch/09865/mmunje/stars-forecasting/.venv/lib64/python3.12/site-packages/torch/nn/modules/transformer.py:392: UserWarning: enable_nested_tensor is True, but self.use_nested_tensor is False because encoder_layer.norm_first was True
+  warnings.warn(
+abl_L3_s1 eth: val ADE 0.472 (epoch 29), test ADE 1.053, 48351 train rows, 243 s
+abl_L3_s1 hotel: val ADE 0.486 (epoch 31), test ADE 0.475, 47296 train rows, 488 s
+abl_L3_s1 univ: val ADE 0.456 (epoch 25), test ADE 0.558, 18307 train rows, 569 s
+abl_L3_s1 zara1: val ADE 0.487 (epoch 37), test ADE 0.452, 45825 train rows, 843 s
+abl_L3_s1 zara2: val ADE 0.519 (epoch 28), test ADE 0.445, 42412 train rows, 1065 s

@@ -58,12 +58,13 @@ node types) and that the encoder output equals the pinned `HGNNCombinedVAE` enco
 | L4 + GRU decoder (deterministic), frozen encoder | 3 | 0.568 ± 0.005 | 1.160 ± 0.015 | 0.568 ± 0.005 | 1.160 ± 0.015 | n/a | 0.076 ± 0.002 |
 | L5 + fine-tuned encoder | 3 | 0.518 ± 0.002 | 1.077 ± 0.009 | 0.518 ± 0.002 | 1.077 ± 0.009 | n/a | 0.056 ± 0.002 |
 | L5 control: same model from scratch (no pretraining) | 3 | 0.515 ± 0.013 | 1.078 ± 0.026 | 0.515 ± 0.013 | 1.078 ± 0.026 | n/a | 0.063 ± 0.001 |
-| L6 + CVAE decoder (K=20) | 3 | 0.529 ± 0.006 | 1.104 ± 0.018 | 0.550 ± 0.002 | 1.142 ± 0.007 | 11.597 ± 1.245 | 0.057 ± 0.002 |
-| L7 + least-colliding selection (4x oversampling) | 3 | 0.529 ± 0.007 | 1.104 ± 0.018 | 0.550 ± 0.002 | 1.142 ± 0.007 | 11.614 ± 1.247 | 0.054 ± 0.001 |
+| L6 + CVAE decoder (K=20, KL 0.5) | 3 | 0.523 ± 0.010 | 1.085 ± 0.024 | 0.568 ± 0.005 | 1.163 ± 0.015 | 10.632 ± 0.751 | 0.059 ± 0.003 |
+| L7 + least-colliding selection (4x oversampling) | 3 | 0.523 ± 0.010 | 1.085 ± 0.024 | 0.568 ± 0.005 | 1.163 ± 0.015 | 10.647 ± 0.750 | 0.057 ± 0.004 |
 | sensitivity: L0 with 15-epoch SSL | 3 | 0.587 ± 0.008 | 1.229 ± 0.015 | 0.587 ± 0.008 | 1.229 ± 0.015 | n/a | 0.082 ± 0.001 |
 | sensitivity: L1 with 15-epoch SSL | 3 | 0.587 ± 0.002 | 1.247 ± 0.007 | 0.587 ± 0.002 | 1.247 ± 0.007 | n/a | 0.075 ± 0.000 |
 | sensitivity: L2 with 15-epoch SSL | 3 | 0.591 ± 0.007 | 1.241 ± 0.015 | 0.591 ± 0.007 | 1.241 ± 0.015 | n/a | 0.081 ± 0.001 |
 | sensitivity: L3 with 15-epoch SSL | 3 | 0.594 ± 0.003 | 1.260 ± 0.006 | 0.594 ± 0.003 | 1.260 ± 0.006 | n/a | 0.082 ± 0.003 |
+| sensitivity: L6 with KL 0.15 | 3 | 0.529 ± 0.006 | 1.104 ± 0.018 | 0.550 ± 0.002 | 1.142 ± 0.007 | 11.597 ± 1.245 | 0.057 ± 0.002 |
 | cv | 1 | 0.534 | 1.148 | 0.534 | 1.148 | n/a | 0.069 |
 
 Ground-truth collision rate at 0.2 m (4.8 s): 0.0050.
@@ -79,12 +80,13 @@ Ground-truth collision rate at 0.2 m (4.8 s): 0.0050.
 | L4 + GRU decoder (deterministic), frozen encoder | 0.142 / 0.216 | 0.268 / 0.487 | 0.410 / 0.805 | 0.568 / 1.160 |
 | L5 + fine-tuned encoder | 0.123 / 0.190 | 0.238 / 0.439 | 0.370 / 0.738 | 0.518 / 1.077 |
 | L5 control: same model from scratch (no pretraining) | 0.119 / 0.184 | 0.233 / 0.434 | 0.366 / 0.736 | 0.515 / 1.078 |
-| L6 + CVAE decoder (K=20) | 0.123 / 0.190 | 0.240 / 0.447 | 0.376 / 0.757 | 0.529 / 1.104 |
-| L7 + least-colliding selection (4x oversampling) | 0.123 / 0.190 | 0.240 / 0.446 | 0.376 / 0.756 | 0.529 / 1.104 |
+| L6 + CVAE decoder (K=20, KL 0.5) | 0.125 / 0.192 | 0.241 / 0.444 | 0.374 / 0.745 | 0.523 / 1.085 |
+| L7 + least-colliding selection (4x oversampling) | 0.125 / 0.193 | 0.241 / 0.444 | 0.374 / 0.744 | 0.523 / 1.085 |
 | sensitivity: L0 with 15-epoch SSL | 0.135 / 0.210 | 0.265 / 0.494 | 0.417 / 0.840 | 0.587 / 1.229 |
 | sensitivity: L1 with 15-epoch SSL | 0.129 / 0.201 | 0.258 / 0.489 | 0.412 / 0.843 | 0.587 / 1.247 |
 | sensitivity: L2 with 15-epoch SSL | 0.132 / 0.207 | 0.264 / 0.498 | 0.419 / 0.849 | 0.591 / 1.241 |
 | sensitivity: L3 with 15-epoch SSL | 0.129 / 0.204 | 0.262 / 0.496 | 0.418 / 0.856 | 0.594 / 1.260 |
+| sensitivity: L6 with KL 0.15 | 0.123 / 0.190 | 0.240 / 0.447 | 0.376 / 0.757 | 0.529 / 1.104 |
 | cv | 0.111 / 0.178 | 0.230 / 0.442 | 0.372 / 0.770 | 0.534 / 1.148 |
 
 ### Per held-out scene (single-sample ADE / FDE at 4.8 s, mean ± seed std)
@@ -98,12 +100,13 @@ Ground-truth collision rate at 0.2 m (4.8 s): 0.0050.
 | L4 + GRU decoder (deterministic), frozen encoder | 1.00 ± 0.02 / 2.01 ± 0.06 | 0.40 ± 0.01 / 0.75 ± 0.01 | 0.61 ± 0.02 / 1.28 ± 0.04 | 0.44 ± 0.01 / 0.94 ± 0.02 | 0.39 ± 0.01 / 0.83 ± 0.02 |
 | L5 + fine-tuned encoder | 0.95 ± 0.01 / 1.91 ± 0.03 | 0.33 ± 0.01 / 0.63 ± 0.04 | 0.56 ± 0.02 / 1.21 ± 0.05 | 0.41 ± 0.00 / 0.90 ± 0.01 | 0.33 ± 0.01 / 0.73 ± 0.02 |
 | L5 control: same model from scratch (no pretraining) | 0.99 ± 0.03 / 2.03 ± 0.09 | 0.31 ± 0.01 / 0.60 ± 0.01 | 0.52 ± 0.01 / 1.12 ± 0.00 | 0.42 ± 0.04 / 0.91 ± 0.07 | 0.34 ± 0.06 / 0.73 ± 0.11 |
-| L6 + CVAE decoder (K=20) | 0.99 ± 0.03 / 1.99 ± 0.07 | 0.30 ± 0.01 / 0.57 ± 0.02 | 0.58 ± 0.01 / 1.25 ± 0.02 | 0.44 ± 0.00 / 0.96 ± 0.01 | 0.34 ± 0.01 / 0.76 ± 0.02 |
-| L7 + least-colliding selection (4x oversampling) | 0.99 ± 0.03 / 1.99 ± 0.07 | 0.30 ± 0.01 / 0.57 ± 0.01 | 0.58 ± 0.01 / 1.25 ± 0.02 | 0.44 ± 0.00 / 0.96 ± 0.01 | 0.34 ± 0.01 / 0.75 ± 0.02 |
+| L6 + CVAE decoder (K=20, KL 0.5) | 0.97 ± 0.01 / 1.96 ± 0.01 | 0.32 ± 0.02 / 0.60 ± 0.04 | 0.57 ± 0.02 / 1.23 ± 0.05 | 0.42 ± 0.01 / 0.90 ± 0.02 | 0.33 ± 0.01 / 0.73 ± 0.03 |
+| L7 + least-colliding selection (4x oversampling) | 0.97 ± 0.01 / 1.96 ± 0.01 | 0.32 ± 0.02 / 0.60 ± 0.04 | 0.57 ± 0.02 / 1.23 ± 0.05 | 0.42 ± 0.01 / 0.90 ± 0.02 | 0.33 ± 0.01 / 0.73 ± 0.03 |
 | sensitivity: L0 with 15-epoch SSL | 1.04 ± 0.01 / 2.08 ± 0.03 | 0.44 ± 0.01 / 0.90 ± 0.04 | 0.55 ± 0.01 / 1.18 ± 0.01 | 0.48 ± 0.02 / 1.04 ± 0.06 | 0.43 ± 0.01 / 0.95 ± 0.01 |
 | sensitivity: L1 with 15-epoch SSL | 1.06 ± 0.01 / 2.18 ± 0.04 | 0.46 ± 0.01 / 0.94 ± 0.01 | 0.55 ± 0.01 / 1.19 ± 0.01 | 0.45 ± 0.01 / 1.01 ± 0.01 | 0.41 ± 0.00 / 0.92 ± 0.02 |
 | sensitivity: L2 with 15-epoch SSL | 1.03 ± 0.02 / 2.09 ± 0.05 | 0.46 ± 0.01 / 0.90 ± 0.03 | 0.58 ± 0.00 / 1.25 ± 0.02 | 0.45 ± 0.00 / 1.00 ± 0.01 | 0.43 ± 0.01 / 0.96 ± 0.02 |
 | sensitivity: L3 with 15-epoch SSL | 1.05 ± 0.00 / 2.15 ± 0.01 | 0.47 ± 0.01 / 0.95 ± 0.02 | 0.57 ± 0.01 / 1.23 ± 0.01 | 0.45 ± 0.00 / 1.00 ± 0.01 | 0.43 ± 0.01 / 0.97 ± 0.02 |
+| sensitivity: L6 with KL 0.15 | 0.99 ± 0.03 / 1.99 ± 0.07 | 0.30 ± 0.01 / 0.57 ± 0.02 | 0.58 ± 0.01 / 1.25 ± 0.02 | 0.44 ± 0.00 / 0.96 ± 0.01 | 0.34 ± 0.01 / 0.76 ± 0.02 |
 | cv | 1.08 / 2.28 | 0.32 / 0.61 | 0.52 / 1.17 | 0.43 / 0.95 | 0.32 / 0.72 |
 
 ### Comparison with published methods (minADE20 / minFDE20 at 4.8 s; not our evaluation metric)
@@ -123,12 +126,35 @@ Ground-truth collision rate at 0.2 m (4.8 s): 0.0050.
 | L4 + GRU decoder (deterministic), frozen encoder | 1.00 / 2.01 | 0.40 / 0.75 | 0.61 / 1.28 | 0.44 / 0.94 | 0.39 / 0.83 | 0.57 / 1.16 | 0.57 / 1.16 |
 | L5 + fine-tuned encoder | 0.95 / 1.91 | 0.33 / 0.63 | 0.56 / 1.21 | 0.41 / 0.90 | 0.33 / 0.73 | 0.52 / 1.08 | 0.52 / 1.08 |
 | L5 control: same model from scratch (no pretraining) | 0.99 / 2.03 | 0.31 / 0.60 | 0.52 / 1.12 | 0.42 / 0.91 | 0.34 / 0.73 | 0.51 / 1.08 | 0.51 / 1.08 |
-| L6 + CVAE decoder (K=20) | 0.85 / 1.68 | 0.23 / 0.42 | 0.49 / 1.07 | 0.35 / 0.75 | 0.25 / 0.55 | 0.44 / 0.89 | 0.53 / 1.10 |
-| L7 + least-colliding selection (4x oversampling) | 0.85 / 1.68 | 0.23 / 0.42 | 0.49 / 1.07 | 0.35 / 0.75 | 0.25 / 0.56 | 0.44 / 0.89 | 0.53 / 1.10 |
+| L6 + CVAE decoder (K=20, KL 0.5) | 0.88 / 1.76 | 0.24 / 0.44 | 0.49 / 1.05 | 0.33 / 0.72 | 0.25 / 0.55 | 0.44 / 0.90 | 0.52 / 1.08 |
+| L7 + least-colliding selection (4x oversampling) | 0.88 / 1.76 | 0.24 / 0.44 | 0.49 / 1.05 | 0.33 / 0.72 | 0.25 / 0.55 | 0.44 / 0.90 | 0.52 / 1.08 |
 | sensitivity: L0 with 15-epoch SSL | 1.04 / 2.08 | 0.44 / 0.90 | 0.55 / 1.18 | 0.48 / 1.04 | 0.43 / 0.95 | 0.59 / 1.23 | 0.59 / 1.23 |
 | sensitivity: L1 with 15-epoch SSL | 1.06 / 2.18 | 0.46 / 0.94 | 0.55 / 1.19 | 0.45 / 1.01 | 0.41 / 0.92 | 0.59 / 1.25 | 0.59 / 1.25 |
 | sensitivity: L2 with 15-epoch SSL | 1.03 / 2.09 | 0.46 / 0.90 | 0.58 / 1.25 | 0.45 / 1.00 | 0.43 / 0.96 | 0.59 / 1.24 | 0.59 / 1.24 |
 | sensitivity: L3 with 15-epoch SSL | 1.05 / 2.15 | 0.47 / 0.95 | 0.57 / 1.23 | 0.45 / 1.00 | 0.43 / 0.97 | 0.59 / 1.26 | 0.59 / 1.26 |
+| sensitivity: L6 with KL 0.15 | 0.85 / 1.68 | 0.23 / 0.42 | 0.49 / 1.07 | 0.35 / 0.75 | 0.25 / 0.55 | 0.44 / 0.89 | 0.53 / 1.10 |
+
+### L6 KL weight: a trade-off, not a free choice (seed 1, test metrics at 4.8 s, 5-scene mean)
+
+Validation single-sample ADE is the mean over the 5 folds' validation splits (the selection metric). Sample spread:
+per agent, RMS distance of the 20 samples to their mean at 4.8 s, median over agents, mean over scenes.
+
+| KL weight | val single-sample ADE | test single-sample ADE / FDE | most-likely ADE | KDE NLL | minADE20 | collisions @0.2 m | sample spread at 4.8 s (m) |
+|---|---|---|---|---|---|---|---|
+| 0.03 | 0.521 | 0.606 / 1.279 | 0.507 | 2.86 | 0.269 | 0.091 | 0.722 |
+| 0.08 | 0.467 | 0.546 / 1.150 | 0.519 | 6.22 | 0.346 | 0.068 | 0.360 |
+| 0.15 | 0.447 | 0.534 / 1.120 | 0.551 | 12.50 | 0.447 | 0.055 | 0.117 |
+| 0.3 | 0.437 | 0.529 / 1.088 | 0.587 | 10.84 | 0.435 | 0.056 | 0.146 |
+| 0.5 | 0.433 | 0.517 / 1.072 | 0.565 | 10.20 | 0.429 | 0.061 | 0.144 |
+| 1.0 | 0.435 | 0.521 / 1.075 | 0.559 | 10.41 | 0.432 | 0.058 | 0.144 |
+
+**Selecting the CVAE on single-sample ADE alone pushes it toward a deterministic model.** As the KL weight rises,
+the samples collapse (spread 0.72 m → 0.14 m) and single-sample ADE improves until it matches the deterministic L5,
+while calibration and diversity get worse: KDE NLL 2.9 → 10–12.5 and minADE20 0.27 → 0.43. The best most-likely
+ADE is at the smallest KL (0.507). The KL weight is therefore a trade-off between single-sample accuracy and
+calibration/diversity; the ladder uses the single-sample optimum (0.5; 1.0 is slightly worse on validation, 0.435
+vs 0.433, so 0.5 is no longer at the sweep boundary). A model meant to supply diverse, calibrated futures to a
+simulator would choose a low KL (0.03–0.08) and pay ~0.03–0.09 m single-sample ADE for it.
 
 ## What each rung changed, and whether it helped
 
@@ -150,13 +176,14 @@ measurable difference".
   **Pretraining control:** the same model from scratch reaches the same accuracy (0.515 ± 0.013 / 1.078 ± 0.026):
   no measurable accuracy benefit of self-supervised pretraining on this benchmark. Pretraining does give fewer
   predicted collisions (0.056 ± 0.002 vs 0.063 ± 0.001) and lower seed variance (ADE std 0.002 vs 0.013).
-* **L6 CVAE (K = 20):** worse single-sample accuracy than the deterministic L5 (0.529 ± 0.006 vs 0.518 ± 0.002; FDE
-  1.104 vs 1.077) and worse most-likely accuracy (0.550 ± 0.002), no measurable change in collisions
-  (0.057 ± 0.002). It does produce a distribution (minADE20 0.44 vs 0.52), but a poorly calibrated, too narrow one:
-  KDE NLL 11.6 ± 1.2 against 1.05–3.3 for the published generative baselines. The KL weight chosen (0.15) is the
-  largest of the first sweep, see the KL note below.
-* **L7 least-colliding selection:** fewer predicted collisions (0.054 ± 0.001 vs 0.057 ± 0.002, within ~1 std
-  of each other, so at best a small effect) at no accuracy cost (0.529 / 1.104, unchanged).
+* **L6 CVAE (K = 20, KL 0.5):** no measurable single-sample difference from the deterministic L5 (0.523 ± 0.010 /
+  1.085 ± 0.024 vs 0.518 ± 0.002 / 1.077 ± 0.009); worse most-likely prediction (0.568 ± 0.005 / 1.163); no
+  measurable change in collisions (0.059 ± 0.003 vs 0.056 ± 0.002). The samples are a narrow, poorly calibrated
+  distribution (KDE NLL 10.6 ± 0.8 vs 1.05–3.3 for the published generative baselines; minADE20 0.44). At the
+  selected KL the CVAE behaves almost like the deterministic model; see the KL table for the trade-off. With KL 0.15
+  (sensitivity row) the conclusions are the same (0.529 ± 0.006, NLL 11.6 ± 1.2).
+* **L7 least-colliding selection:** no measurable difference in collisions (0.057 ± 0.004 vs 0.059 ± 0.003) or
+  accuracy (0.523 / 1.085, unchanged) on top of L6.
 * **SSL length (15 vs 40 epochs):** no measurable difference for any probe rung (e.g. L0 0.587 ± 0.008 vs
   0.580 ± 0.008), although the E0 reconstruction loss fell 13× in the continuation: better STARS reconstruction
   does not translate into better linear-probe forecasts.
@@ -195,7 +222,9 @@ FDE at 4.8 s and is behind CV at 1.2 s (0.123 vs 0.111).
   * L4 learning rate: 3e-4 → 0.498, **1e-3 → 0.472** (chosen).
   * L5 encoder-LR multiplier: 0.1 → 0.454, **1.0 → 0.427** (chosen; the larger value tested, i.e. at the sweep
     boundary; the encoder then trains at the decoder's LR).
-  * L6 KL weight: 0.03 → 0.521, 0.08 → 0.467, **0.15 → 0.447** (chosen; the largest value tested, at the sweep boundary). An extension to 0.3 and 0.5 on seed-1 validation was queued at the time of writing; see the final report for whether it changes the choice.
+  * L6 KL weight: 0.03 → 0.521, 0.08 → 0.467, 0.15 → 0.447, 0.3 → 0.437, **0.5 → 0.433** (chosen), 1.0 → 0.435.
+    The first sweep (0.03–0.15) picked its boundary, so it was extended; 0.15 is kept as a sensitivity row.
+    The monotone part of the curve is the CVAE collapsing toward a deterministic model (KL table above).
 * Two seed-2 15-epoch encoder requests (E1, E2) report exit code 127: the training finished and saved (status
   complete, 15/15 epochs); the code came from the queue wrapper script being edited after training, not from training.
 
@@ -218,7 +247,7 @@ python -m forecast_bench.ablation_report --rungs runs/stars_ablation/rungs_final
 
 All requests ran unattended through `runs/stars_ablation/{node.slurm,worker.sh,keeper.sh}` (30-minute 4-GPU
 nodes, resumable trainers, `# needs:` dependencies); the exact request files are in `runs/stars_ablation/queue`
-(not committed). Compute: about 39 GPU-hours in total.
+(not committed). Compute: about 40 GPU-hours in total (4-GPU node-time, including idle tails).
 
 Files: `summary.csv` (every metric and horizon, mean and std over seeds), `per_fold_seed.csv` (every rung × seed ×
-scene), `tables.md` (the tables above), `ladder_ade_vs_horizon.png`, `selection/*.json` (the validation sweeps).
+scene), `tables.md` (the tables above), `ladder_ade_vs_horizon.png`, `selection/*.json` (the validation sweeps), `kl_table.md` (L6 KL trade-off, `runs/stars_ablation/kl_table.py`).

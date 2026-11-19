@@ -1,0 +1,23 @@
+== Thu Nov 19 01:36:27 AM CST 2026 c108-019.horizon.tacc.utexas.edu gpu=2 job=99413
+                                                                    ss_ade@12  ss_fde@12  ml_ade@12  ml_fde@12  nll@12  col@12  col_gt@12  min_ade@12  min_fde@12
+rung                                                                                                                                                             
+L0 original STARS: frozen SSL encoder, linear probe, single target      0.580      1.219      0.580      1.219     NaN   0.085      0.005       0.580       1.219
+L1 + node motion features                                               0.585      1.248      0.585      1.248     NaN   0.074      0.005       0.585       1.248
+L2 + native 8-step rate, 24-NN/10 m graph, heading back-fill            0.591      1.245      0.591      1.245     NaN   0.078      0.005       0.591       1.245
+L3 + multi-agent linear head (one graph per window)                     0.589      1.241      0.589      1.241     NaN   0.079      0.005       0.589       1.241
+L4 + GRU decoder (deterministic), frozen encoder                        0.568      1.160      0.568      1.160     NaN   0.076      0.005       0.568       1.160
+L5 + fine-tuned encoder                                                 0.518      1.077      0.518      1.077     NaN   0.056      0.005       0.518       1.077
+L5 control: same model from scratch (no pretraining)                    0.515      1.078      0.515      1.078     NaN   0.063      0.005       0.515       1.078
+L6 + CVAE decoder (K=20, KL 0.5)                                        0.523      1.085      0.568      1.163  10.632   0.059      0.005       0.438       0.903
+L7 + least-colliding selection (4x oversampling)                        0.523      1.085      0.568      1.163  10.647   0.057      0.005       0.438       0.904
+agentformer_official                                                    1.051      2.343        NaN        NaN   1.224   0.074      0.005       0.233       0.393
+cv                                                                      0.534      1.148      0.534      1.148     NaN   0.069      0.005       0.534       1.148
+moflow_official                                                         0.985      2.094        NaN        NaN   1.052   0.076      0.005       0.217       0.341
+sensitivity: L0 with 15-epoch SSL                                       0.587      1.229      0.587      1.229     NaN   0.082      0.005       0.587       1.229
+sensitivity: L1 with 15-epoch SSL                                       0.587      1.247      0.587      1.247     NaN   0.075      0.005       0.587       1.247
+sensitivity: L2 with 15-epoch SSL                                       0.591      1.241      0.591      1.241     NaN   0.081      0.005       0.591       1.241
+sensitivity: L3 with 15-epoch SSL                                       0.594      1.260      0.594      1.260     NaN   0.082      0.005       0.594       1.260
+sensitivity: L6 with KL 0.15                                            0.529      1.104      0.550      1.142  11.597   0.057      0.005       0.435       0.894
+sgan_official                                                           0.863      1.794        NaN        NaN   3.318   0.102      0.005       0.360       0.641
+socialvae_official                                                      0.656      1.419        NaN        NaN   1.391   0.097      0.005       0.251       0.442
+trajectron_official                                                     0.733      1.580        NaN        NaN   3.213   0.103      0.005       0.343       0.606

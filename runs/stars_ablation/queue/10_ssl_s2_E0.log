@@ -1,0 +1,59 @@
+== Wed Nov 18 06:46:45 PM CST 2026 c110-012.horizon.tacc.utexas.edu gpu=1 job=98892
+Could not resolve git provenance for /scratch/09865/mmunje/stars-ablation: TimeoutExpired(['git', 'status', '--porcelain'], 5.0)
+/scratch/09865/mmunje/stars-forecasting/.venv/lib64/python3.12/site-packages/torch/nn/modules/transformer.py:392: UserWarning: enable_nested_tensor is True, but self.use_nested_tensor is False because encoder_layer.norm_first was True
+  warnings.warn(
+[2026-11-19T00:48:16.918128+00:00] run created
+[2026-11-19T00:48:17.029672+00:00] status | status=created stage=setup iteration=0
+[2026-11-19T00:48:17.213741+00:00] status | status=running stage=loading_datasets
+[2026-11-19T00:49:36.893981+00:00] status | stage=datasets_ready
+[2026-11-19T00:49:38.477141+00:00] status | stage=ssl
+[2026-11-19T00:49:38.520388+00:00] progress started | stage=ssl epoch 1
+[2026-11-19T00:53:13.849201+00:00] status | stage=ssl epoch=1
+[2026-11-19T00:53:13.915878+00:00] progress started | stage=ssl epoch 2
+[2026-11-19T00:56:47.426840+00:00] status | stage=ssl epoch=2
+[2026-11-19T00:56:47.525672+00:00] progress started | stage=ssl epoch 3
+[2026-11-19T01:00:20.609788+00:00] status | stage=ssl epoch=3
+[2026-11-19T01:00:20.678886+00:00] progress started | stage=ssl epoch 4
+[2026-11-19T01:03:53.812215+00:00] status | stage=ssl epoch=4
+[2026-11-19T01:03:53.882639+00:00] progress started | stage=ssl epoch 5
+[2026-11-19T01:07:27.391920+00:00] status | stage=ssl epoch=5
+[2026-11-19T01:07:27.479704+00:00] progress started | stage=ssl epoch 6
+[2026-11-19T01:11:00.702523+00:00] status | stage=ssl epoch=6
+[2026-11-19T01:11:00.773537+00:00] progress started | stage=ssl epoch 7
+== Wed Nov 18 07:25:30 PM CST 2026 c128-013.horizon.tacc.utexas.edu gpu=1 job=98934
+/scratch/09865/mmunje/stars-forecasting/.venv/lib64/python3.12/site-packages/torch/nn/modules/transformer.py:392: UserWarning: enable_nested_tensor is True, but self.use_nested_tensor is False because encoder_layer.norm_first was True
+  warnings.warn(
+[2026-11-19T01:25:58.893138+00:00] run opened for resume
+[2026-11-19T01:25:58.930481+00:00] status | status=running stage=loading_datasets
+[2026-11-19T01:26:31.924590+00:00] status | stage=datasets_ready
+[2026-11-19T01:26:37.193998+00:00] resumed | epoch=6
+[2026-11-19T01:26:37.331911+00:00] status | stage=ssl
+[2026-11-19T01:26:37.374783+00:00] progress started | stage=ssl epoch 7
+[2026-11-19T01:30:14.820518+00:00] status | stage=ssl epoch=7
+[2026-11-19T01:30:14.861939+00:00] progress started | stage=ssl epoch 8
+[2026-11-19T01:33:47.748450+00:00] status | stage=ssl epoch=8
+[2026-11-19T01:33:47.795227+00:00] progress started | stage=ssl epoch 9
+[2026-11-19T01:37:20.588748+00:00] status | stage=ssl epoch=9
+[2026-11-19T01:37:20.638199+00:00] progress started | stage=ssl epoch 10
+[2026-11-19T01:40:53.327081+00:00] status | stage=ssl epoch=10
+[2026-11-19T01:40:53.368680+00:00] progress started | stage=ssl epoch 11
+[2026-11-19T01:44:26.254873+00:00] status | stage=ssl epoch=11
+[2026-11-19T01:44:26.305395+00:00] progress started | stage=ssl epoch 12
+[2026-11-19T01:47:59.105918+00:00] status | stage=ssl epoch=12
+[2026-11-19T01:47:59.150712+00:00] progress started | stage=ssl epoch 13
+[2026-11-19T01:51:31.824212+00:00] status | stage=ssl epoch=13
+[2026-11-19T01:51:31.868342+00:00] progress started | stage=ssl epoch 14
+== Wed Nov 18 07:54:48 PM CST 2026 c109-008.horizon.tacc.utexas.edu gpu=1 job=99004
+/scratch/09865/mmunje/stars-forecasting/.venv/lib64/python3.12/site-packages/torch/nn/modules/transformer.py:392: UserWarning: enable_nested_tensor is True, but self.use_nested_tensor is False because encoder_layer.norm_first was True
+  warnings.warn(
+[2026-11-19T01:54:58.324022+00:00] run opened for resume
+[2026-11-19T01:54:58.340240+00:00] status | status=running stage=loading_datasets
+[2026-11-19T01:55:22.881901+00:00] status | stage=datasets_ready
+[2026-11-19T01:55:27.113893+00:00] resumed | epoch=13
+[2026-11-19T01:55:27.126299+00:00] status | stage=ssl
+[2026-11-19T01:55:27.167364+00:00] progress started | stage=ssl epoch 14
+[2026-11-19T01:59:03.216405+00:00] status | stage=ssl epoch=14
+[2026-11-19T01:59:03.257617+00:00] progress started | stage=ssl epoch 15
+[2026-11-19T02:02:37.623507+00:00] status | stage=ssl epoch=15
+[2026-11-19T02:02:37.667420+00:00] status | status=complete stage=training
+[W1118 20:02:42.576235400 AllocatorConfig.cpp:28] Warning: PYTORCH_CUDA_ALLOC_CONF is deprecated, use PYTORCH_ALLOC_CONF instead (function operator())
