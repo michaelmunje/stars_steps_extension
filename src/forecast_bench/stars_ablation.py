@@ -191,6 +191,10 @@ def main() -> None:
     summary = {"encoder": str(args.encoder), "mode": args.mode, "seed": args.seed, "graph": graph,
                "encoder_recipe": payload["encoder_recipe"], "head_recipe": recipe, "folds": {}}
     for fold in args.folds.split(","):
+        done = out_dir / f"{fold}_summary.json"
+        if done.exists():   # resumable per fold (jobs are requeued at their time limit)
+            summary["folds"][fold] = json.loads(done.read_text())
+            continue
         train = _concat([file_features(p) for p in fold_files(fold, "train")])
         val = _concat([file_features(p) for p in fold_files(fold, "val")])
         windows = cap(load(args.root / "windows" / f"ethucy_{fold}.npz"))
@@ -213,6 +217,7 @@ def main() -> None:
         (out_dir / f"{fold}_head_log.jsonl").write_text("".join(json.dumps(r) + "\n" for r in logs))
         summary["folds"][fold] = {**info, "test_ade": test_ade, "n_train_rows": int(train["y_valid"].any(-1).sum()),
                                   "n_val_scored": int(val["scored"].sum()), "n_test": len(scene)}
+        done.write_text(json.dumps(summary["folds"][fold]))
         print(f"{args.method} {fold}: val ADE {info['val_ade']:.3f} (epoch {info['best_epoch']}), test ADE {test_ade:.3f}, "
               f"{summary['folds'][fold]['n_train_rows']} train rows, {time.time() - started:.0f} s", flush=True)
     summary["seconds"] = time.time() - started

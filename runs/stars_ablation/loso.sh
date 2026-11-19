@@ -5,7 +5,7 @@
 # to 0 over 100 epochs, early stopping after 20 epochs without a validation gain, best epoch by validation
 # single-sample ADE (mean over 20 draws), decoder 512 hidden / dropout 0.0633 / CVAE latent 64. Resumable.
 N=$1; S=$2; E=$3; shift 3
-ENC=experiments/stars_ablation/ssl/${E}_s$S/checkpoints/best.pt
+ENC=experiments/stars_ablation/ssl/${E}_s$S${ENC_SUFFIX-_long}/checkpoints/best.pt   # decoders use the 40-epoch encoders
 OUT=experiments/forecast_bench/ablation/loso/${N}_s$S
 mkdir -p $OUT
 for f in eth hotel univ zara1 zara2; do

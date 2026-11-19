@@ -1,0 +1,13 @@
+{"L0 original STARS: frozen SSL encoder, linear probe, single target": "abl_L0long",
+ "L1 + node motion features": "abl_L1long",
+ "L2 + native 8-step rate, 24-NN/10 m graph, heading back-fill": "abl_L2long",
+ "L3 + multi-agent linear head (one graph per window)": "abl_L3long",
+ "L4 + GRU decoder (deterministic), frozen encoder": "abl_L4",
+ "L5 + fine-tuned encoder": "abl_L5",
+ "L5 control: same model from scratch (no pretraining)": "abl_L5scratch",
+ "L6 + CVAE decoder (K=20)": "abl_L6",
+ "L7 + least-colliding selection (4x oversampling)": "abl_L7os4",
+ "sensitivity: L0 with 15-epoch SSL": "abl_L0",
+ "sensitivity: L1 with 15-epoch SSL": "abl_L1",
+ "sensitivity: L2 with 15-epoch SSL": "abl_L2",
+ "sensitivity: L3 with 15-epoch SSL": "abl_L3"}
