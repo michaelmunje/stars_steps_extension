@@ -209,7 +209,7 @@ bash runs/stars_ablation/ssl_long.sh E0 1
 bash runs/stars_ablation/probe.sh 1 _long long L0 L1 L2 L3
 # L4-L6 (5 folds in parallel, then K=20 and prior-mean predictions); configuration choice on seed-1 validation
 bash runs/stars_ablation/loso.sh L4_lr1e-3 1 E3 --decoder deterministic --encoder-mode frozen --lr 1e-3
-python runs/stars_ablation/select.py L4 'lr3e-4=--lr 3e-4' 'lr1e-3=--lr 1e-3'
+python runs/stars_ablation/select_config.py L4 'lr3e-4=--lr 3e-4' 'lr1e-3=--lr 1e-3'
 # L7: least-colliding selection on the L6 checkpoints
 python -m forecast_bench.predict --method abl_L6_s1_os4 --sets ethucy_eth,ethucy_hotel,ethucy_univ,ethucy_zara1,ethucy_zara2
 # tables and figure

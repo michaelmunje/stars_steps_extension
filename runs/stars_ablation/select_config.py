@@ -1,7 +1,7 @@
 """Pick a ladder rung's configuration on seed-1 validation (mean over the 5 folds of each fold's best validation
 single-sample ADE), write chosen/<rung>.flags and link the chosen seed-1 run and predictions as <rung>_s1.
 
-    python runs/stars_ablation/select.py L4 "lr3e-4=--lr 3e-4" "lr1e-3=--lr 1e-3"
+    python runs/stars_ablation/select_config.py L4 "lr3e-4=--lr 3e-4" "lr1e-3=--lr 1e-3"
 """
 import json
 import os
