@@ -174,9 +174,97 @@ def ci(methods: list[str], pairs: list[tuple[str, str]], root: Path = BENCH, see
     return pd.DataFrame(rows), pd.DataFrame(diffs)
 
 
+HORIZONS = {1.2: 3, 2.4: 6, 3.6: 9, 4.8: 12}   # seconds -> prediction steps (0.4 s)
+LOG_PDF_MIN = -20.0                           # Trajectron++'s clip of the KDE log density
+
+
+def kde_nll(pred: np.ndarray, gt: np.ndarray) -> np.ndarray:
+    """``pred [E, K, T, 2]``, ``gt [E, T, 2]`` -> NLL [E, T] of the truth under a Gaussian KDE of the K samples
+    per agent and step (Scott's bandwidth, scipy.stats.gaussian_kde's rule), log density clipped at -20."""
+    E, K, T, _ = pred.shape
+    x = pred.transpose(0, 2, 1, 3).astype(np.float64)                     # [E, T, K, 2]
+    centred = x - x.mean(2, keepdims=True)
+    cov = np.einsum("etki,etkj->etij", centred, centred) / (K - 1) * K ** (-2 / 6) + 1e-8 * np.eye(2)
+    inv, logdet = np.linalg.inv(cov), np.linalg.slogdet(cov)[1]
+    d = gt[:, :, None].astype(np.float64) - x                              # [E, T, K, 2]
+    maha = np.einsum("etki,etij,etkj->etk", d, inv, d)
+    logk = -0.5 * maha - 0.5 * logdet[..., None] - np.log(2 * np.pi)
+    m = logk.max(-1, keepdims=True)
+    logpdf = (m + np.log(np.exp(logk - m).mean(-1, keepdims=True)))[..., 0]
+    return -np.maximum(logpdf, LOG_PDF_MIN)
+
+
+def primary_scores(windows: dict, pred: np.ndarray) -> dict[str, float]:
+    """Single-sample ADE/FDE (mean over the K draws), KDE NLL (K > 1) and 0.2 m collision rate at each horizon."""
+    from forecast_bench.metrics import _proximity, scored
+
+    s = scored(windows)
+    err = np.linalg.norm(pred - s["gt"][:, None], axis=-1)               # [E, K, T]
+    nll = kde_nll(pred, s["gt"]) if pred.shape[1] > 1 else None
+    out = {}
+    for h, t in HORIZONS.items():
+        out[f"ade@{h}"] = err[..., :t].mean()
+        out[f"fde@{h}"] = err[..., t - 1].mean()
+        out[f"nll@{h}"] = nll[:, :t].mean() if nll is not None else np.nan
+        closest, _, _, multi = _proximity(pred[:, :, :t], s["window"], s["obs"])
+        out[f"col20@{h}"] = (closest[multi] < 0.2).mean()
+    return out
+
+
+def primary(root: Path = BENCH, kinds=("zs", "loso", "scratch", "zs_rft", "loso_rft"),
+            baselines=("socialvae_official", "moflow_official", "agentformer_official", "trajectron_official",
+                       "sgan_official", "cv")) -> pd.DataFrame:
+    """Per (row, fold, seed) primary metrics. Rows: ``ep_<kind>`` (sampled, mode from ``_mode``), ``ep_<kind>_os4``
+    and the baselines (their own K draws; deterministic ones are their own mode)."""
+    rows = []
+    for fold in FOLDS:
+        windows = load(root / "windows" / f"ethucy_{fold}.npz")
+        d = root / "preds" / f"ethucy_{fold}"
+        rows.append({"row": "ground_truth", "fold": fold, "seed": 0,
+                     **{f"col20@{h}": v for h, v in _gt_collisions(windows).items()}})
+        jobs = [(b, b, 0, b if b == "cv" else "_none") for b in baselines]   # no mode for sampled baselines
+        for kind in kinds:
+            for p in d.glob(f"ep_{kind}_s*.npz"):
+                m = re.fullmatch(rf"ep_{kind}_s(\d+)(_os4)?", p.stem)
+                if m:
+                    jobs.append((f"ep_{kind}{m[2] or ''}", p.stem, int(m[1]), f"ep_{kind}_s{m[1]}_mode"))
+        for row, stem, seed, mode in jobs:
+            if not (d / f"{stem}.npz").exists():
+                continue
+            r = {"row": row, "fold": fold, "seed": seed,
+                 **primary_scores(windows, np.load(d / f"{stem}.npz")["pred"].astype(np.float32))}
+            if (d / f"{mode}.npz").exists():
+                pm = primary_scores(windows, np.load(d / f"{mode}.npz")["pred"].astype(np.float32))
+                r.update({f"mode_{k}": v for k, v in pm.items() if k[:3] in ("ade", "fde")})
+            rows.append(r)
+            print(fold, row, seed, f"{r['ade@4.8']:.3f}", flush=True)
+    return pd.DataFrame(rows)
+
+
+def _gt_collisions(windows: dict) -> dict[float, float]:
+    from forecast_bench.metrics import _proximity, scored
+
+    s = scored(windows)
+    out = {}
+    for h, t in HORIZONS.items():
+        closest, _, _, multi = _proximity(s["gt"][:, None, :t], s["window"], s["obs"])
+        out[h] = (closest[multi] < 0.2).mean()
+    return out
+
+
+def primary_table(df: pd.DataFrame) -> pd.DataFrame:
+    """5-fold average per (row, seed), then mean and std over seeds."""
+    avg = df.groupby(["row", "seed"]).mean(numeric_only=True).drop(columns=[], errors="ignore")
+    full = df.groupby(["row", "seed"]).fold.nunique() == len(FOLDS)
+    avg = avg[full]
+    out = avg.groupby("row").agg(["mean", "std"])
+    out[("seeds", "n")] = avg.groupby("row").size()
+    return out
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("stage", choices=["select", "ci"])
+    parser.add_argument("stage", choices=["select", "ci", "primary"])
     parser.add_argument("--root", type=Path, default=BENCH)
     parser.add_argument("--out", type=Path)
     parser.add_argument("--methods", default="socialvae_official,moflow_official,agentformer_official,trajectron_official,"
@@ -185,6 +273,14 @@ def main() -> None:
     args = parser.parse_args()
     if args.stage == "select":
         select(args.root)
+        return
+    if args.stage == "primary":
+        args.out.mkdir(parents=True, exist_ok=True)
+        df = primary(args.root)
+        df.to_csv(args.out / "primary_per_fold.csv", index=False)
+        table = primary_table(df)
+        table.to_csv(args.out / "primary.csv")
+        print(table.round(3).to_string())
         return
     methods = args.methods.split(",")
     ours = ["ep_loso", "ep_loso_os4", "ep_loso_mode", "ep_zs", "ep_zs_os4"]
