@@ -1,0 +1,4 @@
+{"L0 original STARS (frozen SSL, linear probe, single target)": "abl_L0",
+ "L1 + node motion features": "abl_L1",
+ "L2 + native rate, 24-NN/10 m graph, heading fix": "abl_L2",
+ "L3 + multi-agent linear head": "abl_L3"}

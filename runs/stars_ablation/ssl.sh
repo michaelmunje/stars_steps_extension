@@ -5,7 +5,8 @@
 # best epoch by validation loss at beta = 0.9 (beta_max). Resumable.
 source runs/stars_ablation/ssl_flags.sh
 E=$1; S=$2; shift 2
+RUN=${RUN:-${E}_s$S}   # e.g. RUN=E0_s1_long for a warm restart
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 python -m baselines.train_stars_ma --phase ssl $DATA ${!E} --max-nodes 4096 --epochs 15 --beta-warmup-epochs 3 \
-  --ssl-val-beta 0.9 --seed $S --run-dir experiments/stars_ablation/ssl/${E}_s$S --resume --cache-workers 16 "$@" 2>&1 | grep --line-buffered -v "batch/s"
+  --ssl-val-beta 0.9 --seed $S --run-dir experiments/stars_ablation/ssl/$RUN --resume --cache-workers 16 "$@" 2>&1 | grep --line-buffered -v "batch/s"
 exit ${PIPESTATUS[0]}

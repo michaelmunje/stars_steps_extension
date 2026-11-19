@@ -147,6 +147,89 @@ def fmt(mean: float, std: float, digits: int = 3) -> str:
     return f"{mean:.{digits}f}" + (f" ± {std:.{digits}f}" if np.isfinite(std) else "")
 
 
+RAMP = ["#b7d3f6", "#9ec5f4", "#86b6ef", "#6da7ec", "#5598e7", "#3987e5", "#2a78d6", "#256abf", "#1c5cab",
+        "#184f95", "#104281", "#0d366b"]
+
+
+def figure(summary: pd.DataFrame, rungs: list[str], path: Path, reference: str = "cv") -> None:
+    """Single-sample ADE vs horizon per rung (5-fold average, band = +- 1 seed std); ordinal blue ramp, CV dashed."""
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    seconds = [0.4 * h for h in HORIZONS]
+    fig, ax = plt.subplots(figsize=(7.2, 4.4), dpi=200)
+    colours = [RAMP[int(round(i * (len(RAMP) - 1) / max(1, len(rungs) - 1)))] for i in range(len(rungs))]
+    for rung, colour in zip(rungs, colours):
+        if rung not in summary.index:
+            continue
+        mean = np.array([summary.loc[rung, f"ss_ade@{h}"] for h in HORIZONS])
+        std = np.nan_to_num(np.array([summary.loc[rung, f"ss_ade@{h}_std"] for h in HORIZONS]))
+        ax.plot(seconds, mean, color=colour, lw=2, marker="o", ms=4, label=rung)
+        ax.fill_between(seconds, mean - std, mean + std, color=colour, alpha=0.18, lw=0)
+    if reference in summary.index:
+        ax.plot(seconds, [summary.loc[reference, f"ss_ade@{h}"] for h in HORIZONS], color="#6b6a64", lw=1.5,
+                ls="--", label="constant velocity")
+    ax.set_xlabel("prediction horizon (s)")
+    ax.set_ylabel("single-sample ADE (m), 5-scene mean")
+    ax.set_xticks(seconds)
+    ax.grid(axis="y", color="#e4e3dd", lw=0.8)
+    for side in ("top", "right"):
+        ax.spines[side].set_visible(False)
+    ax.legend(frameon=False, fontsize=7.5, loc="upper left")
+    ax.set_title("STARS ablation ladder on ETH/UCY (leave-one-scene-out)", fontsize=10, loc="left")
+    fig.tight_layout()
+    fig.savefig(path)
+
+
+def markdown_tables(df: pd.DataFrame, summary: pd.DataFrame, rungs: list[str], baselines: list[str]) -> str:
+    out = []
+    h = 12
+    cols = [("ss_ade", "single-sample ADE"), ("ss_fde", "single-sample FDE"), ("ml_ade", "most-likely ADE"),
+            ("ml_fde", "most-likely FDE"), ("nll", "KDE NLL"), ("col", "collision@0.2 m")]
+    out.append("| rung | seeds | " + " | ".join(c[1] for c in cols) + " |")
+    out.append("|---|---|" + "---|" * len(cols))
+    for r in rungs + ["cv"]:
+        if r not in summary.index:
+            continue
+        row = summary.loc[r]
+        out.append(f"| {r} | {int(row.seeds)} | " + " | ".join(fmt(row[f'{c}@{h}'], row.get(f'{c}@{h}_std', np.nan)) for c, _ in cols) + " |")
+    gt = df.groupby("fold")[f"col_gt@{h}"].first().mean()
+    out.append(f"\nGround-truth collision rate at 0.2 m (4.8 s): {gt:.4f}.\n")
+    out.append("### Per horizon (single-sample ADE / FDE, m)\n")
+    out.append("| rung | " + " | ".join(f"{0.4 * k:.1f} s" for k in HORIZONS) + " |")
+    out.append("|---|" + "---|" * len(HORIZONS))
+    for r in rungs + ["cv"]:
+        if r in summary.index:
+            row = summary.loc[r]
+            out.append(f"| {r} | " + " | ".join(f"{row[f'ss_ade@{k}']:.3f} / {row[f'ss_fde@{k}']:.3f}" for k in HORIZONS) + " |")
+    out.append("\n### Per held-out scene (single-sample ADE / FDE at 4.8 s, mean ± seed std)\n")
+    out.append("| rung | " + " | ".join(FOLDS) + " |")
+    out.append("|---|" + "---|" * len(FOLDS))
+    for r in rungs + ["cv"]:
+        d = df[df.rung == r]
+        if d.empty:
+            continue
+        cells = []
+        for f in FOLDS:
+            x = d[d.fold == f]
+            cells.append(fmt(x[f"ss_ade@{h}"].mean(), x[f"ss_ade@{h}"].std(ddof=1), 2) + " / " +
+                         fmt(x[f"ss_fde@{h}"].mean(), x[f"ss_fde@{h}"].std(ddof=1), 2) if len(x) else "")
+        out.append(f"| {r} | " + " | ".join(cells) + " |")
+    out.append("\n### Comparison with published methods (minADE20 / minFDE20 at 4.8 s; not our evaluation metric)\n")
+    out.append("| method | " + " | ".join(FOLDS) + " | avg | single-sample ADE / FDE avg |")
+    out.append("|---|" + "---|" * (len(FOLDS) + 2))
+    for r in baselines + rungs:
+        d = df[df.rung == r]
+        if d.empty or d.fold.nunique() < len(FOLDS):
+            continue
+        per = d.groupby("fold")[[f"min_ade@{h}", f"min_fde@{h}", f"ss_ade@{h}", f"ss_fde@{h}"]].mean()
+        out.append(f"| {r} | " + " | ".join(f"{per.loc[f, f'min_ade@{h}']:.2f} / {per.loc[f, f'min_fde@{h}']:.2f}" for f in FOLDS)
+                   + f" | {per[f'min_ade@{h}'].mean():.2f} / {per[f'min_fde@{h}'].mean():.2f}"
+                   + f" | {per[f'ss_ade@{h}'].mean():.2f} / {per[f'ss_fde@{h}'].mean():.2f} |")
+    return "\n".join(out) + "\n"
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--root", type=Path, default=BENCH)
@@ -163,6 +246,9 @@ def main() -> None:
     summary = summarise(df)
     summary.to_csv(args.out / "summary.csv")
     print(summary[[c for c in summary.columns if c.endswith("@12")]].round(3).to_string())
+    rungs = list(methods)
+    figure(summary, rungs, args.out / "ladder_ade_vs_horizon.png")
+    (args.out / "tables.md").write_text(markdown_tables(df, summary, rungs, list(official)))
 
 
 if __name__ == "__main__":

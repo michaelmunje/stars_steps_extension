@@ -712,6 +712,9 @@ def _scheduler(optimizer, args, steps_per_epoch: int):
 def _build_model(args, payload):
     if args.phase == "ssl":
         model = StarsMotionVAE(args.obs, args.encoder_recipe)
+        if getattr(args, "init_payload", None) is not None:   # continue a previous ssl run (warm restart)
+            model.load_state_dict(args.init_payload["state_dict"])
+            args.run.log("ssl model initialised", checkpoint=str(args.init_checkpoint))
         groups = lambda lr: [{"params": model.parameters(), "lr": lr}]
         return model, groups
     model = StarsMultiAgentForecaster(args.obs, args.pred, dt=CANONICAL_DT,
@@ -788,6 +791,12 @@ def train(args) -> None:
             raise ValueError(f"Window differs from the init checkpoint ({init['window']})")
         args.encoder_recipe, args.decoder_recipe = dict(init["encoder_recipe"]), dict(init["decoder_recipe"])
         args.goal = bool(args.decoder_recipe.get("goal", False))
+        args.init_payload = init
+    if args.phase == "ssl" and args.init_checkpoint:
+        init = torch.load(args.init_checkpoint, map_location="cpu", weights_only=False)
+        if init.get("model") != "stars_ma" or init.get("phase") != "ssl" or init["graph"] != _graph(args):
+            raise ValueError(f"{args.init_checkpoint} is not an ssl checkpoint with this graph ({init.get('graph')})")
+        args.encoder_recipe = dict(init["encoder_recipe"])
         args.init_payload = init
     if args.rft_steps > args.pred or args.rft_eval_steps > args.pred:
         raise ValueError(f"--rft-steps/--rft-eval-steps must be <= the prediction steps ({args.pred})")
